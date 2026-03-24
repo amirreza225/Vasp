@@ -9,10 +9,12 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
       this.ctx.ast.entities.map((e) => [e.name, e.fields]),
     )
 
-    // Enrich each crud entry with field definitions from entity blocks
+    // Enrich each crud entry with field definitions from entity blocks.
+    // Filter out createdAt/updatedAt — the schema template always appends them.
+    const reservedFields = new Set(['createdAt', 'updatedAt'])
     const crudsWithFields = this.ctx.ast.cruds.map((crud) => ({
       ...crud,
-      fields: entityMap.get(crud.entity) ?? [],
+      fields: (entityMap.get(crud.entity) ?? []).filter((f) => !reservedFields.has(f.name)),
       hasEntity: entityMap.has(crud.entity),
     }))
 

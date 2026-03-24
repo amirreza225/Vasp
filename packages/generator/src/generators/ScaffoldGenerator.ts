@@ -108,6 +108,15 @@ export class ScaffoldGenerator extends BaseGenerator {
       lines.push(`page ${page.name} {`, `  component: ${importStr}`, `}`, '')
     }
 
+    for (const entity of ast.entities) {
+      lines.push(`entity ${entity.name} {`)
+      for (const field of entity.fields) {
+        const mods = field.modifiers.map((m) => `@${m.replace('_', '(').replace('default_now', 'default(now)')}`).join(' ')
+        lines.push(`  ${field.name}: ${field.type}${mods ? ' ' + mods : ''}`)
+      }
+      lines.push(`}`, '')
+    }
+
     for (const query of ast.queries) {
       const fn = query.fn
       const fnStr = fn.kind === 'named'
@@ -117,6 +126,7 @@ export class ScaffoldGenerator extends BaseGenerator {
         `query ${query.name} {`,
         `  fn: ${fnStr}`,
         `  entities: [${query.entities.join(', ')}]`,
+        ...(query.auth ? [`  auth: true`] : []),
         `}`,
         '',
       )
@@ -131,6 +141,7 @@ export class ScaffoldGenerator extends BaseGenerator {
         `action ${action.name} {`,
         `  fn: ${fnStr}`,
         `  entities: [${action.entities.join(', ')}]`,
+        ...(action.auth ? [`  auth: true`] : []),
         `}`,
         '',
       )

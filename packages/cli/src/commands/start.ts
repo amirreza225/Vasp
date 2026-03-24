@@ -64,8 +64,8 @@ export async function startCommand(): Promise<void> {
   console.log()
 
   const [serverProc, clientProc] = await Promise.all([
-    spawnPrefixed('server', pc.cyan, serverScript, projectDir),
-    spawnPrefixed('client', pc.magenta, clientScript, projectDir),
+    spawnPrefixed('server', pc.cyan, 'dev:server', projectDir),
+    spawnPrefixed('client', pc.magenta, 'dev:client', projectDir),
   ])
 
   // Handle Ctrl+C — kill both children
@@ -90,13 +90,13 @@ export async function startCommand(): Promise<void> {
 async function spawnPrefixed(
   label: string,
   color: (s: string) => string,
-  script: string,
+  scriptName: string,
   cwd: string,
 ): Promise<ReturnType<typeof Bun.spawn>> {
   const prefix = color(`[${label}]`)
-  const [cmd, ...args] = script.split(' ')
 
-  const proc = Bun.spawn([cmd!, ...args], {
+  // Use `bun run <scriptName>` so Bun resolves node_modules/.bin binaries
+  const proc = Bun.spawn(['bun', 'run', scriptName], {
     cwd,
     stdout: 'pipe',
     stderr: 'pipe',
