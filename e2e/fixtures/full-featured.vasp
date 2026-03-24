@@ -1,0 +1,68 @@
+// Full-featured Vasp fixture — used for parser snapshot tests and E2E tests
+
+app MyTodoApp {
+  title: "Vasp Todo"
+  db: Drizzle
+  ssr: true
+  typescript: true
+}
+
+auth User {
+  userEntity: User
+  methods: [ usernameAndPassword, google, github ]
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+route TodoRoute {
+  path: "/todos"
+  to: TodoPage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+page TodoPage {
+  component: import TodoList from "@src/pages/TodoList.vue"
+}
+
+query getTodos {
+  fn: import { getTodos } from "@src/queries.js"
+  entities: [Todo]
+}
+
+query getTodoById {
+  fn: import { getTodoById } from "@src/queries.js"
+  entities: [Todo]
+}
+
+action createTodo {
+  fn: import { createTodo } from "@src/actions.js"
+  entities: [Todo]
+}
+
+action deleteTodo {
+  fn: import { deleteTodo } from "@src/actions.js"
+  entities: [Todo]
+}
+
+crud Todo {
+  entity: Todo
+  operations: [list, create, update, delete]
+}
+
+realtime TodoChannel {
+  entity: Todo
+  events: [created, updated, deleted]
+}
+
+job sendWelcomeEmail {
+  executor: PgBoss
+  perform: {
+    fn: import { sendWelcomeEmail } from "@src/jobs.js"
+  }
+}

@@ -1,0 +1,9 @@
+import { Elysia } from 'elysia'
+{{#each realtimes}}
+import { {{camelCase name}}Channel } from './{{camelCase name}}.{{../ext}}'
+{{/each}}
+
+export const realtimeRoutes = new Elysia()
+{{#each realtimes}}
+  .use({{camelCase name}}Channel)
+{{/each}}

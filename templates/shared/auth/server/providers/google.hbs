@@ -1,0 +1,53 @@
+import { Elysia } from 'elysia'
+import { db } from '../../db/client.{{ext}}'
+import { users } from '../../../drizzle/schema.{{ext}}'
+import { eq } from 'drizzle-orm'
+import { authPlugin } from '../index.{{ext}}'
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
+const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:{{backendPort}}/auth/google/callback'
+
+export const googleRoutes = new Elysia()
+  .use(authPlugin)
+  .get('/google', ({ set }) => {
+    const params = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      redirect_uri: REDIRECT_URI,
+      response_type: 'code',
+      scope: 'openid email profile',
+    })
+    set.redirect = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+  })
+  .get('/google/callback', async ({ query, jwt, cookie: { token }, set }) => {
+    const { code } = query
+    if (!code) { set.status = 400; return { error: 'Missing code' } }
+
+    // Exchange code for tokens
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: REDIRECT_URI,
+        grant_type: 'authorization_code',
+      }),
+    })
+    const tokenData = await tokenRes.json()
+    const idToken = tokenData.id_token
+    const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString())
+    const googleId = payload.sub
+    const email = payload.email
+
+    let [user] = await db.select().from(users).where(eq(users.googleId, googleId)).limit(1)
+    if (!user) {
+      ;[user] = await db.insert(users).values({ username: email, email, googleId }).returning()
+    }
+    if (!user) { set.status = 500; return { error: 'Failed to create user' } }
+
+    const tokenValue = await jwt.sign({ userId: user.id })
+    token.set({ value: tokenValue, httpOnly: true, sameSite: 'lax', path: '/' })
+    set.redirect = '/'
+  })

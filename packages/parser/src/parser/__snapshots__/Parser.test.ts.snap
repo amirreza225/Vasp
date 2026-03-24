@@ -1,0 +1,190 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
+{
+  "actions": [
+    {
+      "auth": false,
+      "entities": [
+        "Todo",
+      ],
+      "fn": {
+        "kind": "named",
+        "namedExport": "createTodo",
+        "source": "@src/actions.js",
+      },
+      "name": "createTodo",
+      "type": "Action",
+    },
+    {
+      "auth": false,
+      "entities": [
+        "Todo",
+      ],
+      "fn": {
+        "kind": "named",
+        "namedExport": "deleteTodo",
+        "source": "@src/actions.js",
+      },
+      "name": "deleteTodo",
+      "type": "Action",
+    },
+  ],
+  "app": {
+    "db": "Drizzle",
+    "name": "MyTodoApp",
+    "ssr": true,
+    "title": "Vasp Todo",
+    "type": "App",
+    "typescript": true,
+  },
+  "auth": {
+    "methods": [
+      "usernameAndPassword",
+      "google",
+      "github",
+    ],
+    "name": "User",
+    "type": "Auth",
+    "userEntity": "User",
+  },
+  "cruds": [
+    {
+      "entity": "Todo",
+      "name": "Todo",
+      "operations": [
+        "list",
+        "create",
+        "update",
+        "delete",
+      ],
+      "type": "Crud",
+    },
+  ],
+  "jobs": [
+    {
+      "executor": "PgBoss",
+      "name": "sendWelcomeEmail",
+      "perform": {
+        "fn": {
+          "kind": "named",
+          "namedExport": "sendWelcomeEmail",
+          "source": "@src/jobs.js",
+        },
+      },
+      "type": "Job",
+    },
+  ],
+  "pages": [
+    {
+      "component": {
+        "defaultExport": "Home",
+        "kind": "default",
+        "source": "@src/pages/Home.vue",
+      },
+      "name": "HomePage",
+      "type": "Page",
+    },
+    {
+      "component": {
+        "defaultExport": "TodoList",
+        "kind": "default",
+        "source": "@src/pages/TodoList.vue",
+      },
+      "name": "TodoPage",
+      "type": "Page",
+    },
+  ],
+  "queries": [
+    {
+      "auth": false,
+      "entities": [
+        "Todo",
+      ],
+      "fn": {
+        "kind": "named",
+        "namedExport": "getTodos",
+        "source": "@src/queries.js",
+      },
+      "name": "getTodos",
+      "type": "Query",
+    },
+    {
+      "auth": false,
+      "entities": [
+        "Todo",
+      ],
+      "fn": {
+        "kind": "named",
+        "namedExport": "getTodoById",
+        "source": "@src/queries.js",
+      },
+      "name": "getTodoById",
+      "type": "Query",
+    },
+  ],
+  "realtimes": [
+    {
+      "entity": "Todo",
+      "events": [
+        "created",
+        "updated",
+        "deleted",
+      ],
+      "name": "TodoChannel",
+      "type": "Realtime",
+    },
+  ],
+  "routes": [
+    {
+      "name": "HomeRoute",
+      "path": "/",
+      "to": "HomePage",
+      "type": "Route",
+    },
+    {
+      "name": "TodoRoute",
+      "path": "/todos",
+      "to": "TodoPage",
+      "type": "Route",
+    },
+  ],
+}
+`;
+
+exports[`Parser — snapshot: minimal fixture > matches snapshot 1`] = `
+{
+  "actions": [],
+  "app": {
+    "db": "Drizzle",
+    "name": "MinimalApp",
+    "ssr": false,
+    "title": "Minimal App",
+    "type": "App",
+    "typescript": false,
+  },
+  "cruds": [],
+  "jobs": [],
+  "pages": [
+    {
+      "component": {
+        "defaultExport": "Home",
+        "kind": "default",
+        "source": "@src/pages/Home.vue",
+      },
+      "name": "HomePage",
+      "type": "Page",
+    },
+  ],
+  "queries": [],
+  "realtimes": [],
+  "routes": [
+    {
+      "name": "HomeRoute",
+      "path": "/",
+      "to": "HomePage",
+      "type": "Route",
+    },
+  ],
+}
+`;

@@ -1,0 +1,50 @@
+import { join } from 'node:path'
+import type { GeneratorContext } from '../GeneratorContext.js'
+import type { TemplateEngine } from '../template/TemplateEngine.js'
+import { writeFile } from '../utils/fs.js'
+
+export abstract class BaseGenerator {
+  constructor(
+    protected readonly ctx: GeneratorContext,
+    protected readonly engine: TemplateEngine,
+    protected readonly filesWritten: string[],
+  ) {}
+
+  abstract run(): void
+
+  protected write(relativePath: string, content: string): void {
+    const fullPath = join(this.ctx.outputDir, relativePath)
+    writeFile(fullPath, content)
+    this.filesWritten.push(relativePath)
+    this.ctx.logger.verbose(`  write ${relativePath}`)
+  }
+
+  protected render(templateKey: string, data: Record<string, unknown> = {}): string {
+    return this.engine.render(templateKey, { ...this.baseData(), ...data })
+  }
+
+  protected baseData(): Record<string, unknown> {
+    const { ast, isTypeScript, isSsr, isSsg, isSpa, ext, mode } = this.ctx
+    return {
+      appName: ast.app.name,
+      appTitle: ast.app.title,
+      isTypeScript,
+      isSsr,
+      isSsg,
+      isSpa,
+      ext,
+      mode,
+      hasAuth: !!ast.auth,
+      hasRealtime: ast.realtimes.length > 0,
+      hasJobs: ast.jobs.length > 0,
+      routes: ast.routes,
+      pages: ast.pages,
+      queries: ast.queries,
+      actions: ast.actions,
+      cruds: ast.cruds,
+      realtimes: ast.realtimes,
+      jobs: ast.jobs,
+      auth: ast.auth,
+    }
+  }
+}

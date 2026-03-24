@@ -1,0 +1,65 @@
+import { log } from './utils/logger.js'
+import { newCommand } from './commands/new.js'
+import { migrateToTsCommand } from './commands/migrate-to-ts.js'
+import { VASP_VERSION } from '@vasp/core'
+
+export async function run(args: string[]): Promise<void> {
+  const command = args[0]
+
+  switch (command) {
+    case 'new':
+      await newCommand(args.slice(1))
+      break
+
+    case '--version':
+    case '-v':
+      console.log(VASP_VERSION)
+      break
+
+    case '--help':
+    case '-h':
+    case undefined:
+      printHelp()
+      break
+
+    case 'start':
+      log.warn("'vasp start' is coming in Phase 9 (dev server). For now, run servers manually.")
+      break
+
+    case 'build':
+      log.warn("'vasp build' is coming in Phase 9.")
+      break
+
+    case 'migrate-to-ts':
+      await migrateToTsCommand()
+      break
+
+    default:
+      log.error(`Unknown command: ${command}`)
+      printHelp()
+      process.exit(1)
+  }
+}
+
+function printHelp(): void {
+  console.log(`
+  vasp — declarative full-stack framework for Vue
+
+  Usage:
+    vasp new <project-name> [options]    Create a new Vasp project
+    vasp start                           Start the dev server
+    vasp build                           Build for production
+    vasp deploy                          Deploy to production
+
+  Options for 'vasp new':
+    --typescript, --ts    Enable TypeScript (default: JavaScript)
+    --ssr                 Enable SSR via Nuxt 4 (default: SPA)
+    --ssg                 Enable Static Site Generation via Nuxt 4
+    --no-install          Skip bun install
+
+  Examples:
+    vasp new my-app
+    vasp new my-app --typescript
+    vasp new my-app --ssr --typescript
+  `)
+}

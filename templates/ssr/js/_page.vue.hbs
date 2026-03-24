@@ -1,0 +1,10 @@
+<template>
+  <{{componentName}} />
+</template>
+
+<script setup>
+import {{componentName}} from '{{componentSource}}'
+{{#if hasAuth}}
+definePageMeta({ middleware: 'auth' })
+{{/if}}
+</script>

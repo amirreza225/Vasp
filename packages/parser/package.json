@@ -1,0 +1,21 @@
+{
+  "name": "@vasp/parser",
+  "version": "0.1.0",
+  "description": "Lexer, parser, and semantic validator for the .vasp DSL",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vasp/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "*",
+    "vitest": "*"
+  }
+}

@@ -1,0 +1,41 @@
+import { createRouter, createWebHistory } from 'vue-router'
+{{#if hasAuth}}
+import { useAuth } from '../vasp/auth.js'
+{{/if}}
+
+const routes = [
+{{#each routes}}
+  {
+    path: '{{path}}',
+    component: () => import('{{lookup ../pagesMap to}}'),
+  },
+{{/each}}
+{{#if hasAuth}}
+  {
+    path: '/login',
+    component: () => import('../pages/Login.vue'),
+  },
+  {
+    path: '/register',
+    component: () => import('../pages/Register.vue'),
+  },
+{{/if}}
+]
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes,
+})
+
+{{#if hasAuth}}
+router.beforeEach(async (to) => {
+  const { user, checkAuth } = useAuth()
+  await checkAuth()
+  const publicPaths = ['/login', '/register']
+  if (!user.value && !publicPaths.includes(to.path)) {
+    return '/login'
+  }
+})
+{{/if}}
+
+export default router

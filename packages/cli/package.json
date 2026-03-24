@@ -1,0 +1,27 @@
+{
+  "name": "vasp",
+  "version": "0.1.0",
+  "description": "The Vasp CLI — declarative full-stack framework for Vue developers",
+  "type": "module",
+  "bin": {
+    "vasp": "./bin/vasp.ts"
+  },
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "bun build ./bin/vasp.ts --target=bun --outfile=dist/vasp --minify",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vasp/core": "workspace:*",
+    "@vasp/generator": "workspace:*",
+    "@vasp/parser": "workspace:*",
+    "picocolors": "^1.1.0"
+  },
+  "devDependencies": {
+    "typescript": "*",
+    "vitest": "*"
+  }
+}

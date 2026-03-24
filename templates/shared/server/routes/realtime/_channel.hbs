@@ -1,0 +1,30 @@
+import { Elysia } from 'elysia'
+
+// In-process subscriber set for '{{name}}' channel
+// Swap this for a Redis adapter in production multi-instance deployments
+const subscribers = new Set()
+
+/**
+ * Publish a realtime event to all connected subscribers of '{{name}}'.
+ * Called automatically by CRUD mutation handlers.
+ */
+export function publish{{pascalCase name}}(event, data) {
+  const message = JSON.stringify({ channel: '{{camelCase name}}', event, data })
+  for (const ws of subscribers) {
+    try { ws.send(message) } catch { subscribers.delete(ws) }
+  }
+}
+
+export const {{camelCase name}}Channel = new Elysia()
+  .ws('/ws/{{camelCase name}}', {
+    open(ws) {
+      subscribers.add(ws)
+    },
+    message(ws, msg) {
+      // Echo back for debugging; extend for room-based subscriptions
+      ws.send(JSON.stringify({ ack: msg }))
+    },
+    close(ws) {
+      subscribers.delete(ws)
+    },
+  })

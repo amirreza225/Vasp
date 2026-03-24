@@ -1,0 +1,46 @@
+<template>
+  <div class="auth-form">
+    <h2>Login</h2>
+    <form @submit.prevent="handleLogin">
+      <input v-model="username" type="text" placeholder="Username" required />
+      <input v-model="password" type="password" placeholder="Password" required />
+      <button type="submit" :disabled="loading">
+        \{{ loading ? 'Logging in...' : 'Login' }}
+      </button>
+      <p v-if="error" class="error">\{{ error }}</p>
+    </form>
+    <p>Don't have an account? <RouterLink to="/register">Register</RouterLink></p>
+{{#if (includes authMethods "google")}}
+    <a href="/auth/google" class="oauth-btn">Continue with Google</a>
+{{/if}}
+{{#if (includes authMethods "github")}}
+    <a href="/auth/github" class="oauth-btn">Continue with GitHub</a>
+{{/if}}
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuth } from '../vasp/auth.js'
+
+const router = useRouter()
+const { login } = useAuth()
+const username = ref('')
+const password = ref('')
+const loading = ref(false)
+const error = ref('')
+
+async function handleLogin() {
+  loading.value = true
+  error.value = ''
+  try {
+    await login(username.value, password.value)
+    router.push('/')
+  } catch (err) {
+    error.value = err?.data?.error || 'Login failed'
+  } finally {
+    loading.value = false
+  }
+}
+</script>

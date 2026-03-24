@@ -1,0 +1,48 @@
+import type { GeneratorOptions, GeneratorResult, VaspAST } from '@vasp/core'
+import { createConsoleLogger, createContext } from './GeneratorContext.js'
+import { AuthGenerator } from './generators/AuthGenerator.js'
+import { BackendGenerator } from './generators/BackendGenerator.js'
+import { CrudGenerator } from './generators/CrudGenerator.js'
+import { DrizzleSchemaGenerator } from './generators/DrizzleSchemaGenerator.js'
+import { FrontendGenerator } from './generators/FrontendGenerator.js'
+import { JobGenerator } from './generators/JobGenerator.js'
+import { QueryActionGenerator } from './generators/QueryActionGenerator.js'
+import { RealtimeGenerator } from './generators/RealtimeGenerator.js'
+import { ScaffoldGenerator } from './generators/ScaffoldGenerator.js'
+import { TemplateEngine } from './template/TemplateEngine.js'
+import { join } from 'node:path'
+
+export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult {
+  const logger = createConsoleLogger(opts.logLevel ?? 'info')
+  const ctx = createContext(ast, opts.outputDir, {
+    templateDir: opts.templateDir,
+    logger,
+  })
+
+  const engine = new TemplateEngine()
+  engine.loadDirectory(ctx.templateDir)
+
+  const filesWritten: string[] = []
+  const warnings: string[] = []
+
+  try {
+    // Execute generators in dependency order
+    new ScaffoldGenerator(ctx, engine, filesWritten).run()
+    new DrizzleSchemaGenerator(ctx, engine, filesWritten).run()
+    new BackendGenerator(ctx, engine, filesWritten).run()
+    new AuthGenerator(ctx, engine, filesWritten).run()
+    new QueryActionGenerator(ctx, engine, filesWritten).run()
+    new CrudGenerator(ctx, engine, filesWritten).run()
+    new RealtimeGenerator(ctx, engine, filesWritten).run()
+    new JobGenerator(ctx, engine, filesWritten).run()
+    new FrontendGenerator(ctx, engine, filesWritten).run()
+
+    logger.info(`✓ Generated ${filesWritten.length} files`)
+
+    return { success: true, filesWritten, errors: [], warnings }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    logger.error(message)
+    return { success: false, filesWritten, errors: [message], warnings }
+  }
+}

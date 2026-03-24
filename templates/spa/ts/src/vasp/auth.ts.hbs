@@ -1,0 +1,53 @@
+import { ref, type Ref } from 'vue'
+import { $fetch } from 'ofetch'
+
+export interface AuthUser {
+  id: number
+  username: string
+  email: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+const user: Ref<AuthUser | null> = ref(null)
+let checked = false
+
+const API = import.meta.env.VITE_API_URL || '/api'
+
+export function useAuth() {
+  async function checkAuth(): Promise<void> {
+    if (checked) return
+    checked = true
+    try {
+      user.value = await $fetch<AuthUser>(`${API}/auth/me`, { credentials: 'include' })
+    } catch {
+      user.value = null
+    }
+  }
+
+  async function login(username: string, password: string): Promise<AuthUser> {
+    user.value = await $fetch<AuthUser>(`${API}/auth/login`, {
+      method: 'POST',
+      body: { username, password },
+      credentials: 'include',
+    })
+    return user.value!
+  }
+
+  async function register(username: string, password: string, email?: string): Promise<AuthUser> {
+    user.value = await $fetch<AuthUser>(`${API}/auth/register`, {
+      method: 'POST',
+      body: { username, password, email },
+      credentials: 'include',
+    })
+    return user.value!
+  }
+
+  async function logout(): Promise<void> {
+    await $fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' })
+    user.value = null
+    checked = false
+  }
+
+  return { user, checkAuth, login, register, logout }
+}

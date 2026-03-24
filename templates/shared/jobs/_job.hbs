@@ -1,0 +1,24 @@
+import { getBoss } from './boss.{{ext}}'
+import { {{namedExport}} } from '{{importPath fnSource ext}}'
+
+const JOB_NAME = '{{camelCase name}}'
+
+/**
+ * Register the '{{name}}' job worker with PgBoss.
+ * Called once on server startup.
+ */
+export async function register{{pascalCase name}}Worker() {
+  const boss = await getBoss()
+  await boss.work(JOB_NAME, async (job) => {
+    await {{namedExport}}(job.data)
+  })
+}
+
+/**
+ * Schedule a '{{name}}' job.
+ * @param {unknown} data - Data to pass to the job handler
+ */
+export async function schedule{{pascalCase name}}(data) {
+  const boss = await getBoss()
+  return boss.send(JOB_NAME, data)
+}

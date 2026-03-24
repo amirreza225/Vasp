@@ -1,0 +1,10 @@
+[install]
+# Use exact versions for deterministic installs
+exact = false
+
+[install.cache]
+disable = false
+
+[test]
+# Run tests with Bun's built-in test runner or Vitest
+timeout = 30000

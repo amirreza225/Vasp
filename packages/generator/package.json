@@ -1,0 +1,24 @@
+{
+  "name": "@vasp/generator",
+  "version": "0.1.0",
+  "description": "Code generator: produces Elysia backend, Vue/Nuxt frontend, and @vasp/client SDK from a VaspAST",
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vasp/core": "workspace:*",
+    "@vasp/parser": "workspace:*",
+    "handlebars": "^4.7.8"
+  },
+  "devDependencies": {
+    "@types/handlebars": "^4.1.0",
+    "typescript": "*",
+    "vitest": "*"
+  }
+}

@@ -1,0 +1,33 @@
+import { Elysia } from 'elysia'
+import { jwt } from '@elysiajs/jwt'
+import { cookie } from '@elysiajs/cookie'
+import { db } from '../db/client.{{ext}}'
+import { users } from '../../drizzle/schema.{{ext}}'
+import { eq } from 'drizzle-orm'
+
+const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production'
+
+/**
+ * requireAuth — Elysia plugin that verifies the JWT cookie and injects `user` into the context.
+ * Use on any route that requires authentication.
+ *
+ * @example
+ * new Elysia().use(requireAuth).get('/protected', ({ user }) => user)
+ */
+export const requireAuth = new Elysia({ name: 'require-auth' })
+  .use(jwt({ name: 'jwt', secret: JWT_SECRET }))
+  .use(cookie())
+  .derive(async ({ jwt, cookie: { token }, set }) => {
+    const payload = await jwt.verify(token?.value ?? '')
+    if (!payload || typeof payload.userId !== 'number') {
+      set.status = 401
+      throw new Error('Unauthorized')
+    }
+    const [user] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1)
+    if (!user) {
+      set.status = 401
+      throw new Error('User not found')
+    }
+    const { passwordHash: _ph, ...safeUser } = user
+    return { user: safeUser }
+  })

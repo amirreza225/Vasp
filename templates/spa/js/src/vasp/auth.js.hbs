@@ -1,0 +1,45 @@
+import { ref } from 'vue'
+import { $fetch } from 'ofetch'
+
+const user = ref(null)
+let checked = false
+
+const API = import.meta.env.VITE_API_URL || '/api'
+
+export function useAuth() {
+  async function checkAuth() {
+    if (checked) return
+    checked = true
+    try {
+      user.value = await $fetch(`${API}/auth/me`, { credentials: 'include' })
+    } catch {
+      user.value = null
+    }
+  }
+
+  async function login(username, password) {
+    user.value = await $fetch(`${API}/auth/login`, {
+      method: 'POST',
+      body: { username, password },
+      credentials: 'include',
+    })
+    return user.value
+  }
+
+  async function register(username, password, email) {
+    user.value = await $fetch(`${API}/auth/register`, {
+      method: 'POST',
+      body: { username, password, email },
+      credentials: 'include',
+    })
+    return user.value
+  }
+
+  async function logout() {
+    await $fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' })
+    user.value = null
+    checked = false
+  }
+
+  return { user, checkAuth, login, register, logout }
+}

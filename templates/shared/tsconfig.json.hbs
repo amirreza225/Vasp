@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "jsx": "preserve",
+    "paths": {
+      "@src/*": ["./src/*"],
+      "@vasp/client": ["./src/vasp/client/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue", "server/**/*.ts", "drizzle/**/*.ts"],
+  "exclude": ["node_modules", "dist", ".vasp-gen"]
+}

@@ -1,0 +1,20 @@
+import { Elysia } from 'elysia'
+import { db } from '../../db/client.{{ext}}'
+{{#if requiresAuth}}
+import { requireAuth } from '../../auth/middleware.{{ext}}'
+{{/if}}
+import { {{namedExport}} } from '{{importPath fnSource ext}}'
+
+export const {{camelCase name}}Route = new Elysia()
+{{#if requiresAuth}}
+  .use(requireAuth)
+  .get('/api/queries/{{camelCase name}}', async ({ query, user }) => {
+    const result = await {{namedExport}}({ db, user, args: query })
+    return result
+  })
+{{else}}
+  .get('/api/queries/{{camelCase name}}', async ({ query }) => {
+    const result = await {{namedExport}}({ db, args: query })
+    return result
+  })
+{{/if}}

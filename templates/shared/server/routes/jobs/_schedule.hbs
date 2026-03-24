@@ -1,0 +1,12 @@
+import { Elysia, t } from 'elysia'
+import { schedule{{pascalCase name}} } from '../../../jobs/{{camelCase name}}.{{ext}}'
+
+export const {{camelCase name}}ScheduleRoute = new Elysia()
+  .post(
+    '/api/jobs/{{camelCase name}}/schedule',
+    async ({ body }) => {
+      const id = await schedule{{pascalCase name}}(body)
+      return { jobId: id }
+    },
+    { body: t.Unknown() },
+  )

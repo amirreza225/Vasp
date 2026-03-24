@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext"],
+    "strict": true,
+    "exactOptionalPropertyTypes": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "incremental": true,
+    "paths": {
+      "@vasp/core": ["./packages/core/src/index.ts"],
+      "@vasp/parser": ["./packages/parser/src/index.ts"],
+      "@vasp/generator": ["./packages/generator/src/index.ts"],
+      "@vasp/runtime": ["./packages/runtime/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "**/node_modules", "**/dist", "**/*.test.ts"]
+}

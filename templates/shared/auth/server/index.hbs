@@ -1,0 +1,51 @@
+import { Elysia } from 'elysia'
+import { jwt } from '@elysiajs/jwt'
+import { cookie } from '@elysiajs/cookie'
+import { db } from '../db/client.{{ext}}'
+import { users } from '../../drizzle/schema.{{ext}}'
+import { eq } from 'drizzle-orm'
+{{#if (includes authMethods "usernameAndPassword")}}
+import { usernameAndPasswordRoutes } from './providers/usernameAndPassword.{{ext}}'
+{{/if}}
+{{#if (includes authMethods "google")}}
+import { googleRoutes } from './providers/google.{{ext}}'
+{{/if}}
+{{#if (includes authMethods "github")}}
+import { githubRoutes } from './providers/github.{{ext}}'
+{{/if}}
+
+const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production'
+
+export const authPlugin = new Elysia({ name: 'auth-plugin' })
+  .use(jwt({ name: 'jwt', secret: JWT_SECRET }))
+  .use(cookie())
+
+export const authRoutes = new Elysia({ prefix: '/auth' })
+  .use(authPlugin)
+{{#if (includes authMethods "usernameAndPassword")}}
+  .use(usernameAndPasswordRoutes)
+{{/if}}
+{{#if (includes authMethods "google")}}
+  .use(googleRoutes)
+{{/if}}
+{{#if (includes authMethods "github")}}
+  .use(githubRoutes)
+{{/if}}
+  .get('/me', async ({ jwt, cookie: { token }, set }) => {
+    const payload = await jwt.verify(token?.value ?? '')
+    if (!payload || typeof payload.userId !== 'number') {
+      set.status = 401
+      return { error: 'Unauthorized' }
+    }
+    const [user] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1)
+    if (!user) {
+      set.status = 401
+      return { error: 'User not found' }
+    }
+    const { passwordHash: _ph, ...safeUser } = user
+    return safeUser
+  })
+  .post('/logout', ({ cookie: { token }, set }) => {
+    token?.remove()
+    return { ok: true }
+  })

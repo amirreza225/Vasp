@@ -1,0 +1,32 @@
+// Todo app fixture — SPA + JS with query, action, and CRUD
+
+app TodoApp {
+  title: "Todo App"
+  db: Drizzle
+  ssr: false
+  typescript: false
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+query getTodos {
+  fn: import { getTodos } from "@src/queries.js"
+  entities: [Todo]
+}
+
+action createTodo {
+  fn: import { createTodo } from "@src/actions.js"
+  entities: [Todo]
+}
+
+crud Todo {
+  entity: Todo
+  operations: [list, create, update, delete]
+}

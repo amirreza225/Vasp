@@ -1,0 +1,42 @@
+<template>
+  <div class="auth-form">
+    <h2>Create Account</h2>
+    <form @submit.prevent="handleRegister">
+      <input v-model="username" type="text" placeholder="Username" required />
+      <input v-model="email" type="email" placeholder="Email (optional)" />
+      <input v-model="password" type="password" placeholder="Password (min 8 chars)" required />
+      <button type="submit" :disabled="loading">
+        \{{ loading ? 'Creating account...' : 'Register' }}
+      </button>
+      <p v-if="error" class="error">\{{ error }}</p>
+    </form>
+    <p>Already have an account? <RouterLink to="/login">Login</RouterLink></p>
+  </div>
+</template>
+
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuth } from '../vasp/auth.js'
+
+const router = useRouter()
+const { register } = useAuth()
+const username = ref('')
+const email = ref('')
+const password = ref('')
+const loading = ref(false)
+const error = ref('')
+
+async function handleRegister() {
+  loading.value = true
+  error.value = ''
+  try {
+    await register(username.value, password.value, email.value || undefined)
+    router.push('/')
+  } catch (err) {
+    error.value = err?.data?.error || 'Registration failed'
+  } finally {
+    loading.value = false
+  }
+}
+</script>

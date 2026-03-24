@@ -1,0 +1,42 @@
+import { Elysia, t } from 'elysia'
+import { db } from '../../db/client.{{ext}}'
+import { eq } from 'drizzle-orm'
+import { {{camelCase entity}}s } from '../../../drizzle/schema.{{ext}}'
+{{#if hasAuth}}
+import { requireAuth } from '../../auth/middleware.{{ext}}'
+{{/if}}
+
+export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{camelCase entity}}' })
+{{#if hasAuth}}
+  .use(requireAuth)
+{{/if}}
+{{#if (includes operations "list")}}
+  .get('/', async () => {
+    return db.select().from({{camelCase entity}}s)
+  })
+{{/if}}
+{{#if (includes operations "create")}}
+  .post('/', async ({ body }) => {
+    const [created] = await db.insert({{camelCase entity}}s).values(body).returning()
+    return created
+  })
+{{/if}}
+  .get('/:id', async ({ params: { id }, set }) => {
+    const [item] = await db.select().from({{camelCase entity}}s).where(eq({{camelCase entity}}s.id, Number(id))).limit(1)
+    if (!item) { set.status = 404; return { error: 'Not found' } }
+    return item
+  })
+{{#if (includes operations "update")}}
+  .put('/:id', async ({ params: { id }, body, set }) => {
+    const [updated] = await db.update({{camelCase entity}}s).set(body).where(eq({{camelCase entity}}s.id, Number(id))).returning()
+    if (!updated) { set.status = 404; return { error: 'Not found' } }
+    return updated
+  })
+{{/if}}
+{{#if (includes operations "delete")}}
+  .delete('/:id', async ({ params: { id }, set }) => {
+    const [deleted] = await db.delete({{camelCase entity}}s).where(eq({{camelCase entity}}s.id, Number(id))).returning()
+    if (!deleted) { set.status = 404; return { error: 'Not found' } }
+    return { ok: true }
+  })
+{{/if}}

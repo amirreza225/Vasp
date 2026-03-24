@@ -1,0 +1,12 @@
+import type { App } from 'vue'
+import { createVaspClient } from '@vasp/runtime'
+
+export const vaspPlugin = {
+  install(app: App) {
+    const client = createVaspClient({
+      baseURL: import.meta.env.VITE_API_URL || '/api',
+    })
+    app.provide('$vasp', client)
+    app.config.globalProperties.$vasp = client
+  },
+}
