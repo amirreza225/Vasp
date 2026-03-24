@@ -1,4 +1,4 @@
-import { ParseError } from '@vasp/core'
+import { ParseError } from '@vasp-framework/core'
 import type { Token } from './Token.js'
 import { ALL_KEYWORDS, BLOCK_KEYWORDS, TokenType } from './TokenType.js'
 

@@ -1,9 +1,12 @@
-import { generate } from '@vasp/generator'
-import { parse } from '@vasp/parser'
+import { generate } from '@vasp-framework/generator'
+import { parse } from '@vasp-framework/parser'
 import { join, resolve } from 'node:path'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { log } from '../utils/logger.js'
-import { VASP_VERSION } from '@vasp/core'
+import { VASP_VERSION } from '@vasp-framework/core'
+
+const STARTERS_DIR = join(import.meta.dirname, '..', '..', 'starters')
+const KNOWN_STARTERS = ['minimal', 'todo', 'todo-auth-ssr']
 
 interface NewOptions {
   typescript: boolean
@@ -31,10 +34,27 @@ export async function newCommand(args: string[]): Promise<void> {
 
   log.step(`Creating Vasp app: ${appName}`)
   log.info(`Version: ${VASP_VERSION}`)
-  log.info(`Mode: ${opts.ssg ? 'SSG' : opts.ssr ? 'SSR' : 'SPA'} | Language: ${opts.typescript ? 'TypeScript' : 'JavaScript'}`)
 
-  // Build the initial main.vasp source
-  const vaspSource = buildInitialVasp(appName, opts)
+  // Resolve the main.vasp source — from starter or generated
+  let vaspSource: string
+  if (opts.starter) {
+    if (!KNOWN_STARTERS.includes(opts.starter)) {
+      log.error(`Unknown starter '${opts.starter}'. Available: ${KNOWN_STARTERS.join(', ')}`)
+      process.exit(1)
+    }
+    const starterFile = join(STARTERS_DIR, `${opts.starter}.vasp`)
+    if (!existsSync(starterFile)) {
+      log.error(`Starter file not found: ${starterFile}`)
+      process.exit(1)
+    }
+    vaspSource = readFileSync(starterFile, 'utf8')
+    // Replace the app name to match the user's chosen name
+    vaspSource = vaspSource.replace(/^app \w+/m, `app ${toPascal(appName)}`)
+    log.info(`Starter: ${opts.starter}`)
+  } else {
+    log.info(`Mode: ${opts.ssg ? 'SSG' : opts.ssr ? 'SSR' : 'SPA'} | Language: ${opts.typescript ? 'TypeScript' : 'JavaScript'}`)
+    vaspSource = buildInitialVasp(appName, opts)
+  }
 
   // Parse it to get the AST
   let ast

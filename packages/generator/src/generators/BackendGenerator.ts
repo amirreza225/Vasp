@@ -1,4 +1,4 @@
-import { DEFAULT_BACKEND_PORT, DEFAULT_SPA_PORT, VASP_VERSION } from '@vasp/core'
+import { DEFAULT_BACKEND_PORT, DEFAULT_SPA_PORT, VASP_VERSION } from '@vasp-framework/core'
 import { BaseGenerator } from './BaseGenerator.js'
 
 export class BackendGenerator extends BaseGenerator {

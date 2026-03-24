@@ -17,10 +17,10 @@
     "composite": true,
     "incremental": true,
     "paths": {
-      "@vasp/core": ["./packages/core/src/index.ts"],
-      "@vasp/parser": ["./packages/parser/src/index.ts"],
-      "@vasp/generator": ["./packages/generator/src/index.ts"],
-      "@vasp/runtime": ["./packages/runtime/src/index.ts"]
+      "@vasp-framework/core": ["./packages/core/src/index.ts"],
+      "@vasp-framework/parser": ["./packages/parser/src/index.ts"],
+      "@vasp-framework/generator": ["./packages/generator/src/index.ts"],
+      "@vasp-framework/runtime": ["./packages/runtime/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "**/node_modules", "**/dist", "**/*.test.ts"]

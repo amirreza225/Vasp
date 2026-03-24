@@ -188,10 +188,11 @@ vasp --version
 | Realtime (WebSocket channels) | Done |
 | Background jobs (PgBoss) | Done |
 | `vasp new` CLI command | Done |
+| `vasp new --starter=<name>` | Done |
 | `vasp migrate-to-ts` | Done |
 | `vasp enable-ssr` | Done |
-| `vasp start` dev server | Planned |
-| `vasp build` | Planned |
+| `vasp start` dev server | Done |
+| `vasp build` | Done |
 | `vasp deploy` | Planned |
 
 ---
@@ -203,10 +204,10 @@ Vasp is a Bun monorepo with the following packages:
 | Package | Description |
 |---|---|
 | `vasp` (CLI) | The `vasp` binary — `vasp new`, `vasp migrate-to-ts`, etc. |
-| `@vasp/parser` | Lexer, parser, and semantic validator for the `.vasp` DSL |
-| `@vasp/generator` | Generates Elysia backend, Vue/Nuxt frontend, and client SDK from a parsed AST |
-| `@vasp/core` | Shared types, AST definitions, and error classes |
-| `@vasp/runtime` | Runtime composables (`useVasp`, `$vasp`) shipped into generated apps |
+| `@vasp-framework/parser` | Lexer, parser, and semantic validator for the `.vasp` DSL |
+| `@vasp-framework/generator` | Generates Elysia backend, Vue/Nuxt frontend, and client SDK from a parsed AST |
+| `@vasp-framework/core` | Shared types, AST definitions, and error classes |
+| `@vasp-framework/runtime` | Runtime composables (`useVasp`, `$vasp`) shipped into generated apps |
 
 ---
 

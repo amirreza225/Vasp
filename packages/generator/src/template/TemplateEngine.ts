@@ -1,4 +1,4 @@
-import { GeneratorError } from '@vasp/core'
+import { GeneratorError } from '@vasp-framework/core'
 import Handlebars from 'handlebars'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, extname, join, relative } from 'node:path'

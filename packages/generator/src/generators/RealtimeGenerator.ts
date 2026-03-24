@@ -25,10 +25,12 @@ export class RealtimeGenerator extends BaseGenerator {
       this.render('shared/server/routes/realtime/index.hbs'),
     )
 
-    // Client: useRealtime composable
-    this.write(
-      `src/vasp/client/realtime.${ext}`,
-      this.render(`spa/${ext}/src/vasp/client/realtime.${ext}.hbs`),
-    )
+    // Client: useRealtime composable — SPA only (SSR realtime via WebSocket is handled client-side natively)
+    if (this.ctx.isSpa) {
+      this.write(
+        `src/vasp/client/realtime.${ext}`,
+        this.render(`spa/${ext}/src/vasp/client/realtime.${ext}.hbs`),
+      )
+    }
   }
 }

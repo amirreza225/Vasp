@@ -1,4 +1,4 @@
-import type { VaspAST } from '@vasp/core'
+import type { VaspAST } from '@vasp-framework/core'
 import { parse as _parse } from './parser/Parser.js'
 import { SemanticValidator } from './validator/SemanticValidator.js'
 

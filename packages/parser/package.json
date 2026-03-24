@@ -1,18 +1,32 @@
 {
-  "name": "@vasp/parser",
+  "name": "@vasp-framework/parser",
   "version": "0.1.0",
   "description": "Lexer, parser, and semantic validator for the .vasp DSL",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"
   },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"
   },
   "dependencies": {
-    "@vasp/core": "workspace:*"
+    "@vasp-framework/core": "workspace:*"
   },
   "devDependencies": {
     "typescript": "*",

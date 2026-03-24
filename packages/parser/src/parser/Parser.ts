@@ -14,8 +14,8 @@ import type {
   RouteNode,
   SourceLocation,
   VaspAST,
-} from '@vasp/core'
-import { ParseError, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_REALTIME_EVENTS } from '@vasp/core'
+} from '@vasp-framework/core'
+import { ParseError, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_REALTIME_EVENTS } from '@vasp-framework/core'
 import { Lexer } from '../lexer/Lexer.js'
 import type { Token } from '../lexer/Token.js'
 import { TokenType } from '../lexer/TokenType.js'
@@ -408,7 +408,7 @@ class Parser {
       loc,
       executor,
       perform: { fn: performFn },
-      schedule,
+      ...(schedule !== undefined ? { schedule } : {}),
     }
   }
 
@@ -512,6 +512,6 @@ class Parser {
   }
 
   private error(code: string, message: string, hint: string, loc?: SourceLocation): ParseError {
-    return new ParseError([{ code, message, hint, loc }])
+    return new ParseError([{ code, message, hint, ...(loc !== undefined ? { loc } : {}) }])
   }
 }

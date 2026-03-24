@@ -1,12 +1,26 @@
 {
-  "name": "@vasp/core",
-  "version": "0.1.0",
+  "name": "@vasp-framework/core",
+  "version": "0.1.1",
   "description": "Shared types, AST definitions, and error classes for the Vasp framework",
+  "license": "Apache-2.0",
   "type": "module",
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts"
   },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "exports": {
+      ".": {
+        "import": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run"

@@ -1,4 +1,4 @@
-import { DEFAULT_BACKEND_PORT, DEFAULT_SPA_PORT, DEFAULT_SSR_PORT } from '@vasp/core'
+import { DEFAULT_BACKEND_PORT, DEFAULT_SPA_PORT, DEFAULT_SSR_PORT } from '@vasp-framework/core'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { BaseGenerator } from './BaseGenerator.js'

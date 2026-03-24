@@ -1,4 +1,4 @@
-import type { VaspAST } from '@vasp/core'
+import type { VaspAST } from '@vasp-framework/core'
 import { join } from 'node:path'
 
 export interface Logger {

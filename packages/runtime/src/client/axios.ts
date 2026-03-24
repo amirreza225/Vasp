@@ -21,7 +21,7 @@ export function createVaspClient(options: VaspClientOptions = {}): VaspClient {
     async action(name: string, args?: unknown) {
       return fetcher(`/actions/${name}`, {
         method: 'POST',
-        body: args,
+        body: args as Record<string, unknown>,
       })
     },
   }

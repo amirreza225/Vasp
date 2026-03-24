@@ -1,4 +1,4 @@
-import type { SourceLocation } from '@vasp/core'
+import type { SourceLocation } from '@vasp-framework/core'
 import type { TokenType } from './TokenType.js'
 
 export interface Token {

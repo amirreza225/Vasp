@@ -1,8 +1,8 @@
 import { ensureDir } from '../utils/fs.js'
 import { join } from 'node:path'
 import { BaseGenerator } from './BaseGenerator.js'
-import { VASP_VERSION } from '@vasp/core'
-import { DEFAULT_BACKEND_PORT, DEFAULT_SPA_PORT, DEFAULT_SSR_PORT } from '@vasp/core'
+import { VASP_VERSION } from '@vasp-framework/core'
+import { DEFAULT_BACKEND_PORT, DEFAULT_SPA_PORT, DEFAULT_SSR_PORT } from '@vasp-framework/core'
 
 export class ScaffoldGenerator extends BaseGenerator {
   run(): void {

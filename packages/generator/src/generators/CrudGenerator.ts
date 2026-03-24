@@ -18,10 +18,12 @@ export class CrudGenerator extends BaseGenerator {
       )
     }
 
-    // Client SDK: crud helpers (JS or TS)
-    this.write(
-      `src/vasp/client/crud.${ext}`,
-      this.render(`spa/${ext}/src/vasp/client/crud.${ext}.hbs`),
-    )
+    // Client SDK: crud helpers — SPA only (SSR uses $vasp composable via dual-transport plugin)
+    if (this.ctx.isSpa) {
+      this.write(
+        `src/vasp/client/crud.${ext}`,
+        this.render(`spa/${ext}/src/vasp/client/crud.${ext}.hbs`),
+      )
+    }
   }
 }

@@ -1,4 +1,4 @@
-import type { GeneratorOptions, GeneratorResult, VaspAST } from '@vasp/core'
+import type { GeneratorOptions, GeneratorResult, VaspAST } from '@vasp-framework/core'
 import { createConsoleLogger, createContext } from './GeneratorContext.js'
 import { AuthGenerator } from './generators/AuthGenerator.js'
 import { BackendGenerator } from './generators/BackendGenerator.js'
@@ -15,7 +15,7 @@ import { join } from 'node:path'
 export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult {
   const logger = createConsoleLogger(opts.logLevel ?? 'info')
   const ctx = createContext(ast, opts.outputDir, {
-    templateDir: opts.templateDir,
+    ...(opts.templateDir !== undefined ? { templateDir: opts.templateDir } : {}),
     logger,
   })
 

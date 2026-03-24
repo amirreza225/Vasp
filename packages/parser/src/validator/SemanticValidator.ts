@@ -1,5 +1,5 @@
-import type { ParseDiagnostic, VaspAST } from '@vasp/core'
-import { ParseError, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_REALTIME_EVENTS } from '@vasp/core'
+import type { ParseDiagnostic, VaspAST } from '@vasp-framework/core'
+import { ParseError, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_REALTIME_EVENTS } from '@vasp-framework/core'
 
 export class SemanticValidator {
   private readonly diagnostics: ParseDiagnostic[] = []

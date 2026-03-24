@@ -3,12 +3,13 @@
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
-    "build": "bun run --filter '*' build",
+    "build": "bun run --filter '@vasp-framework/core' build && bun run --filter '@vasp-framework/parser' build && bun run --filter '@vasp-framework/generator' build && bun run --filter '@vasp-framework/runtime' build && bun run --filter 'vasp-cli' build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "lint": "eslint packages/*/src/**/*.ts",
-    "typecheck": "tsc --noEmit -p tsconfig.base.json"
+    "typecheck": "tsc --noEmit -p tsconfig.base.json",
+    "publish:all": "bun run build && cd packages/core && npm publish --access public && cd ../parser && npm publish --access public && cd ../generator && npm publish --access public && cd ../runtime && npm publish --access public && cd ../cli && npm publish"
   },
   "devDependencies": {
     "@types/bun": "latest",

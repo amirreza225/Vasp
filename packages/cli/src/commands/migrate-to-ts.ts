@@ -1,5 +1,5 @@
-import { generate } from '@vasp/generator'
-import { parse } from '@vasp/parser'
+import { generate } from '@vasp-framework/generator'
+import { parse } from '@vasp-framework/parser'
 import { join, resolve } from 'node:path'
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { readdirSync, statSync } from 'node:fs'

@@ -1,4 +1,4 @@
-import { parse } from '@vasp/parser'
+import { parse } from '@vasp-framework/parser'
 import { mkdirSync, rmSync, existsSync } from 'node:fs'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -134,7 +134,7 @@ describe('generate()', () => {
     expect(pkg.name).toBe('minimal-app')
     expect(pkg.dependencies).toHaveProperty('elysia')
     expect(pkg.dependencies).toHaveProperty('vue')
-    expect(pkg.dependencies).toHaveProperty('@vasp/runtime')
+    expect(pkg.dependencies).toHaveProperty('@vasp-framework/runtime')
   })
 
   it('generates query and action route files', () => {
@@ -355,5 +355,153 @@ describe('generate()', () => {
     const crud = readFileSync(join(outputDir, 'src/vasp/client/crud.ts'), 'utf8')
     expect(crud).toContain('Promise<Todo[]>')
     expect(crud).toContain('Promise<Todo>')
+  })
+
+  // ── Phase 6: SSR / Nuxt 4 ──────────────────────────────────────────────
+
+  it('SSR JS: generates nuxt.config.js, app.vue, and dual-transport plugins', () => {
+    const source = `
+      app SsrApp {
+        title: "SSR App"
+        db: Drizzle
+        ssr: true
+        typescript: false
+      }
+
+      route HomeRoute {
+        path: "/"
+        to: HomePage
+      }
+
+      page HomePage {
+        component: import Home from "@src/pages/Home.vue"
+      }
+
+      crud Todo {
+        entity: Todo
+        operations: [list, create]
+      }
+
+      query getTodos {
+        fn: import { getTodos } from "@src/queries.js"
+        entities: [Todo]
+      }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'ssr-js')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'nuxt.config.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'app.vue'))).toBe(true)
+    expect(existsSync(join(outputDir, 'plugins/vasp.server.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'plugins/vasp.client.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'composables/useVasp.js'))).toBe(true)
+
+    const serverPlugin = readFileSync(join(outputDir, 'plugins/vasp.server.js'), 'utf8')
+    expect(serverPlugin).toContain('defineNuxtPlugin')
+    expect(serverPlugin).toContain('getTodos')
+    expect(serverPlugin).toContain("Unknown query:")
+
+    const clientPlugin = readFileSync(join(outputDir, 'plugins/vasp.client.js'), 'utf8')
+    expect(clientPlugin).toContain('defineNuxtPlugin')
+    expect(clientPlugin).toContain('$fetch')
+    expect(clientPlugin).toContain('/queries/')
+  })
+
+  it('SSR JS: generates Nuxt pages/ files from vasp routes', () => {
+    const source = `
+      app SsrApp {
+        title: "SSR App"
+        db: Drizzle
+        ssr: true
+        typescript: false
+      }
+
+      route HomeRoute { path: "/" to: HomePage }
+      route AboutRoute { path: "/about" to: AboutPage }
+
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+      page AboutPage { component: import About from "@src/pages/About.vue" }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'ssr-pages')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'pages/index.vue'))).toBe(true)
+    expect(existsSync(join(outputDir, 'pages/about.vue'))).toBe(true)
+
+    const indexPage = readFileSync(join(outputDir, 'pages/index.vue'), 'utf8')
+    expect(indexPage).toContain('<Home />')
+    expect(indexPage).toContain("import Home from '@src/pages/Home.vue'")
+  })
+
+  it('SSR TS: generates nuxt.config.ts with typescript: true and typed plugins', () => {
+    const source = `
+      app SsrTsApp {
+        title: "SSR TS App"
+        db: Drizzle
+        ssr: true
+        typescript: true
+      }
+
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+
+      crud Todo {
+        entity: Todo
+        operations: [list, create]
+      }
+
+      query getTodos {
+        fn: import { getTodos } from "@src/queries.ts"
+        entities: [Todo]
+      }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'ssr-ts')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'nuxt.config.ts'))).toBe(true)
+    expect(existsSync(join(outputDir, 'plugins/vasp.server.ts'))).toBe(true)
+    expect(existsSync(join(outputDir, 'plugins/vasp.client.ts'))).toBe(true)
+    expect(existsSync(join(outputDir, 'composables/useVasp.ts'))).toBe(true)
+
+    const nuxtConfig = readFileSync(join(outputDir, 'nuxt.config.ts'), 'utf8')
+    expect(nuxtConfig).toContain("strict: true")
+
+    const serverPlugin = readFileSync(join(outputDir, 'plugins/vasp.server.ts'), 'utf8')
+    expect(serverPlugin).toContain('Promise<T>')
+    expect(serverPlugin).toContain('getTodos')
+  })
+
+  it('SSR: generates auth composable and route middleware when auth block present', () => {
+    const source = `
+      app SsrAuthApp {
+        title: "SSR Auth App"
+        db: Drizzle
+        ssr: true
+        typescript: false
+      }
+
+      auth UserAuth {
+        userEntity: User
+        methods: [usernameAndPassword]
+      }
+
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'ssr-auth')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'composables/useAuth.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'middleware/auth.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'pages/login.vue'))).toBe(true)
+    expect(existsSync(join(outputDir, 'pages/register.vue'))).toBe(true)
+
+    const middleware = readFileSync(join(outputDir, 'middleware/auth.js'), 'utf8')
+    expect(middleware).toContain('defineNuxtRouteMiddleware')
+    expect(middleware).toContain("navigateTo('/login')")
   })
 })
