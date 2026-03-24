@@ -2,7 +2,7 @@ import { Elysia } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
 import { users } from '../../../drizzle/schema.{{ext}}'
 import { eq } from 'drizzle-orm'
-import { authPlugin } from '../index.{{ext}}'
+import { authPlugin } from '../plugin.{{ext}}'
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || ''
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || ''

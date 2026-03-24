@@ -132,4 +132,31 @@ describe('SemanticValidator', () => {
       crud Todo { entity: Todo operations: [list] }
     `)).not.toThrow()
   })
+
+  it('fails when duplicate entity names exist', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      entity Todo { id: Int @id name: String }
+    `)).toThrow('E112_DUPLICATE_ENTITY')
+  })
+
+  it('fails when duplicate route paths exist', () => {
+    expect(() => validate(`
+      ${APP}
+      route Home { path: "/" to: HomePage }
+      route Landing { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `)).toThrow('E113_DUPLICATE_ROUTE_PATH')
+  })
+
+  it('passes with unique route paths', () => {
+    expect(() => validate(`
+      ${APP}
+      route Home { path: "/" to: HomePage }
+      route About { path: "/about" to: AboutPage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+      page AboutPage { component: import About from "@src/pages/About.vue" }
+    `)).not.toThrow()
+  })
 })

@@ -46,10 +46,19 @@ export class ScaffoldGenerator extends BaseGenerator {
     this.write('.gitignore', this.render('shared/.gitignore.hbs'))
 
     // .env.example
-    this.write('.env.example', this.render('shared/.env.example.hbs', {
+    const envData = {
       backendPort: DEFAULT_BACKEND_PORT,
       frontendPort,
       authMethods: this.ctx.ast.auth?.methods ?? [],
+    }
+    this.write('.env.example', this.render('shared/.env.example.hbs', envData))
+
+    // .env (working copy so the app starts immediately)
+    this.write('.env', this.render('shared/.env.hbs', envData))
+
+    // README.md
+    this.write('README.md', this.render('shared/README.md.hbs', {
+      backendPort: DEFAULT_BACKEND_PORT,
     }))
 
     // tsconfig.json — only when typescript: true

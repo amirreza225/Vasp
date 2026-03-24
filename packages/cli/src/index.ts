@@ -5,6 +5,7 @@ import { enableSsrCommand } from './commands/enable-ssr.js'
 import { startCommand } from './commands/start.js'
 import { buildCommand } from './commands/build.js'
 import { deployCommand } from './commands/deploy.js'
+import { dbCommand } from './commands/db.js'
 import { VASP_VERSION } from '@vasp-framework/core'
 
 export async function run(args: string[]): Promise<void> {
@@ -46,6 +47,10 @@ export async function run(args: string[]): Promise<void> {
       await deployCommand()
       break
 
+    case 'db':
+      await dbCommand(args.slice(1))
+      break
+
     default:
       log.error(`Unknown command: ${command}`)
       printHelp()
@@ -63,6 +68,7 @@ function printHelp(): void {
     vasp migrate-to-ts                   Convert existing JS project to TypeScript
     vasp start                           Start the dev server
     vasp build                           Build for production
+    vasp db <push|generate|migrate|studio>  Run database commands
     vasp deploy                          Deploy your app (planned)
 
   Options for 'vasp new':

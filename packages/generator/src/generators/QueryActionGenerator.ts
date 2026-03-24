@@ -11,7 +11,7 @@ export class QueryActionGenerator extends BaseGenerator {
     for (const query of ast.queries) {
       const fn = query.fn
       const namedExport = fn.kind === 'named' ? fn.namedExport : fn.defaultExport
-      const fnSource = fn.source
+      const fnSource = this.resolveServerImport(fn.source, 'server/routes/queries/')
 
       this.write(
         `server/routes/queries/${this.camel(query.name)}.${ext}`,
@@ -27,7 +27,7 @@ export class QueryActionGenerator extends BaseGenerator {
     for (const action of ast.actions) {
       const fn = action.fn
       const namedExport = fn.kind === 'named' ? fn.namedExport : fn.defaultExport
-      const fnSource = fn.source
+      const fnSource = this.resolveServerImport(fn.source, 'server/routes/actions/')
 
       this.write(
         `server/routes/actions/${this.camel(action.name)}.${ext}`,

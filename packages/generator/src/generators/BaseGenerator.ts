@@ -47,4 +47,15 @@ export abstract class BaseGenerator {
       auth: ast.auth,
     }
   }
+
+  /**
+   * Rewrites `@src/foo.js` → relative path from the given output directory.
+   * E.g. from `server/routes/queries/` → `../../../src/foo.js`
+   */
+  protected resolveServerImport(source: string, fromDir: string): string {
+    if (!source.startsWith('@src/')) return source
+    const depth = fromDir.replace(/\/$/, '').split('/').length
+    const prefix = '../'.repeat(depth)
+    return prefix + source.slice(1) // strip the leading '@'
+  }
 }

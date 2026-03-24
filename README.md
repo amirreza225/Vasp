@@ -158,6 +158,9 @@ Returns reactive `user`, `loading`, `error`, `isAuthenticated`, and methods for 
 ```
 my-app/
 ├── main.vasp               ← Your entire app declaration
+├── README.md               ← Project documentation
+├── .env                    ← Working environment config
+├── .env.example            ← Template for environment variables
 ├── src/
 │   ├── pages/              ← Your Vue page components
 │   ├── components/
@@ -191,11 +194,15 @@ my-app/
 ## CLI Reference
 
 ```bash
-vasp new <name> [--typescript] [--ssr] [--ssg] [--no-install]
+vasp new <name> [--typescript] [--ssr] [--ssg] [--starter=<name>] [--no-install]
+vasp start            # Start dev server (with pre-flight checks)
+vasp build            # Production build
+vasp db push          # Push schema to database
+vasp db generate      # Generate a migration
+vasp db migrate       # Run pending migrations
+vasp db studio        # Open Drizzle Studio
 vasp migrate-to-ts    # Upgrade an existing JS project to TypeScript
 vasp enable-ssr       # Switch a SPA project to SSR/SSG
-vasp start            # Start dev server (backend + frontend with hot reload)
-vasp build            # Production build
 vasp deploy           # Deploy to production
 vasp --version
 ```
@@ -222,9 +229,12 @@ vasp --version
 | Background jobs (PgBoss with cron scheduling) | Done |
 | `vasp new` CLI command | Done |
 | `vasp new --starter=<name>` | Done |
+| `vasp db` commands | Done |
 | `vasp migrate-to-ts` | Done |
 | `vasp enable-ssr` | Done |
 | Rate limiting (IP-based, configurable) | Done |
+| Pre-flight checks in `vasp start` | Done |
+| Auto-generated `.env` and `README.md` | Done |
 | `vasp start` dev server | Done |
 | `vasp build` | Done |
 | `vasp deploy` | Planned |
@@ -297,6 +307,7 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
 Generated applications include production-grade defaults out of the box:
 - **CORS** — Configurable cross-origin resource sharing via `@elysiajs/cors`
 - **Rate limiting** — IP-based sliding-window limiter (configurable via `RATE_LIMIT_MAX` and `RATE_LIMIT_WINDOW_MS` env vars, defaults to 100 requests per 60 seconds)
+- **Password hashing** — Argon2id via `Bun.password.hash()` for auth password storage
 - **Auth middleware** — JWT-based authentication with cookie transport
 - **Input validation** — Elysia type-safe body/query validation on CRUD endpoints
 

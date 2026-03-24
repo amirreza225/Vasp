@@ -21,7 +21,7 @@ export class JobGenerator extends BaseGenerator {
         this.render('shared/jobs/_job.hbs', {
           name: job.name,
           namedExport,
-          fnSource: fn.source,
+          fnSource: this.resolveServerImport(fn.source, `server/jobs/`),
           schedule: job.schedule,
           hasSchedule: !!job.schedule,
         }),

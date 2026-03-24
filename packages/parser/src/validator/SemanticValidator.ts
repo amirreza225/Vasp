@@ -1,5 +1,5 @@
 import type { ParseDiagnostic, VaspAST } from '@vasp-framework/core'
-import { ParseError, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_REALTIME_EVENTS } from '@vasp-framework/core'
+import { ParseError, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_REALTIME_EVENTS, SUPPORTED_FIELD_TYPES } from '@vasp-framework/core'
 
 export class SemanticValidator {
   private readonly diagnostics: ParseDiagnostic[] = []
@@ -13,6 +13,9 @@ export class SemanticValidator {
     this.checkAuthMethods(ast)
     this.checkQueryActionEntities(ast)
     this.checkJobExecutors(ast)
+    this.checkDuplicateEntities(ast)
+    this.checkDuplicateRoutes(ast)
+    this.checkFieldTypes(ast)
 
     if (this.diagnostics.length > 0) {
       throw new ParseError(this.diagnostics)
@@ -167,6 +170,51 @@ export class SemanticValidator {
           hint: 'Supported executors: PgBoss',
           loc: job.loc,
         })
+      }
+    }
+  }
+
+  private checkDuplicateEntities(ast: VaspAST): void {
+    const seen = new Set<string>()
+    for (const entity of ast.entities) {
+      if (seen.has(entity.name)) {
+        this.diagnostics.push({
+          code: 'E112_DUPLICATE_ENTITY',
+          message: `Duplicate entity '${entity.name}'`,
+          hint: `Each entity name must be unique`,
+          loc: entity.loc,
+        })
+      }
+      seen.add(entity.name)
+    }
+  }
+
+  private checkDuplicateRoutes(ast: VaspAST): void {
+    const seenPaths = new Set<string>()
+    for (const route of ast.routes) {
+      if (seenPaths.has(route.path)) {
+        this.diagnostics.push({
+          code: 'E113_DUPLICATE_ROUTE_PATH',
+          message: `Duplicate route path '${route.path}' in '${route.name}'`,
+          hint: `Each route path must be unique`,
+          loc: route.loc,
+        })
+      }
+      seenPaths.add(route.path)
+    }
+  }
+
+  private checkFieldTypes(ast: VaspAST): void {
+    for (const entity of ast.entities) {
+      for (const field of entity.fields) {
+        if (!(SUPPORTED_FIELD_TYPES as readonly string[]).includes(field.type)) {
+          this.diagnostics.push({
+            code: 'E114_INVALID_FIELD_TYPE',
+            message: `Invalid field type '${field.type}' for field '${field.name}' in entity '${entity.name}'`,
+            hint: `Supported types: ${SUPPORTED_FIELD_TYPES.join(', ')}`,
+            loc: entity.loc,
+          })
+        }
       }
     }
   }

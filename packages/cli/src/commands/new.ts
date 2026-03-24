@@ -7,7 +7,7 @@ import { VASP_VERSION } from '@vasp-framework/core'
 import { resolveTemplateDir, resolveStartersDir } from '../utils/template-dir.js'
 
 const STARTERS_DIR = resolveStartersDir(import.meta.dirname)
-const KNOWN_STARTERS = ['minimal', 'todo', 'todo-auth-ssr']
+const KNOWN_STARTERS = ['minimal', 'todo', 'todo-auth-ssr', 'recipe']
 
 interface NewOptions {
   typescript: boolean
@@ -100,8 +100,16 @@ export async function newCommand(args: string[]): Promise<void> {
   }
 
   log.step('🚀 Your Vasp app is ready!')
+  log.dim('')
   log.dim(`  cd ${appName}`)
-  log.dim(`  vasp start`)
+  log.dim('')
+  log.dim('  # Make sure PostgreSQL is running, then push the schema:')
+  log.dim('  bun run db:push')
+  log.dim('')
+  log.dim('  # Start the dev server:')
+  log.dim('  vasp start')
+  log.dim('')
+  log.dim('  Edit .env to configure your database connection.')
 }
 
 function parseOptions(args: string[]): NewOptions {

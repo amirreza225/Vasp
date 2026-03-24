@@ -1,0 +1,79 @@
+app RecipeApp {
+  title: "Recipe App"
+  db: Drizzle
+  ssr: false
+  typescript: false
+}
+
+auth RecipeAuth {
+  userEntity: User
+  methods: [usernameAndPassword]
+}
+
+entity User {
+  id: Int @id
+  username: String @unique
+  password: String
+  createdAt: DateTime @default(now)
+}
+
+entity Recipe {
+  id: Int @id
+  title: String
+  description: String
+  ingredients: String
+  instructions: String
+  cookTime: Int
+  servings: Int
+  imageUrl: String
+  createdAt: DateTime @default(now)
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+route RecipesRoute {
+  path: "/recipes"
+  to: RecipesPage
+}
+
+route AddRecipeRoute {
+  path: "/recipes/add"
+  to: AddRecipePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+page RecipesPage {
+  component: import Recipes from "@src/pages/Recipes.vue"
+}
+
+page AddRecipePage {
+  component: import AddRecipe from "@src/pages/AddRecipe.vue"
+}
+
+crud Recipe {
+  entity: Recipe
+  operations: [list, create, update, delete]
+}
+
+query getRecipes {
+  fn: import { getRecipes } from "@src/queries.js"
+  entities: [Recipe]
+}
+
+action createRecipe {
+  fn: import { createRecipe } from "@src/actions.js"
+  entities: [Recipe]
+  auth: true
+}
+
+action deleteRecipe {
+  fn: import { deleteRecipe } from "@src/actions.js"
+  entities: [Recipe]
+  auth: true
+}

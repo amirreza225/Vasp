@@ -14,6 +14,9 @@ export class AuthGenerator extends BaseGenerator {
       backendPort: DEFAULT_BACKEND_PORT,
     }
 
+    // Server: auth plugin (JWT + cookie — separate file to avoid circular imports)
+    this.write(`server/auth/plugin.${ext}`, this.render('shared/auth/server/plugin.hbs', data))
+
     // Server: auth routes + JWT middleware
     this.write(`server/auth/index.${ext}`, this.render('shared/auth/server/index.hbs', data))
     this.write(`server/auth/middleware.${ext}`, this.render('shared/auth/server/middleware.hbs', data))

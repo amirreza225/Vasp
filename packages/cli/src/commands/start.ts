@@ -29,6 +29,35 @@ export async function startCommand(): Promise<void> {
     process.exit(1)
   }
 
+  // Pre-flight checks
+  const envFile = join(projectDir, '.env')
+  if (!existsSync(envFile)) {
+    log.warn('No .env file found. Copying from .env.example...')
+    const exampleFile = join(projectDir, '.env.example')
+    if (existsSync(exampleFile)) {
+      const { copyFileSync } = await import('node:fs')
+      copyFileSync(exampleFile, envFile)
+      log.info('Created .env from .env.example — edit it to configure your database.')
+    } else {
+      log.warn('No .env.example found either. Database connection may fail.')
+    }
+  }
+
+  const nodeModules = join(projectDir, 'node_modules')
+  if (!existsSync(nodeModules)) {
+    log.warn('node_modules not found. Running bun install...')
+    const install = Bun.spawn(['bun', 'install'], {
+      cwd: projectDir,
+      stdout: 'inherit',
+      stderr: 'inherit',
+    })
+    await install.exited
+    if (install.exitCode !== 0) {
+      log.error('bun install failed. Please install dependencies manually.')
+      process.exit(1)
+    }
+  }
+
   log.step('Starting Vasp dev servers...')
   log.dim(`  server: ${serverScript}`)
   log.dim(`  client: ${clientScript}`)
