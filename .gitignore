@@ -142,3 +142,9 @@ commands.txt
 
 # Vasp CLI build artifact (templates copy produced by build script; source is at /templates/)
 packages/cli/templates/
+
+# Playwright browser test artifacts
+e2e/__pw_app__/
+test-results/
+playwright-report/
+.playwright/

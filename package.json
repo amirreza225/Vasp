@@ -9,11 +9,13 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "test:e2e:watch": "vitest --config vitest.e2e.config.ts",
+    "test:browser": "playwright test",
     "lint": "eslint packages/*/src/**/*.ts",
     "typecheck": "tsc --noEmit -p tsconfig.base.json",
     "publish:all": "bun run build && cd packages/core && npm publish --access public && cd ../parser && npm publish --access public && cd ../generator && npm publish --access public && cd ../runtime && npm publish --access public && cd ../cli && npm publish"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@types/bun": "latest",
     "@types/handlebars": "^4.1.0",
     "@vitest/coverage-v8": "^2.0.0",

@@ -31,8 +31,8 @@ jobs:
       - run: bun install
       - run: bun run typecheck
 
-  test-integration:
-    name: Integration Tests
+  test-e2e:
+    name: E2E Tests
     runs-on: ubuntu-latest
     needs: test-unit
     steps:
@@ -41,20 +41,20 @@ jobs:
         with:
           bun-version: latest
       - run: bun install
-      - name: Run integration tests
-        run: bunx vitest run --reporter=verbose e2e/tests
+      - name: Run E2E tests
+        run: bun run test:e2e
 
-  test-e2e:
-    name: E2E Tests
+  test-browser:
+    name: Browser Tests (Playwright)
     runs-on: ubuntu-latest
-    needs: test-integration
+    needs: test-unit
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
       - run: bun install
-      - name: Install Playwright
+      - name: Install Playwright browsers
         run: bunx playwright install --with-deps chromium
-      - name: Run E2E tests
-        run: bunx vitest run e2e/tests/browser
+      - name: Run Playwright tests
+        run: bun run test:browser
