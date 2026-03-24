@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path'
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { readdirSync, statSync } from 'node:fs'
 import { log } from '../utils/logger.js'
+import { resolveTemplateDir } from '../utils/template-dir.js'
 
 export async function migrateToTsCommand(): Promise<void> {
   const cwd = process.cwd()
@@ -41,7 +42,7 @@ export async function migrateToTsCommand(): Promise<void> {
   const updatedSource = readFileSync(vaspFile, 'utf8')
   const updatedAst = parse(updatedSource, 'main.vasp')
 
-  const templateDir = join(import.meta.dirname, '..', '..', '..', '..', 'templates')
+  const templateDir = resolveTemplateDir(import.meta.dirname)
   const result = generate(updatedAst, {
     outputDir: cwd,
     templateDir,

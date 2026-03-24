@@ -4,8 +4,9 @@ import { join, resolve } from 'node:path'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { log } from '../utils/logger.js'
 import { VASP_VERSION } from '@vasp-framework/core'
+import { resolveTemplateDir, resolveStartersDir } from '../utils/template-dir.js'
 
-const STARTERS_DIR = join(import.meta.dirname, '..', '..', 'starters')
+const STARTERS_DIR = resolveStartersDir(import.meta.dirname)
 const KNOWN_STARTERS = ['minimal', 'todo', 'todo-auth-ssr']
 
 interface NewOptions {
@@ -65,8 +66,7 @@ export async function newCommand(args: string[]): Promise<void> {
     process.exit(1)
   }
 
-  // Find the templates directory (relative to this file at runtime)
-  const templateDir = join(import.meta.dirname, '..', '..', '..', '..', 'templates')
+  const templateDir = resolveTemplateDir(import.meta.dirname)
 
   mkdirSync(outputDir, { recursive: true })
 

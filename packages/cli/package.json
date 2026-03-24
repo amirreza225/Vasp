@@ -1,6 +1,6 @@
 {
   "name": "vasp-cli",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "The Vasp CLI — declarative full-stack framework for Vue developers",
   "license": "Apache-2.0",
   "type": "module",
@@ -10,16 +10,14 @@
   "files": [
     "dist",
     "starters",
+    "templates",
     "README.md"
   ],
   "scripts": {
-    "build": "bun build ./bin/vasp.ts --target=bun --outfile=dist/vasp --minify --banner='#!/usr/bin/env bun' && chmod +x dist/vasp",
+    "build": "bun build ./bin/vasp.ts --target=bun --outfile=dist/vasp --minify --banner='#!/usr/bin/env bun' && chmod +x dist/vasp && cp -r ../../templates ./templates",
     "test": "vitest run"
   },
   "dependencies": {
-    "@vasp-framework/core": "workspace:*",
-    "@vasp-framework/generator": "workspace:*",
-    "@vasp-framework/parser": "workspace:*",
     "picocolors": "^1.1.0"
   },
   "devDependencies": {

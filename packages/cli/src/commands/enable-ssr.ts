@@ -3,6 +3,7 @@ import { parse } from '@vasp-framework/parser'
 import { join, resolve } from 'node:path'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { log } from '../utils/logger.js'
+import { resolveTemplateDir } from '../utils/template-dir.js'
 
 /**
  * `vasp enable-ssr` — patches main.vasp (ssr: false → ssr: true) and regenerates
@@ -42,7 +43,7 @@ export async function enableSsrCommand(): Promise<void> {
     process.exit(1)
   }
 
-  const templateDir = join(import.meta.dirname, '..', '..', '..', '..', 'templates')
+  const templateDir = resolveTemplateDir(import.meta.dirname)
 
   const result = generate(ast, {
     outputDir: projectDir,
