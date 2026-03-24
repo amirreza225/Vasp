@@ -54,7 +54,9 @@ jobs:
         with:
           bun-version: latest
       - run: bun install
+      - name: Build all packages
+        run: bun run build
       - name: Install Playwright browsers
-        run: bunx playwright install --with-deps chromium
+        run: bun x playwright install --with-deps chromium
       - name: Run Playwright tests
         run: bun run test:browser

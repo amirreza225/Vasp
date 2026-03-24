@@ -58,8 +58,9 @@ test.describe('Vasp generated SPA', () => {
   // ---------------------------------------------------------------------------
   test('navigating to a missing route keeps the app mounted', async ({ page }) => {
     await page.goto('/this-route-does-not-exist')
-    // Vue Router renders nothing for unknown routes but the app itself stays up
-    await expect(page.locator('#app')).toBeVisible()
+    // Vue Router may render nothing for unknown routes but the app container
+    // must still be in the DOM (attached), proving the SPA didn't crash.
+    await expect(page.locator('#app')).toBeAttached()
   })
 
   test('deep-linking to "/" works the same as a fresh load', async ({ page }) => {

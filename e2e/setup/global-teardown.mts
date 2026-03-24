@@ -6,6 +6,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url))
 const APP_DIR = join(resolve(__dirname, '..', '..'), 'e2e', '__pw_app__')
 
 export default async function globalTeardown() {
+  // Clean up the scaffolded test app
   if (existsSync(APP_DIR)) {
     rmSync(APP_DIR, { recursive: true, force: true })
   }
