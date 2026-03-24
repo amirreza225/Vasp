@@ -30,7 +30,7 @@ Generators run in dependency order:
 | Generator | Output |
 |---|---|
 | `ScaffoldGenerator` | `package.json`, `.gitignore`, `.env.example`, `bunfig.toml`, `tsconfig.json` |
-| `DrizzleSchemaGenerator` | `drizzle/schema.js\|ts` |
+| `DrizzleSchemaGenerator` | `drizzle/schema.js\|ts` — entity-aware typed columns when `entity` blocks exist |
 | `BackendGenerator` | `server/index.js\|ts`, query/action route stubs |
 | `AuthGenerator` | Auth routes, JWT middleware, `Login.vue`, `Register.vue` |
 | `QueryActionGenerator` | `server/routes/queries/`, `server/routes/actions/` |

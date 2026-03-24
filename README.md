@@ -73,6 +73,13 @@ action createTodo {
   entities: [Todo]
 }
 
+entity Todo {
+  id: Int @id
+  title: String
+  done: Boolean
+  createdAt: DateTime @default(now)
+}
+
 crud Todo {
   entity: Todo
   operations: [list, create, update, delete]
@@ -88,6 +95,7 @@ job sendWelcomeEmail {
   perform: {
     fn: import { sendWelcomeEmail } from "@src/jobs.js"
   }
+  schedule: "0 * * * *"
 }
 ```
 
@@ -130,6 +138,18 @@ await $vasp.action('createTodo', { text: 'Buy milk' })
 ```
 
 In SSR mode, Vasp automatically calls server functions directly during server render (zero network round-trip) and switches to HTTP on the client after hydration. The developer sees one API regardless of mode.
+
+### `useAuth()` Composable
+
+Reactive authentication composable. Auto-fetches the current user on creation:
+
+```js
+import { useAuth } from '@vasp-framework/runtime'
+
+const { user, isAuthenticated, login, register, logout } = useAuth()
+```
+
+Returns reactive `user`, `loading`, `error`, `isAuthenticated`, and methods for `login()`, `register()`, `logout()`, and `refresh()`.
 
 ---
 
@@ -177,16 +197,18 @@ vasp --version
 |---|---|
 | `.vasp` DSL parser + validator | Done |
 | Code generator (all block types) | Done |
+| Entity DSL with typed fields & modifiers | Done |
 | SPA scaffold (Vue 3 + Vite) | Done |
 | SSR/SSG scaffold (Nuxt 4) | Done |
 | JavaScript and TypeScript | Done |
 | Elysia backend generation | Done |
-| Drizzle schema generation | Done |
+| Drizzle schema generation (entity-aware) | Done |
 | Auth (username/password, Google, GitHub) | Done |
+| `useAuth()` composable | Done |
 | Queries and Actions | Done |
-| CRUD endpoints | Done |
-| Realtime (WebSocket channels) | Done |
-| Background jobs (PgBoss) | Done |
+| CRUD endpoints (with pagination/sorting) | Done |
+| Realtime (WebSocket with auth & rooms) | Done |
+| Background jobs (PgBoss with cron scheduling) | Done |
 | `vasp new` CLI command | Done |
 | `vasp new --starter=<name>` | Done |
 | `vasp migrate-to-ts` | Done |
@@ -207,7 +229,7 @@ Vasp is a Bun monorepo with the following packages:
 | `@vasp-framework/parser` | Lexer, parser, and semantic validator for the `.vasp` DSL |
 | `@vasp-framework/generator` | Generates Elysia backend, Vue/Nuxt frontend, and client SDK from a parsed AST |
 | `@vasp-framework/core` | Shared types, AST definitions, and error classes |
-| `@vasp-framework/runtime` | Runtime composables (`useVasp`, `$vasp`) shipped into generated apps |
+| `@vasp-framework/runtime` | Runtime composables (`useVasp`, `useQuery`, `useAction`, `useAuth`) shipped into generated apps |
 
 ---
 
@@ -243,7 +265,7 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
 
 2. **Generate** — The `generate()` function walks the AST and runs a pipeline of specialized generators in dependency order:
    - `ScaffoldGenerator` → project skeleton and config files
-   - `DrizzleSchemaGenerator` → Drizzle schema from entity declarations
+   - `DrizzleSchemaGenerator` → Drizzle schema from entity declarations (typed columns from `entity` blocks)
    - `BackendGenerator` → Elysia server entry point
    - `AuthGenerator` → auth middleware and login/register routes
    - `QueryActionGenerator` → typed query and action endpoints

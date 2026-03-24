@@ -63,6 +63,7 @@ try {
 | `E100_MISSING_APP_BLOCK` | No `app` block found |
 | `E105_INVALID_ROUTE_REF` | `route.to` references unknown page |
 | `E108_UNKNOWN_ENTITY_REF` | Query/action references unknown entity |
+| `E111_CRUD_ENTITY_NOT_DECLARED` | CRUD entity has no matching `entity` block (when entity blocks exist) |
 
 ## License
 

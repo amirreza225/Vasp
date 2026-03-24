@@ -24,6 +24,22 @@ await client.action('createTodo', { text: 'Buy milk' })
 
 Uses [ofetch](https://github.com/unjs/ofetch) under the hood with `credentials: 'include'` for cookie-based auth.
 
+### `useAuth()`
+
+Reactive authentication composable:
+
+```javascript
+import { useAuth } from '@vasp-framework/runtime'
+
+const { user, isAuthenticated, loading, error, login, register, logout, refresh } = useAuth()
+
+await login({ username: 'admin', password: 'secret' })
+await register({ username: 'new', password: 'pass123' })
+await logout()
+```
+
+Auto-fetches the current user on creation via `$vasp.query('auth/me')`. Returns reactive state (`user`, `loading`, `error`, `isAuthenticated`) and methods (`login`, `register`, `logout`, `refresh`).
+
 ### `installVasp(app, options?)` / `useVasp()`
 
 Vue plugin + composable for accessing `$vasp` anywhere in your app:

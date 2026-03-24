@@ -14,6 +14,7 @@ The `VaspAST` interface is the source of truth for what a parsed `.vasp` file lo
 interface VaspAST {
   app: AppNode
   auth?: AuthNode
+  entities: EntityNode[]
   routes: RouteNode[]
   pages: PageNode[]
   queries: QueryNode[]
@@ -21,6 +22,24 @@ interface VaspAST {
   cruds: CrudNode[]
   realtimes: RealtimeNode[]
   jobs: JobNode[]
+}
+```
+
+### Entity Types
+
+```typescript
+type FieldType = 'String' | 'Int' | 'Boolean' | 'DateTime' | 'Float'
+type FieldModifier = 'id' | 'unique' | 'default_now'
+
+interface FieldNode {
+  name: string
+  type: FieldType
+  modifiers: FieldModifier[]
+}
+
+interface EntityNode extends BaseNode {
+  type: 'Entity'
+  fields: FieldNode[]
 }
 ```
 
@@ -35,7 +54,7 @@ interface VaspAST {
 ### Constants
 
 ```typescript
-VASP_VERSION           // '0.1.0'
+VASP_VERSION           // '0.2.0'
 DEFAULT_BACKEND_PORT   // 3001
 DEFAULT_SPA_PORT       // 5173
 DEFAULT_SSR_PORT       // 3000
