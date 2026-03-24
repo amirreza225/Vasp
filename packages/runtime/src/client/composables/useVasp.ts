@@ -1,5 +1,5 @@
 import { inject, type App } from 'vue'
-import { createVaspClient } from '../axios.js'
+import { createVaspClient } from '../ofetch.js'
 import type { VaspClient, VaspClientOptions } from '../../types.js'
 
 const VASP_KEY = '$vasp'

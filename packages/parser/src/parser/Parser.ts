@@ -29,6 +29,12 @@ export function parse(source: string, filename = 'main.vasp'): VaspAST {
   return new Parser(tokens, filename).parse()
 }
 
+/** Extract route params from a path string, e.g. "/users/:id" → ["id"] */
+function extractRouteParams(path: string): string[] {
+  const matches = path.match(/:([^/]+)/g)
+  return matches ? matches.map((m) => m.slice(1)) : []
+}
+
 class Parser {
   private pos = 0
 
@@ -237,7 +243,8 @@ class Parser {
     }
 
     this.consume(TokenType.RBRACE)
-    return { type: 'Route', name: name.value, loc, path, to }
+    const params = extractRouteParams(path)
+    return { type: 'Route', name: name.value, loc, path, to, params }
   }
 
   private parsePage(): PageNode {

@@ -24,6 +24,31 @@ await client.action('createTodo', { text: 'Buy milk' })
 
 Uses [ofetch](https://github.com/unjs/ofetch) under the hood with `credentials: 'include'` for cookie-based auth.
 
+### `useQuery(name, args?)`
+
+Reactive query composable. Auto-fetches on component mount:
+
+```javascript
+import { useQuery } from '@vasp-framework/runtime'
+
+const { data: todos, loading, error, refresh } = useQuery('getTodos')
+```
+
+Returns: `{ data: Ref<T|null>, loading: Ref<boolean>, error: Ref<Error|null>, refresh(): Promise<void> }`
+
+### `useAction(name)`
+
+Reactive action composable. Call `execute()` to trigger:
+
+```javascript
+import { useAction } from '@vasp-framework/runtime'
+
+const { execute: createTodo, loading, error } = useAction('createTodo')
+await createTodo({ text: 'Buy milk' })
+```
+
+Returns: `{ execute(args?): Promise<T>, loading: Ref<boolean>, error: Ref<Error|null> }`
+
 ### `useAuth()`
 
 Reactive authentication composable:

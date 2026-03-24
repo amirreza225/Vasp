@@ -82,6 +82,7 @@ export interface RouteNode extends BaseNode {
   type: 'Route'
   path: string           // URL path, e.g. "/"
   to: string             // name of the target PageNode
+  params: string[]       // extracted route params, e.g. [":id"] → ["id"]
 }
 
 export interface PageNode extends BaseNode {

@@ -20,5 +20,11 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
       `drizzle/schema.${this.ctx.ext}`,
       this.render('shared/drizzle/schema.hbs', { crudsWithFields }),
     )
+
+    // Drizzle Kit config for migrations
+    this.write(
+      `drizzle.config.${this.ctx.ext}`,
+      this.render('shared/drizzle/drizzle.config.hbs'),
+    )
   }
 }

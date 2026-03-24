@@ -2,6 +2,11 @@
 // Runs only on the client after hydration — routes calls to the Elysia backend via ofetch
 import { $fetch } from 'ofetch'
 
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)vasp-csrf=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : undefined
+}
+
 export default defineNuxtPlugin((nuxtApp) => {
   const config = useRuntimeConfig()
   const baseURL = config.public.apiBase
@@ -11,7 +16,12 @@ export default defineNuxtPlugin((nuxtApp) => {
       return $fetch(`/queries/${name}`, { baseURL, method: 'GET', query: args })
     },
     async action(name, args) {
-      return $fetch(`/actions/${name}`, { baseURL, method: 'POST', body: args })
+      return $fetch(`/actions/${name}`, {
+        baseURL,
+        method: 'POST',
+        body: args,
+        headers: { 'x-csrf-token': getCsrfToken() ?? '' },
+      })
     },
   })
 })

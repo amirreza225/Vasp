@@ -4,6 +4,7 @@ import { migrateToTsCommand } from './commands/migrate-to-ts.js'
 import { enableSsrCommand } from './commands/enable-ssr.js'
 import { startCommand } from './commands/start.js'
 import { buildCommand } from './commands/build.js'
+import { deployCommand } from './commands/deploy.js'
 import { VASP_VERSION } from '@vasp-framework/core'
 
 export async function run(args: string[]): Promise<void> {
@@ -41,6 +42,10 @@ export async function run(args: string[]): Promise<void> {
       await enableSsrCommand()
       break
 
+    case 'deploy':
+      await deployCommand()
+      break
+
     default:
       log.error(`Unknown command: ${command}`)
       printHelp()
@@ -56,8 +61,9 @@ function printHelp(): void {
     vasp new <project-name> [options]    Create a new Vasp project
     vasp enable-ssr                      Convert existing SPA project to SSR (Nuxt 4)
     vasp migrate-to-ts                   Convert existing JS project to TypeScript
-    vasp start                           Start the dev server (coming soon)
-    vasp build                           Build for production (coming soon)
+    vasp start                           Start the dev server
+    vasp build                           Build for production
+    vasp deploy                          Deploy your app (planned)
 
   Options for 'vasp new':
     --typescript, --ts    Enable TypeScript (default: JavaScript)

@@ -8,6 +8,29 @@ export interface UseQueryResult<T> {
   refresh: () => Promise<void>
 }
 
+// Global registry of active queries for invalidation by useAction
+const queryRegistry = new Map<string, Set<() => Promise<void>>>()
+
+export function registerQuery(name: string, refreshFn: () => Promise<void>): void {
+  if (!queryRegistry.has(name)) queryRegistry.set(name, new Set())
+  queryRegistry.get(name)!.add(refreshFn)
+}
+
+export function unregisterQuery(name: string, refreshFn: () => Promise<void>): void {
+  queryRegistry.get(name)?.delete(refreshFn)
+}
+
+export async function invalidateQueries(names: string[]): Promise<void> {
+  const tasks: Promise<void>[] = []
+  for (const name of names) {
+    const fns = queryRegistry.get(name)
+    if (fns) {
+      for (const fn of fns) tasks.push(fn())
+    }
+  }
+  await Promise.all(tasks)
+}
+
 /**
  * Reactive query composable. Fetches data on mount and provides refresh.
  *
@@ -34,6 +57,9 @@ export function useQuery<T = unknown>(
       loading.value = false
     }
   }
+
+  // Register for invalidation
+  registerQuery(queryName, refresh)
 
   // Auto-fetch on creation
   refresh()

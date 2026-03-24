@@ -38,7 +38,7 @@ async function handleLogin() {
     await login(username.value, password.value)
     router.push('/')
   } catch (err) {
-    error.value = err?.data?.error || 'Login failed'
+    error.value = err?.data?.error || err?.message || 'Login failed'
   } finally {
     loading.value = false
   }

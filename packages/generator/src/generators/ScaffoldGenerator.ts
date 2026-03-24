@@ -14,8 +14,10 @@ export class ScaffoldGenerator extends BaseGenerator {
       'src/components',
       'src/lib',
       'drizzle',
+      'drizzle/migrations',
       'server/routes/queries',
       'server/routes/actions',
+      'server/middleware',
       'server/db',
       'tests',
       ...(this.ctx.isSpa

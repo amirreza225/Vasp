@@ -170,12 +170,14 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
   "routes": [
     {
       "name": "HomeRoute",
+      "params": [],
       "path": "/",
       "to": "HomePage",
       "type": "Route",
     },
     {
       "name": "TodoRoute",
+      "params": [],
       "path": "/todos",
       "to": "TodoPage",
       "type": "Route",
@@ -214,6 +216,7 @@ exports[`Parser — snapshot: minimal fixture > matches snapshot 1`] = `
   "routes": [
     {
       "name": "HomeRoute",
+      "params": [],
       "path": "/",
       "to": "HomePage",
       "type": "Route",

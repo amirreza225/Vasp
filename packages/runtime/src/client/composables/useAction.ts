@@ -1,5 +1,11 @@
 import { ref, type Ref } from 'vue'
 import { useVasp } from './useVasp.js'
+import { invalidateQueries } from './useQuery.js'
+
+export interface UseActionOptions {
+  /** Query names to refresh after a successful action execution */
+  invalidates?: string[]
+}
 
 export interface UseActionResult<T> {
   execute: (args?: unknown) => Promise<T>
@@ -11,10 +17,10 @@ export interface UseActionResult<T> {
  * Reactive action composable.
  *
  * @example
- * const { execute: createTodo, loading } = useAction('createTodo')
+ * const { execute: createTodo, loading } = useAction('createTodo', { invalidates: ['getTodos'] })
  * await createTodo({ text: 'Buy milk' })
  */
-export function useAction<T = unknown>(actionName: string): UseActionResult<T> {
+export function useAction<T = unknown>(actionName: string, options?: UseActionOptions): UseActionResult<T> {
   const { $vasp } = useVasp()
   const loading = ref(false)
   const error = ref<Error | null>(null)
@@ -23,7 +29,11 @@ export function useAction<T = unknown>(actionName: string): UseActionResult<T> {
     loading.value = true
     error.value = null
     try {
-      return (await $vasp.action(actionName, args)) as T
+      const result = (await $vasp.action(actionName, args)) as T
+      if (options?.invalidates?.length) {
+        await invalidateQueries(options.invalidates)
+      }
+      return result
     } catch (err) {
       error.value = err instanceof Error ? err : new Error(String(err))
       throw error.value

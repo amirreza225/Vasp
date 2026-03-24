@@ -44,7 +44,7 @@ Every project starts with a single `main.vasp` file:
 ```vasp
 app MyTodoApp {
   title: "Vasp Todo"
-  db: Drizzle
+  db: PostgreSQL
   ssr: false        // false = SPA (default), true = SSR, "ssg" = Static Site Generation
   typescript: false // false = pure JS (default), true = TypeScript
 }
@@ -165,10 +165,21 @@ my-app/
 │   ├── actions.js/.ts      ← Your action implementations
 │   ├── jobs.js/.ts         ← Your background job handlers
 │   └── lib/
+├── server/                 ← Generated Elysia backend
+│   ├── index.{js|ts}
+│   ├── middleware/
+│   │   └── rateLimit.{js|ts}
+│   ├── db/
+│   │   └── client.{js|ts}
+│   └── routes/
+│       ├── queries/
+│       ├── actions/
+│       ├── crud/
+│       ├── realtime/
+│       └── jobs/
 ├── drizzle/
 │   └── schema.js/.ts       ← Auto-generated Drizzle schema
 ├── nuxt/                   ← Only when ssr/ssg enabled
-├── .vasp-gen/              ← All generated scaffolding (do not edit)
 ├── bunfig.toml
 ├── vite.config.js          ← or nuxt.config.ts when SSR/SSG
 ├── tsconfig.json           ← Only when typescript: true
@@ -213,6 +224,7 @@ vasp --version
 | `vasp new --starter=<name>` | Done |
 | `vasp migrate-to-ts` | Done |
 | `vasp enable-ssr` | Done |
+| Rate limiting (IP-based, configurable) | Done |
 | `vasp start` dev server | Done |
 | `vasp build` | Done |
 | `vasp deploy` | Planned |
@@ -283,11 +295,10 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
 ## Security
 
 Generated applications include production-grade defaults out of the box:
-- CORS configuration
-- Rate limiting
-- Auth middleware
-- Input validation
-- CSRF protection (SSR mode)
+- **CORS** — Configurable cross-origin resource sharing via `@elysiajs/cors`
+- **Rate limiting** — IP-based sliding-window limiter (configurable via `RATE_LIMIT_MAX` and `RATE_LIMIT_WINDOW_MS` env vars, defaults to 100 requests per 60 seconds)
+- **Auth middleware** — JWT-based authentication with cookie transport
+- **Input validation** — Elysia type-safe body/query validation on CRUD endpoints
 
 ---
 

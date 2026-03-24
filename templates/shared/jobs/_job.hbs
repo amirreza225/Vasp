@@ -25,5 +25,10 @@ export async function register{{pascalCase name}}Worker() {
  */
 export async function schedule{{pascalCase name}}(data) {
   const boss = await getBoss()
-  return boss.send(JOB_NAME, data)
+  return boss.send(JOB_NAME, data, {
+    retryLimit: Number(process.env.JOB_RETRY_LIMIT) || 3,
+    retryDelay: Number(process.env.JOB_RETRY_DELAY) || 60,
+    retryBackoff: true,
+    expireInMinutes: Number(process.env.JOB_EXPIRE_MINUTES) || 15,
+  })
 }

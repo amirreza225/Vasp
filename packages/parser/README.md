@@ -61,9 +61,17 @@ try {
 | `E010_UNEXPECTED_TOKEN` | Parser got a token it didn't expect |
 | `E011_DUPLICATE_BLOCK` | Block name already defined |
 | `E100_MISSING_APP_BLOCK` | No `app` block found |
-| `E105_INVALID_ROUTE_REF` | `route.to` references unknown page |
-| `E108_UNKNOWN_ENTITY_REF` | Query/action references unknown entity |
-| `E111_CRUD_ENTITY_NOT_DECLARED` | CRUD entity has no matching `entity` block (when entity blocks exist) |
+| `E101_INVALID_ROUTE_REF` | Route `to` references undefined page |
+| `E102_EMPTY_CRUD_OPS` | CRUD `operations` array is empty |
+| `E103_INVALID_CRUD_OP` | Unknown CRUD operation |
+| `E104_REALTIME_NO_CRUD` | Realtime entity has no matching CRUD block |
+| `E105_INVALID_REALTIME_EVENT` | Unknown realtime event |
+| `E106_EMPTY_AUTH_METHODS` | Auth `methods` array is empty |
+| `E107_INVALID_AUTH_METHOD` | Unknown auth method |
+| `E108_QUERY_ENTITY_REF` | Query entity not defined |
+| `E109_ACTION_ENTITY_REF` | Action entity not defined |
+| `E110_UNKNOWN_JOB_EXECUTOR` | Unknown job executor |
+| `E111_CRUD_ENTITY_NOT_DECLARED` | CRUD entity has no matching `entity` block |
 
 ## License
 

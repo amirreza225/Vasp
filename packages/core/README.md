@@ -54,7 +54,7 @@ interface EntityNode extends BaseNode {
 ### Constants
 
 ```typescript
-VASP_VERSION           // '0.2.0'
+VASP_VERSION           // '0.3.0'
 DEFAULT_BACKEND_PORT   // 3001
 DEFAULT_SPA_PORT       // 5173
 DEFAULT_SSR_PORT       // 3000

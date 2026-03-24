@@ -1,9 +1,12 @@
 import { Elysia, t } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
-import { eq, sql, asc, desc } from 'drizzle-orm'
+import { eq, sql, asc, desc, and, ilike } from 'drizzle-orm'
 import { {{camelCase entity}}s } from '../../../drizzle/schema.{{ext}}'
 {{#if hasAuth}}
 import { requireAuth } from '../../auth/middleware.{{ext}}'
+{{/if}}
+{{#if hasRealtime}}
+import { publish{{pascalCase entity}} } from '../realtime/{{camelCase realtimeName}}.{{ext}}'
 {{/if}}
 
 export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{camelCase entity}}' })
@@ -14,15 +17,34 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
   .get('/', async ({ query }) => {
     const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
     const offset = Math.max(Number(query.offset) || 0, 0)
-    const orderBy = query.orderBy ?? 'id'
-    const direction = query.dir === 'desc' ? desc : asc
 
     const table = {{camelCase entity}}s
-    const column = table[orderBy] ?? table.id
+
+    // Multi-column sorting: orderBy=col1,col2 & dir=asc,desc
+    const orderByFields = (query.orderBy ?? 'id').split(',')
+    const directions = (query.dir ?? 'asc').split(',')
+    const orderClauses = orderByFields.map((field, i) => {
+      const col = table[field.trim()] ?? table.id
+      const dirFn = (directions[i] ?? directions[0] ?? 'asc').trim() === 'desc' ? desc : asc
+      return dirFn(col)
+    })
+
+    // Build WHERE conditions from filter.* query params
+    const conditions = []
+    for (const [key, value] of Object.entries(query)) {
+      if (!key.startsWith('filter.')) continue
+      const field = key.slice(7)
+      if (!table[field]) continue
+      conditions.push(eq(table[field], value))
+    }
+    const where = conditions.length > 0 ? and(...conditions) : undefined
+
+    const baseQuery = db.select().from(table)
+    const countQuery = db.select({ count: sql`count(*)::int` }).from(table)
 
     const [data, countResult] = await Promise.all([
-      db.select().from(table).orderBy(direction(column)).limit(limit).offset(offset),
-      db.select({ count: sql`count(*)::int` }).from(table),
+      (where ? baseQuery.where(where) : baseQuery).orderBy(...orderClauses).limit(limit).offset(offset),
+      where ? countQuery.where(where) : countQuery,
     ])
 
     return { data, total: countResult[0]?.count ?? 0, limit, offset }
@@ -31,6 +53,9 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{#if (includes operations "create")}}
   .post('/', async ({ body }) => {
     const [created] = await db.insert({{camelCase entity}}s).values(body).returning()
+{{#if hasRealtime}}
+    publish{{pascalCase entity}}('created', created)
+{{/if}}
     return created
   })
 {{/if}}
@@ -43,6 +68,9 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
   .put('/:id', async ({ params: { id }, body, set }) => {
     const [updated] = await db.update({{camelCase entity}}s).set(body).where(eq({{camelCase entity}}s.id, Number(id))).returning()
     if (!updated) { set.status = 404; return { error: 'Not found' } }
+{{#if hasRealtime}}
+    publish{{pascalCase entity}}('updated', updated)
+{{/if}}
     return updated
   })
 {{/if}}
@@ -50,6 +78,9 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
   .delete('/:id', async ({ params: { id }, set }) => {
     const [deleted] = await db.delete({{camelCase entity}}s).where(eq({{camelCase entity}}s.id, Number(id))).returning()
     if (!deleted) { set.status = 404; return { error: 'Not found' } }
+{{#if hasRealtime}}
+    publish{{pascalCase entity}}('deleted', deleted)
+{{/if}}
     return { ok: true }
   })
 {{/if}}

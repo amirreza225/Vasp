@@ -13,5 +13,10 @@ export class BackendGenerator extends BaseGenerator {
 
     this.write(`server/index.${this.ctx.ext}`, this.render('shared/server/index.hbs', data))
     this.write(`server/db/client.${this.ctx.ext}`, this.render('shared/server/db/client.hbs', data))
+    this.write(`server/middleware/rateLimit.${this.ctx.ext}`, this.render('shared/server/middleware/rateLimit.hbs', data))
+
+    if (this.ctx.isSsr || this.ctx.isSsg) {
+      this.write(`server/middleware/csrf.${this.ctx.ext}`, this.render('shared/server/middleware/csrf.hbs', data))
+    }
   }
 }

@@ -2,6 +2,10 @@ import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { staticPlugin } from '@elysiajs/static'
 import { db } from './db/client.{{ext}}'
+import { rateLimit } from './middleware/rateLimit.{{ext}}'
+{{#if isSsr}}
+import { csrfProtection } from './middleware/csrf.{{ext}}'
+{{/if}}
 {{#if hasAuth}}
 import { authRoutes } from './auth/index.{{ext}}'
 {{/if}}
@@ -28,6 +32,10 @@ const app = new Elysia()
     origin: process.env.CORS_ORIGIN || 'http://localhost:{{frontendPort}}',
     credentials: true,
   }))
+  .use(rateLimit())
+{{#if isSsr}}
+  .use(csrfProtection())
+{{/if}}
   .get('/api/health', () => ({ status: 'ok', version: '{{vaspVersion}}' }))
 {{#if hasAuth}}
   .use(authRoutes)
