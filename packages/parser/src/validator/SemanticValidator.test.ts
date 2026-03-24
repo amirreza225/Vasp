@@ -98,4 +98,38 @@ describe('SemanticValidator', () => {
       expect((e as { diagnostics: unknown[] }).diagnostics).toHaveLength(2)
     }
   })
+
+  it('passes when query references declared entity block', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      query getTodos {
+        fn: import { getTodos } from "@src/queries.js"
+        entities: [Todo]
+      }
+    `)).not.toThrow()
+  })
+
+  it('fails when crud entity has no matching entity block (with entity blocks present)', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Recipe { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list] }
+    `)).toThrow('E111_CRUD_ENTITY_NOT_DECLARED')
+  })
+
+  it('passes when crud entity matches declared entity block', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list] }
+    `)).not.toThrow()
+  })
+
+  it('does not require entity blocks when none are declared (backward compat)', () => {
+    expect(() => validate(`
+      ${APP}
+      crud Todo { entity: Todo operations: [list] }
+    `)).not.toThrow()
+  })
 })

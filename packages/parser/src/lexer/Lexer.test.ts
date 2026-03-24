@@ -149,4 +149,43 @@ describe('Lexer', () => {
     expect(toks[4]?.type).toBe(TokenType.KW_FROM)
     expect(toks[5]?.type).toBe(TokenType.STRING)
   })
+
+  it('tokenizes entity keyword', () => {
+    const tokens = lex('entity')
+    expect(tokens[0]?.type).toBe(TokenType.KW_ENTITY)
+  })
+
+  it('tokenizes @ modifiers', () => {
+    const tokens = lex('@id @unique @default(now)')
+    expect(tokens[0]).toMatchObject({ type: TokenType.AT_MODIFIER, value: 'id' })
+    expect(tokens[1]).toMatchObject({ type: TokenType.AT_MODIFIER, value: 'unique' })
+    expect(tokens[2]).toMatchObject({ type: TokenType.AT_MODIFIER, value: 'default_now' })
+  })
+
+  it('tokenizes an entity block', () => {
+    const src = `entity Todo {
+  id: Int @id
+  title: String
+  done: Boolean
+}`
+    const toks = lex(src)
+    const typeList = toks.map((t) => t.type)
+    expect(typeList).toEqual([
+      TokenType.KW_ENTITY,
+      TokenType.IDENTIFIER, // Todo
+      TokenType.LBRACE,
+      TokenType.IDENTIFIER, // id
+      TokenType.COLON,
+      TokenType.IDENTIFIER, // Int
+      TokenType.AT_MODIFIER, // @id
+      TokenType.IDENTIFIER, // title
+      TokenType.COLON,
+      TokenType.IDENTIFIER, // String
+      TokenType.IDENTIFIER, // done
+      TokenType.COLON,
+      TokenType.IDENTIFIER, // Boolean
+      TokenType.RBRACE,
+      TokenType.EOF,
+    ])
+  })
 })

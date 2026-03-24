@@ -117,6 +117,12 @@ export class Lexer {
       return
     }
 
+    // Field modifier: @id, @unique, @default(now)
+    if (ch === '@') {
+      this.scanModifier()
+      return
+    }
+
     // String literal: "..." or '...'
     if (ch === '"' || ch === "'") {
       this.scanString(ch)
@@ -142,6 +148,32 @@ export class Lexer {
       hint: 'Check for typos or unsupported syntax in your .vasp file',
       loc: this.loc(),
     }])
+  }
+
+  private scanModifier(): void {
+    const loc = this.loc()
+    this.advance() // consume '@'
+    let name = ''
+    while (this.pos < this.source.length) {
+      const c = this.peek()
+      if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_') {
+        name += this.advance()
+      } else {
+        break
+      }
+    }
+    // Handle @default(now) or @default(someValue)
+    let modifier = name
+    if (name === 'default' && this.peek() === '(') {
+      this.advance() // (
+      let arg = ''
+      while (this.pos < this.source.length && this.peek() !== ')') {
+        arg += this.advance()
+      }
+      if (this.peek() === ')') this.advance() // )
+      modifier = arg.trim() === 'now' ? 'default_now' : `default_${arg.trim()}`
+    }
+    this.tokens.push({ type: TokenType.AT_MODIFIER, value: modifier, loc })
   }
 
   private scanString(quote: string): void {

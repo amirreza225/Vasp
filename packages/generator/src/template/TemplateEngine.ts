@@ -94,6 +94,25 @@ export class TemplateEngine {
     this.hbs.registerHelper('importName', (imp: { kind: string; defaultExport?: string; namedExport?: string }) => {
       return imp.kind === 'default' ? (imp.defaultExport ?? '') : (imp.namedExport ?? '')
     })
+
+    /** drizzleColumn: maps a FieldType + modifiers to a Drizzle column call string */
+    this.hbs.registerHelper('drizzleColumn', (fieldName: string, fieldType: string, modifiers: string[]) => {
+      const typeMap: Record<string, string> = {
+        String: 'text',
+        Int: 'integer',
+        Boolean: 'boolean',
+        DateTime: 'timestamp',
+        Float: 'doublePrecision',
+      }
+      const drizzleFn = typeMap[fieldType] ?? 'text'
+      let col = `${drizzleFn}('${toCamelCase(fieldName)}')`
+      if (Array.isArray(modifiers)) {
+        if (modifiers.includes('id')) col += '.primaryKey()'
+        if (modifiers.includes('unique')) col += '.unique()'
+        if (modifiers.includes('default_now')) col += '.defaultNow()'
+      }
+      return col
+    })
   }
 
   private walkHbs(dir: string, fn: (path: string) => void): void {

@@ -2,6 +2,7 @@ export enum TokenType {
   // Keywords (top-level block starters)
   KW_APP = 'app',
   KW_AUTH = 'auth',
+  KW_ENTITY = 'entity',
   KW_ROUTE = 'route',
   KW_PAGE = 'page',
   KW_QUERY = 'query',
@@ -20,6 +21,9 @@ export enum TokenType {
   BOOLEAN = 'BOOLEAN',
   NUMBER = 'NUMBER',
 
+  // Field modifier: @id, @unique, @default(now)
+  AT_MODIFIER = 'AT_MODIFIER',
+
   // Punctuation
   LBRACE = '{',
   RBRACE = '}',
@@ -36,6 +40,7 @@ export enum TokenType {
 export const BLOCK_KEYWORDS = new Set<string>([
   TokenType.KW_APP,
   TokenType.KW_AUTH,
+  TokenType.KW_ENTITY,
   TokenType.KW_ROUTE,
   TokenType.KW_PAGE,
   TokenType.KW_QUERY,

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, boolean } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, boolean, timestamp, doublePrecision } from 'drizzle-orm/pg-core'
 {{#if isTypeScript}}
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
 {{/if}}
@@ -21,14 +21,25 @@ export type NewUser = InferInsertModel<typeof users>
 {{/if}}
 
 {{/if}}
-{{#each cruds}}
-// {{entity}} table — add your columns below
+{{#each crudsWithFields}}
+{{#if hasEntity}}
+// {{entity}} table — generated from entity block
+export const {{camelCase entity}}s = pgTable('{{camelCase entity}}s', {
+{{#each fields}}
+  {{camelCase name}}: {{{drizzleColumn name type modifiers}}},
+{{/each}}
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+})
+{{else}}
+// {{entity}} table — no entity block found, add your columns below
 export const {{camelCase entity}}s = pgTable('{{camelCase entity}}s', {
   id: serial('id').primaryKey(),
   // TODO: Add your {{entity}} columns here
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
+{{/if}}
 {{#if ../isTypeScript}}
 export type {{pascalCase entity}} = InferSelectModel<typeof {{camelCase entity}}s>
 export type New{{pascalCase entity}} = InferInsertModel<typeof {{camelCase entity}}s>

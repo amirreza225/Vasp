@@ -12,10 +12,15 @@ export async function register{{pascalCase name}}Worker() {
   await boss.work(JOB_NAME, async (job) => {
     await {{namedExport}}(job.data)
   })
+{{#if hasSchedule}}
+
+  // Register cron schedule: {{schedule}}
+  await boss.schedule(JOB_NAME, '{{schedule}}', {})
+{{/if}}
 }
 
 /**
- * Schedule a '{{name}}' job.
+ * Schedule a '{{name}}' job on demand.
  * @param {unknown} data - Data to pass to the job handler
  */
 export async function schedule{{pascalCase name}}(data) {

@@ -12,6 +12,13 @@ auth User {
   methods: [ usernameAndPassword, google, github ]
 }
 
+entity Todo {
+  id: Int @id
+  title: String
+  done: Boolean
+  createdAt: DateTime @default(now)
+}
+
 route HomeRoute {
   path: "/"
   to: HomePage

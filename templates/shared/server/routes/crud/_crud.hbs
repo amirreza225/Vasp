@@ -1,6 +1,6 @@
 import { Elysia, t } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
-import { eq } from 'drizzle-orm'
+import { eq, sql, asc, desc } from 'drizzle-orm'
 import { {{camelCase entity}}s } from '../../../drizzle/schema.{{ext}}'
 {{#if hasAuth}}
 import { requireAuth } from '../../auth/middleware.{{ext}}'
@@ -11,8 +11,21 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
   .use(requireAuth)
 {{/if}}
 {{#if (includes operations "list")}}
-  .get('/', async () => {
-    return db.select().from({{camelCase entity}}s)
+  .get('/', async ({ query }) => {
+    const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
+    const offset = Math.max(Number(query.offset) || 0, 0)
+    const orderBy = query.orderBy ?? 'id'
+    const direction = query.dir === 'desc' ? desc : asc
+
+    const table = {{camelCase entity}}s
+    const column = table[orderBy] ?? table.id
+
+    const [data, countResult] = await Promise.all([
+      db.select().from(table).orderBy(direction(column)).limit(limit).offset(offset),
+      db.select({ count: sql`count(*)::int` }).from(table),
+    ])
+
+    return { data, total: countResult[0]?.count ?? 0, limit, offset }
   })
 {{/if}}
 {{#if (includes operations "create")}}

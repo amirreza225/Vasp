@@ -7,6 +7,13 @@ app TodoApp {
   typescript: false
 }
 
+entity Todo {
+  id: Int @id
+  title: String
+  done: Boolean
+  createdAt: DateTime @default(now)
+}
+
 route HomeRoute {
   path: "/"
   to: HomePage

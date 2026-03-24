@@ -59,6 +59,72 @@ describe('Parser — auth block', () => {
   })
 })
 
+describe('Parser — entity block', () => {
+  it('parses entity with fields and modifiers', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Todo {
+        id: Int @id
+        title: String
+        done: Boolean
+        createdAt: DateTime @default(now)
+      }
+    `)
+    expect(ast.entities).toHaveLength(1)
+    expect(ast.entities[0]).toMatchObject({
+      type: 'Entity',
+      name: 'Todo',
+      fields: [
+        { name: 'id', type: 'Int', modifiers: ['id'] },
+        { name: 'title', type: 'String', modifiers: [] },
+        { name: 'done', type: 'Boolean', modifiers: [] },
+        { name: 'createdAt', type: 'DateTime', modifiers: ['default_now'] },
+      ],
+    })
+  })
+
+  it('parses entity with unique modifier', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User {
+        id: Int @id
+        email: String @unique
+      }
+    `)
+    expect(ast.entities[0]?.fields[1]).toMatchObject({
+      name: 'email',
+      type: 'String',
+      modifiers: ['unique'],
+    })
+  })
+
+  it('parses multiple entities', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Todo { id: Int @id title: String }
+      entity User { id: Int @id email: String @unique }
+    `)
+    expect(ast.entities).toHaveLength(2)
+    expect(ast.entities[0]?.name).toBe('Todo')
+    expect(ast.entities[1]?.name).toBe('User')
+  })
+
+  it('throws on invalid field type', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Todo { id: Uuid @id }
+    `)).toThrow('E026_INVALID_FIELD_TYPE')
+  })
+
+  it('parses entity with Float field', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Product { id: Int @id price: Float }
+    `)
+    expect(ast.entities[0]?.fields[1]).toMatchObject({ name: 'price', type: 'Float', modifiers: [] })
+  })
+})
+
 describe('Parser — route and page', () => {
   it('parses route and page', () => {
     const ast = parse(`

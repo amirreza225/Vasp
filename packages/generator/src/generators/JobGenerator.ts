@@ -22,6 +22,8 @@ export class JobGenerator extends BaseGenerator {
           name: job.name,
           namedExport,
           fnSource: fn.source,
+          schedule: job.schedule,
+          hasSchedule: !!job.schedule,
         }),
       )
 

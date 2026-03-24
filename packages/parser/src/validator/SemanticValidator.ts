@@ -7,6 +7,7 @@ export class SemanticValidator {
   validate(ast: VaspAST): void {
     this.checkAppExists(ast)
     this.checkRouteTargets(ast)
+    this.checkCrudEntities(ast)
     this.checkCrudOperations(ast)
     this.checkRealtimeEntities(ast)
     this.checkAuthMethods(ast)
@@ -37,6 +38,21 @@ export class SemanticValidator {
           message: `Route '${route.name}' references unknown page '${route.to}'`,
           hint: `Add a page block named '${route.to}', or fix the 'to' value in route '${route.name}'`,
           loc: route.loc,
+        })
+      }
+    }
+  }
+
+  private checkCrudEntities(ast: VaspAST): void {
+    if (ast.entities.length === 0) return
+    const entityNames = new Set(ast.entities.map((e) => e.name))
+    for (const crud of ast.cruds) {
+      if (!entityNames.has(crud.entity)) {
+        this.diagnostics.push({
+          code: 'E111_CRUD_ENTITY_NOT_DECLARED',
+          message: `crud '${crud.name}' references entity '${crud.entity}' which has no entity block`,
+          hint: `Add an entity block for '${crud.entity}', or remove the crud block`,
+          loc: crud.loc,
         })
       }
     }
@@ -112,14 +128,17 @@ export class SemanticValidator {
   }
 
   private checkQueryActionEntities(ast: VaspAST): void {
-    const crudEntities = new Set(ast.cruds.map((c) => c.entity))
+    const knownEntities = new Set([
+      ...ast.cruds.map((c) => c.entity),
+      ...ast.entities.map((e) => e.name),
+    ])
     for (const query of ast.queries) {
       for (const entity of query.entities) {
-        if (!crudEntities.has(entity)) {
+        if (!knownEntities.has(entity)) {
           this.diagnostics.push({
             code: 'E108_UNKNOWN_ENTITY_REF',
             message: `Query '${query.name}' references unknown entity '${entity}'`,
-            hint: `Add a crud block for entity '${entity}', or remove it from the entities list`,
+            hint: `Add an entity or crud block for '${entity}', or remove it from the entities list`,
             loc: query.loc,
           })
         }
@@ -127,11 +146,11 @@ export class SemanticValidator {
     }
     for (const action of ast.actions) {
       for (const entity of action.entities) {
-        if (!crudEntities.has(entity)) {
+        if (!knownEntities.has(entity)) {
           this.diagnostics.push({
             code: 'E109_UNKNOWN_ENTITY_REF',
             message: `Action '${action.name}' references unknown entity '${entity}'`,
-            hint: `Add a crud block for entity '${entity}', or remove it from the entities list`,
+            hint: `Add an entity or crud block for '${entity}', or remove it from the entities list`,
             loc: action.loc,
           })
         }

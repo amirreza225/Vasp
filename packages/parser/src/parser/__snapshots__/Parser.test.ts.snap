@@ -61,6 +61,38 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
       "type": "Crud",
     },
   ],
+  "entities": [
+    {
+      "fields": [
+        {
+          "modifiers": [
+            "id",
+          ],
+          "name": "id",
+          "type": "Int",
+        },
+        {
+          "modifiers": [],
+          "name": "title",
+          "type": "String",
+        },
+        {
+          "modifiers": [],
+          "name": "done",
+          "type": "Boolean",
+        },
+        {
+          "modifiers": [
+            "default_now",
+          ],
+          "name": "createdAt",
+          "type": "DateTime",
+        },
+      ],
+      "name": "Todo",
+      "type": "Entity",
+    },
+  ],
   "jobs": [
     {
       "executor": "PgBoss",
@@ -164,6 +196,7 @@ exports[`Parser — snapshot: minimal fixture > matches snapshot 1`] = `
     "typescript": false,
   },
   "cruds": [],
+  "entities": [],
   "jobs": [],
   "pages": [
     {

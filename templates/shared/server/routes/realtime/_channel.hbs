@@ -1,30 +1,78 @@
 import { Elysia } from 'elysia'
+{{#if ../hasAuth}}
+import jwt from '@elysiajs/jwt'
+{{/if}}
 
-// In-process subscriber set for '{{name}}' channel
-// Swap this for a Redis adapter in production multi-instance deployments
-const subscribers = new Set()
+// Room-based subscriber map for '{{name}}' channel
+// Each room key maps to a set of connected WebSocket clients
+const rooms = new Map()
+
+function getRoom(roomId) {
+  if (!rooms.has(roomId)) rooms.set(roomId, new Set())
+  return rooms.get(roomId)
+}
 
 /**
- * Publish a realtime event to all connected subscribers of '{{name}}'.
+ * Publish a realtime event to all subscribers in a specific room of '{{name}}'.
  * Called automatically by CRUD mutation handlers.
  */
-export function publish{{pascalCase name}}(event, data) {
+export function publish{{pascalCase name}}(event, data, roomId = 'default') {
+  const room = rooms.get(roomId)
+  if (!room) return
+  const message = JSON.stringify({ channel: '{{camelCase name}}', room: roomId, event, data })
+  for (const ws of room) {
+    try { ws.send(message) } catch { room.delete(ws) }
+  }
+}
+
+/**
+ * Broadcast to all rooms of '{{name}}'.
+ */
+export function broadcast{{pascalCase name}}(event, data) {
   const message = JSON.stringify({ channel: '{{camelCase name}}', event, data })
-  for (const ws of subscribers) {
-    try { ws.send(message) } catch { subscribers.delete(ws) }
+  for (const [, room] of rooms) {
+    for (const ws of room) {
+      try { ws.send(message) } catch { room.delete(ws) }
+    }
   }
 }
 
 export const {{camelCase name}}Channel = new Elysia()
+{{#if ../hasAuth}}
+  .use(jwt({ name: 'jwt', secret: process.env.JWT_SECRET || 'vasp-dev-secret' }))
+{{/if}}
   .ws('/ws/{{camelCase name}}', {
+{{#if ../hasAuth}}
+    async beforeHandle({ jwt: jwtPlugin, request }) {
+      const url = new URL(request.url)
+      const token = url.searchParams.get('token')
+      if (!token) return new Response('Unauthorized', { status: 401 })
+      const payload = await jwtPlugin.verify(token)
+      if (!payload) return new Response('Unauthorized', { status: 401 })
+    },
+{{/if}}
     open(ws) {
-      subscribers.add(ws)
+      const room = ws.data?.query?.room ?? 'default'
+      getRoom(room).add(ws)
+      ws.data._room = room
     },
     message(ws, msg) {
-      // Echo back for debugging; extend for room-based subscriptions
+      // Client can switch rooms via { action: 'join', room: 'roomId' }
+      try {
+        const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg
+        if (parsed.action === 'join' && parsed.room) {
+          const oldRoom = ws.data._room
+          if (oldRoom) rooms.get(oldRoom)?.delete(ws)
+          ws.data._room = parsed.room
+          getRoom(parsed.room).add(ws)
+          ws.send(JSON.stringify({ ack: 'joined', room: parsed.room }))
+          return
+        }
+      } catch { /* ignore parse errors */ }
       ws.send(JSON.stringify({ ack: msg }))
     },
     close(ws) {
-      subscribers.delete(ws)
+      const room = ws.data?._room
+      if (room) rooms.get(room)?.delete(ws)
     },
   })

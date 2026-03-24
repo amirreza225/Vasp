@@ -5,6 +5,10 @@ import type {
   AuthNode,
   CrudNode,
   CrudOperation,
+  EntityNode,
+  FieldModifier,
+  FieldNode,
+  FieldType,
   ImportExpression,
   JobNode,
   PageNode,
@@ -18,7 +22,7 @@ import type {
 import { ParseError, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_REALTIME_EVENTS } from '@vasp-framework/core'
 import { Lexer } from '../lexer/Lexer.js'
 import type { Token } from '../lexer/Token.js'
-import { TokenType } from '../lexer/TokenType.js'
+import { BLOCK_KEYWORDS, TokenType } from '../lexer/TokenType.js'
 
 export function parse(source: string, filename = 'main.vasp'): VaspAST {
   const tokens = new Lexer(source, filename).tokenize()
@@ -38,6 +42,7 @@ class Parser {
   parse(): VaspAST {
     const ast: VaspAST = {
       app: null as unknown as AppNode, // validated by SemanticValidator
+      entities: [],
       routes: [],
       pages: [],
       queries: [],
@@ -56,6 +61,9 @@ class Parser {
           break
         case TokenType.KW_AUTH:
           ast.auth = this.parseAuth()
+          break
+        case TokenType.KW_ENTITY:
+          ast.entities.push(this.parseEntity())
           break
         case TokenType.KW_ROUTE:
           ast.routes.push(this.parseRoute())
@@ -82,7 +90,7 @@ class Parser {
           throw this.error(
             'E010_UNEXPECTED_TOKEN',
             `Unexpected token '${kw.value}' at top level`,
-            'Expected a declaration keyword: app, auth, route, page, query, action, crud, realtime, or job',
+            'Expected a declaration keyword: app, auth, entity, route, page, query, action, crud, realtime, or job',
             kw.loc,
           )
       }
@@ -99,7 +107,7 @@ class Parser {
     this.consume(TokenType.LBRACE)
 
     let title = ''
-    let db: 'Drizzle' = 'Drizzle'
+    let db = 'Drizzle' as const
     let ssr: boolean | 'ssg' = false
     let typescript = false
 
@@ -167,6 +175,41 @@ class Parser {
 
     this.consume(TokenType.RBRACE)
     return { type: 'Auth', name: name.value, loc, userEntity, methods }
+  }
+
+  private parseEntity(): EntityNode {
+    const loc = this.consume(TokenType.KW_ENTITY).loc
+    const name = this.consumeIdentifier()
+    this.consume(TokenType.LBRACE)
+
+    const fields: FieldNode[] = []
+    const validTypes: FieldType[] = ['String', 'Int', 'Boolean', 'DateTime', 'Float']
+
+    while (!this.check(TokenType.RBRACE)) {
+      const fieldName = this.consumeIdentifier()
+      this.consume(TokenType.COLON)
+      const fieldTypeToken = this.consumeIdentifier()
+
+      if (!validTypes.includes(fieldTypeToken.value as FieldType)) {
+        throw this.error(
+          'E026_INVALID_FIELD_TYPE',
+          `Invalid field type '${fieldTypeToken.value}' in entity '${name.value}'`,
+          `Valid types: ${validTypes.join(', ')}`,
+          fieldTypeToken.loc,
+        )
+      }
+
+      const modifiers: FieldModifier[] = []
+      while (this.check(TokenType.AT_MODIFIER)) {
+        const mod = this.consume(TokenType.AT_MODIFIER)
+        modifiers.push(mod.value as FieldModifier)
+      }
+
+      fields.push({ name: fieldName.value, type: fieldTypeToken.value as FieldType, modifiers })
+    }
+
+    this.consume(TokenType.RBRACE)
+    return { type: 'Entity', name: name.value, loc, fields }
   }
 
   private parseRoute(): RouteNode {
@@ -361,7 +404,7 @@ class Parser {
     const name = this.consumeIdentifier()
     this.consume(TokenType.LBRACE)
 
-    let executor: 'PgBoss' = 'PgBoss'
+    let executor = 'PgBoss' as const
     let performFn: ImportExpression | null = null
     let schedule: string | undefined
 
@@ -485,7 +528,9 @@ class Parser {
 
   private consumeIdentifier(): Token {
     const tok = this.peek()
-    if (tok.type !== TokenType.IDENTIFIER) {
+    // Accept IDENTIFIER tokens and also block keywords (like 'entity')
+    // when they appear in property-name or value position
+    if (tok.type !== TokenType.IDENTIFIER && !BLOCK_KEYWORDS.has(tok.type)) {
       throw this.error(
         'E031_EXPECTED_IDENTIFIER',
         `Expected an identifier but got '${tok.value || tok.type}'`,

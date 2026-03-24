@@ -15,11 +15,14 @@
     "publish:all": "bun run build && cd packages/core && npm publish --access public && cd ../parser && npm publish --access public && cd ../generator && npm publish --access public && cd ../runtime && npm publish --access public && cd ../cli && npm publish"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.58.2",
     "@types/bun": "latest",
     "@types/handlebars": "^4.1.0",
     "@vitest/coverage-v8": "^2.0.0",
+    "eslint": "^10.1.0",
     "typescript": "^5.6.0",
+    "typescript-eslint": "^8.57.2",
     "vitest": "^2.0.0"
   }
 }

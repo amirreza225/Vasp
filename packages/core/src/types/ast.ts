@@ -40,6 +40,17 @@ export type CrudOperation = 'list' | 'create' | 'update' | 'delete'
 
 export type RealtimeEvent = 'created' | 'updated' | 'deleted'
 
+// ------ Entity / Schema ------
+
+export type FieldType = 'String' | 'Int' | 'Boolean' | 'DateTime' | 'Float'
+export type FieldModifier = 'id' | 'unique' | 'default_now'
+
+export interface FieldNode {
+  name: string
+  type: FieldType
+  modifiers: FieldModifier[]
+}
+
 // ------ Job Executors ------
 
 export type JobExecutor = 'PgBoss'
@@ -115,11 +126,17 @@ export interface JobNode extends BaseNode {
   schedule?: string      // optional cron expression
 }
 
+export interface EntityNode extends BaseNode {
+  type: 'Entity'
+  fields: FieldNode[]
+}
+
 // ------ Top-level AST ------
 
 export interface VaspAST {
   app: AppNode
   auth?: AuthNode
+  entities: EntityNode[]
   routes: RouteNode[]
   pages: PageNode[]
   queries: QueryNode[]
@@ -134,6 +151,7 @@ export interface VaspAST {
 export type VaspNode =
   | AppNode
   | AuthNode
+  | EntityNode
   | RouteNode
   | PageNode
   | QueryNode
