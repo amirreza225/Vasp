@@ -7,6 +7,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
+    "test:e2e:watch": "vitest --config vitest.e2e.config.ts",
     "lint": "eslint packages/*/src/**/*.ts",
     "typecheck": "tsc --noEmit -p tsconfig.base.json",
     "publish:all": "bun run build && cd packages/core && npm publish --access public && cd ../parser && npm publish --access public && cd ../generator && npm publish --access public && cd ../runtime && npm publish --access public && cd ../cli && npm publish"

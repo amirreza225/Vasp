@@ -105,12 +105,13 @@ export async function newCommand(args: string[]): Promise<void> {
 }
 
 function parseOptions(args: string[]): NewOptions {
+  const starter = args.find((a) => a.startsWith('--starter='))?.split('=')[1]
   return {
     typescript: args.includes('--typescript') || args.includes('--ts'),
     ssr: args.includes('--ssr'),
     ssg: args.includes('--ssg'),
     noInstall: args.includes('--no-install'),
-    starter: args.find((a) => a.startsWith('--starter='))?.split('=')[1],
+    ...(starter !== undefined && { starter }),
   }
 }
 
