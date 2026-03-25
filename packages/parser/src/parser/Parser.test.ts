@@ -109,11 +109,16 @@ describe('Parser — entity block', () => {
     expect(ast.entities[1]?.name).toBe('User')
   })
 
-  it('throws on invalid field type', () => {
-    expect(() => parse(`
+  it('treats capitalised field types as relation references (no parser throw)', () => {
+    // Unknown capitalized names (e.g. Uuid) are treated as relation entity references.
+    // Semantic validation (E115) catches undefined relation entities — not the parser.
+    const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Todo { id: Uuid @id }
-    `)).toThrow('E026_INVALID_FIELD_TYPE')
+    `)
+    const idField = ast.entities[0]?.fields[0]
+    expect(idField?.type).toBe('Uuid')
+    expect(idField?.isRelation).toBe(true)
   })
 
   it('parses entity with Float field', () => {
@@ -261,6 +266,129 @@ describe('Parser — error cases', () => {
     } catch (e: unknown) {
       expect((e as Error).message).toContain('line 1')
     }
+  })
+})
+
+describe('Parser — relation fields (Phase 2)', () => {
+  it('parses a many-to-one relation field', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User { id: Int @id }
+      entity Todo { id: Int @id author: User }
+    `)
+    const authorField = ast.entities[1]?.fields[1]
+    expect(authorField).toMatchObject({
+      name: 'author',
+      type: 'User',
+      isRelation: true,
+      relatedEntity: 'User',
+      isArray: false,
+      nullable: false,
+    })
+  })
+
+  it('parses a one-to-many virtual array relation field', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User { id: Int @id todos: Todo[] }
+      entity Todo { id: Int @id }
+    `)
+    const todosField = ast.entities[0]?.fields[1]
+    expect(todosField).toMatchObject({
+      name: 'todos',
+      type: 'Todo',
+      isRelation: true,
+      relatedEntity: 'Todo',
+      isArray: true,
+    })
+  })
+
+  it('parses @onDelete(cascade) modifier on a relation field', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User { id: Int @id }
+      entity Todo { id: Int @id author: User @onDelete(cascade) }
+    `)
+    const authorField = ast.entities[1]?.fields[1]
+    expect(authorField).toMatchObject({
+      name: 'author',
+      isRelation: true,
+      onDelete: 'cascade',
+    })
+  })
+
+  it('parses @onDelete(setNull) modifier', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User { id: Int @id }
+      entity Todo { id: Int @id author: User @onDelete(setNull) }
+    `)
+    expect(ast.entities[1]?.fields[1]?.onDelete).toBe('setNull')
+  })
+})
+
+describe('Parser — new field types and modifiers (Phase 2)', () => {
+  it('parses Text field type', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Post { id: Int @id body: Text }
+    `)
+    expect(ast.entities[0]?.fields[1]).toMatchObject({
+      name: 'body',
+      type: 'Text',
+      isRelation: false,
+    })
+  })
+
+  it('parses Json field type', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Post { id: Int @id metadata: Json }
+    `)
+    expect(ast.entities[0]?.fields[1]).toMatchObject({
+      name: 'metadata',
+      type: 'Json',
+      isRelation: false,
+    })
+  })
+
+  it('parses @nullable modifier', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Post { id: Int @id body: Text @nullable }
+    `)
+    const bodyField = ast.entities[0]?.fields[1]
+    expect(bodyField?.nullable).toBe(true)
+    expect(bodyField?.modifiers).toContain('nullable')
+  })
+
+  it('parses @updatedAt modifier', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Post { id: Int @id updatedAt: DateTime @updatedAt }
+    `)
+    const field = ast.entities[0]?.fields[1]
+    expect(field?.isUpdatedAt).toBe(true)
+    expect(field?.modifiers).toContain('updatedAt')
+  })
+
+  it('parses @default(now) modifier', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Post { id: Int @id createdAt: DateTime @default(now) }
+    `)
+    const field = ast.entities[0]?.fields[1]
+    expect(field?.defaultValue).toBe('now')
+    expect(field?.modifiers).toContain('default_now')
+  })
+
+  it('parses @default with a string value', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Post { id: Int @id status: String @default("draft") }
+    `)
+    const field = ast.entities[0]?.fields[1]
+    expect(field?.defaultValue).toBe('draft')
   })
 })
 

@@ -205,15 +205,30 @@ export class SemanticValidator {
   }
 
   private checkFieldTypes(ast: VaspAST): void {
+    const entityNames = new Set(ast.entities.map((e) => e.name))
+
     for (const entity of ast.entities) {
       for (const field of entity.fields) {
-        if (!(SUPPORTED_FIELD_TYPES as readonly string[]).includes(field.type)) {
-          this.diagnostics.push({
-            code: 'E114_INVALID_FIELD_TYPE',
-            message: `Invalid field type '${field.type}' for field '${field.name}' in entity '${entity.name}'`,
-            hint: `Supported types: ${SUPPORTED_FIELD_TYPES.join(', ')}`,
-            loc: entity.loc,
-          })
+        if (field.isRelation) {
+          // Relation field: the referenced type must be a declared entity
+          if (field.relatedEntity && !entityNames.has(field.relatedEntity)) {
+            this.diagnostics.push({
+              code: 'E115_UNDEFINED_RELATION_ENTITY',
+              message: `Field '${field.name}' in entity '${entity.name}' references undefined entity '${field.relatedEntity}'`,
+              hint: `Add an entity block for '${field.relatedEntity}', or use a primitive type: ${SUPPORTED_FIELD_TYPES.join(', ')}`,
+              loc: entity.loc,
+            })
+          }
+        } else {
+          // Primitive field: must be in SUPPORTED_FIELD_TYPES
+          if (!(SUPPORTED_FIELD_TYPES as readonly string[]).includes(field.type)) {
+            this.diagnostics.push({
+              code: 'E114_INVALID_FIELD_TYPE',
+              message: `Invalid field type '${field.type}' for field '${field.name}' in entity '${entity.name}'`,
+              hint: `Supported types: ${SUPPORTED_FIELD_TYPES.join(', ')}`,
+              loc: entity.loc,
+            })
+          }
         }
       }
     }

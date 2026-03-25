@@ -13,8 +13,24 @@ export class CrudGenerator extends BaseGenerator {
       ast.realtimes.map((rt) => [rt.entity, rt.name]),
     )
 
+    // Build entity map for relation resolution
+    const entityMap = new Map(ast.entities.map((e) => [e.name, e]))
+
     for (const crud of ast.cruds) {
       const realtimeName = realtimeByEntity.get(crud.entity)
+      const entity = entityMap.get(crud.entity)
+
+      // Determine many-to-one relations for auto-join (with: {})
+      const withRelations = (entity?.fields ?? [])
+        .filter((f) => f.isRelation && !f.isArray)
+        .map((f) => ({
+          name: f.name,
+          relatedEntity: f.relatedEntity,
+          relatedTable: `${toCamelCase(f.relatedEntity!)}s`,
+        }))
+
+      const hasRelations = withRelations.length > 0
+
       this.write(
         `server/routes/crud/${toCamelCase(crud.entity)}.${ext}`,
         this.render('shared/server/routes/crud/_crud.hbs', {
@@ -22,6 +38,8 @@ export class CrudGenerator extends BaseGenerator {
           operations: crud.operations,
           hasRealtime: !!realtimeName,
           realtimeName: realtimeName ?? '',
+          hasRelations,
+          withRelations,
         }),
       )
     }

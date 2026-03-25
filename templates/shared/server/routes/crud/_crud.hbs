@@ -1,6 +1,6 @@
 import { Elysia, t } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
-import { eq, sql, asc, desc, and, ilike } from 'drizzle-orm'
+import { eq, sql, asc, desc, and } from 'drizzle-orm'
 import { {{camelCase entity}}s } from '../../../drizzle/schema.{{ext}}'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 {{#if hasAuth}}
@@ -19,6 +19,19 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
     const offset = Math.max(Number(query.offset) || 0, 0)
 
+{{#if hasRelations}}
+    const items = await db.query.{{camelCase entity}}s.findMany({
+      with: {
+{{#each withRelations}}
+        {{camelCase name}}: true,
+{{/each}}
+      },
+      limit,
+      offset,
+    })
+    const [countResult] = await db.select({ count: sql`count(*)::int` }).from({{camelCase entity}}s)
+    return { items, total: countResult?.count ?? 0, limit, offset }
+{{else}}
     const table = {{camelCase entity}}s
 
     // Multi-column sorting: orderBy=col1,col2 & dir=asc,desc
@@ -49,6 +62,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     ])
 
     return { items: data, total: countResult[0]?.count ?? 0, limit, offset }
+{{/if}}
   })
 {{/if}}
 {{#if (includes operations "create")}}
@@ -61,7 +75,18 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
   })
 {{/if}}
   .get('/:id', async ({ params: { id } }) => {
+{{#if hasRelations}}
+    const item = await db.query.{{camelCase entity}}s.findFirst({
+      where: (t, { eq }) => eq(t.id, Number(id)),
+      with: {
+{{#each withRelations}}
+        {{camelCase name}}: true,
+{{/each}}
+      },
+    })
+{{else}}
     const [item] = await db.select().from({{camelCase entity}}s).where(eq({{camelCase entity}}s.id, Number(id))).limit(1)
+{{/if}}
     if (!item) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
     return item
   })

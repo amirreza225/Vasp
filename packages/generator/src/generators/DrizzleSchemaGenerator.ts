@@ -1,26 +1,108 @@
+import { toCamelCase } from '../template/TemplateEngine.js'
 import { BaseGenerator } from './BaseGenerator.js'
 
 export class DrizzleSchemaGenerator extends BaseGenerator {
   run(): void {
     this.ctx.logger.info('Generating Drizzle schema...')
 
-    // Build a map from entity name → fields for the template
-    const entityMap = new Map(
-      this.ctx.ast.entities.map((e) => [e.name, e.fields]),
-    )
-
-    // Enrich each crud entry with field definitions from entity blocks.
-    // Filter out createdAt/updatedAt — the schema template always appends them.
+    const { ast } = this.ctx
+    // Reserved auto-managed timestamp fields — appended by template
     const reservedFields = new Set(['createdAt', 'updatedAt'])
-    const crudsWithFields = this.ctx.ast.cruds.map((crud) => ({
+
+    // Build a set of all entity names for relation resolution
+    const entityNames = new Set(ast.entities.map((e) => e.name))
+
+    // Build per-entity schema data: scalar columns + FK stubs + relation metadata
+    const entitiesWithSchema = ast.entities.map((entity) => {
+      // Scalar columns: primitive fields (not virtual array relations)
+      const scalarFields = entity.fields
+        .filter((f) => !reservedFields.has(f.name) && !(f.isRelation && f.isArray))
+        .map((f) => {
+          if (!f.isRelation) {
+            // Primitive column — pass through as-is
+            return {
+              name: f.name,
+              type: f.type,
+              modifiers: f.modifiers,
+              nullable: f.nullable,
+              defaultValue: f.defaultValue,
+              isUpdatedAt: f.isUpdatedAt,
+              isForeignKey: false,
+            }
+          }
+          // Many-to-one relation → FK column ({name}Id)
+          return {
+            name: `${f.name}Id`,
+            type: 'Int',
+            modifiers: [] as string[],
+            nullable: f.nullable,
+            defaultValue: undefined,
+            isUpdatedAt: false,
+            isForeignKey: true,
+            referencedTable: `${toCamelCase(f.relatedEntity!)}s`,
+            onDelete: f.onDelete ?? 'cascade',
+          }
+        })
+
+      // Many-to-one relations (generates `one()` side in Drizzle relations)
+      const manyToOne = entity.fields
+        .filter((f) => f.isRelation && !f.isArray && entityNames.has(f.relatedEntity!))
+        .map((f) => ({
+          name: f.name,
+          relatedEntity: f.relatedEntity!,
+          relatedTable: `${toCamelCase(f.relatedEntity!)}s`,
+          localField: `${toCamelCase(f.name)}Id`,
+          onDelete: f.onDelete ?? 'cascade',
+        }))
+
+      // One-to-many virtual relations (generates `many()` side in Drizzle relations)
+      const oneToMany = entity.fields
+        .filter((f) => f.isRelation && f.isArray && entityNames.has(f.relatedEntity!))
+        .map((f) => ({
+          fieldName: f.name,
+          relatedEntity: f.relatedEntity!,
+          relatedTable: `${toCamelCase(f.relatedEntity!)}s`,
+        }))
+
+      return {
+        name: entity.name,
+        scalarFields,
+        manyToOne,
+        oneToMany,
+        hasRelations: manyToOne.length > 0 || oneToMany.length > 0,
+      }
+    })
+
+    // For crud blocks that reference an entity with no explicit entity block,
+    // generate a minimal stub table (id, createdAt, updatedAt only)
+    const entityNamesWithBlocks = new Set(ast.entities.map((e) => e.name))
+    for (const crud of ast.cruds) {
+      if (!entityNamesWithBlocks.has(crud.entity)) {
+        entitiesWithSchema.push({
+          name: crud.entity,
+          scalarFields: [],
+          manyToOne: [],
+          oneToMany: [],
+          hasRelations: false,
+        })
+      }
+    }
+
+    // Also keep the existing crudsWithFields for backward compat with CRUD generator
+    const entityMap = new Map(ast.entities.map((e) => [e.name, e.fields]))
+    const crudsWithFields = ast.cruds.map((crud) => ({
       ...crud,
-      fields: (entityMap.get(crud.entity) ?? []).filter((f) => !reservedFields.has(f.name)),
+      fields: (entityMap.get(crud.entity) ?? []).filter(
+        (f) => !reservedFields.has(f.name) && !f.isRelation,
+      ),
       hasEntity: entityMap.has(crud.entity),
     }))
 
+    const hasAnyRelations = entitiesWithSchema.some((e) => e.hasRelations)
+
     this.write(
       `drizzle/schema.${this.ctx.ext}`,
-      this.render('shared/drizzle/schema.hbs', { crudsWithFields }),
+      this.render('shared/drizzle/schema.hbs', { entitiesWithSchema, crudsWithFields, hasAnyRelations }),
     )
 
     // Drizzle Kit config for migrations

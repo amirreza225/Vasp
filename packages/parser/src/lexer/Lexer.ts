@@ -162,16 +162,32 @@ export class Lexer {
         break
       }
     }
-    // Handle @default(now) or @default(someValue)
+    // Handle modifiers with parenthetical args: @default(now), @default("val"), @onDelete(cascade)
     let modifier = name
-    if (name === 'default' && this.peek() === '(') {
+    if ((name === 'default' || name === 'onDelete') && this.peek() === '(') {
       this.advance() // (
       let arg = ''
       while (this.pos < this.source.length && this.peek() !== ')') {
-        arg += this.advance()
+        // Skip surrounding quotes for string args like @default("value")
+        const c = this.peek()
+        if (c === '"' || c === "'") {
+          this.advance() // opening quote
+          while (this.pos < this.source.length && this.peek() !== c && this.peek() !== ')') {
+            arg += this.advance()
+          }
+          if (this.peek() === c) this.advance() // closing quote
+        } else {
+          arg += this.advance()
+        }
       }
       if (this.peek() === ')') this.advance() // )
-      modifier = arg.trim() === 'now' ? 'default_now' : `default_${arg.trim()}`
+      const argTrimmed = arg.trim()
+      if (name === 'default') {
+        modifier = argTrimmed === 'now' ? 'default_now' : `default_${argTrimmed}`
+      } else {
+        // onDelete: cascade | restrict | setNull
+        modifier = `onDelete_${argTrimmed}`
+      }
     }
     this.tokens.push({ type: TokenType.AT_MODIFIER, value: modifier, loc })
   }

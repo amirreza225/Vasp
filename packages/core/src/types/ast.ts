@@ -42,13 +42,35 @@ export type RealtimeEvent = 'created' | 'updated' | 'deleted'
 
 // ------ Entity / Schema ------
 
-export type FieldType = 'String' | 'Int' | 'Boolean' | 'DateTime' | 'Float'
-export type FieldModifier = 'id' | 'unique' | 'default_now'
+/** Scalar/primitive field types supported by Vasp */
+export type PrimitiveFieldType = 'String' | 'Int' | 'Boolean' | 'DateTime' | 'Float' | 'Text' | 'Json'
+
+/** Kept for backward compatibility — alias for PrimitiveFieldType */
+export type FieldType = PrimitiveFieldType
+
+export type FieldModifier = 'id' | 'unique' | 'default_now' | 'nullable' | 'updatedAt'
+
+export type OnDeleteBehavior = 'cascade' | 'restrict' | 'setNull'
 
 export interface FieldNode {
   name: string
-  type: FieldType
+  /** Primitive type name (e.g. 'String') or entity name for relations (e.g. 'User') */
+  type: string
   modifiers: FieldModifier[]
+  /** True when `type` is an entity name, not a primitive */
+  isRelation: boolean
+  /** Entity name when isRelation=true */
+  relatedEntity?: string
+  /** True for Recipe[] — virtual one-to-many side, no DB column emitted */
+  isArray: boolean
+  /** True when @nullable modifier is present (column allows NULL) */
+  nullable: boolean
+  /** Value from @default("val") or @default(now) → 'now' */
+  defaultValue?: string
+  /** Cascade behavior from @onDelete(cascade|restrict|setNull) */
+  onDelete?: OnDeleteBehavior
+  /** True when @updatedAt modifier is present */
+  isUpdatedAt: boolean
 }
 
 // ------ Job Executors ------

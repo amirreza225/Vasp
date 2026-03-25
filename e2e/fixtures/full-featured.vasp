@@ -12,11 +12,22 @@ auth User {
   methods: [ usernameAndPassword, google, github ]
 }
 
+entity User {
+  id: Int @id
+  username: String @unique
+  email: String @unique
+  todos: Todo[]
+}
+
 entity Todo {
   id: Int @id
   title: String
   done: Boolean
+  content: Text @nullable
+  metadata: Json @nullable
+  author: User @onDelete(cascade)
   createdAt: DateTime @default(now)
+  updatedAt: DateTime @updatedAt
 }
 
 route HomeRoute {

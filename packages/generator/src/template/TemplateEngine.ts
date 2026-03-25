@@ -96,20 +96,42 @@ export class TemplateEngine {
     })
 
     /** drizzleColumn: maps a FieldType + modifiers to a Drizzle column call string */
-    this.hbs.registerHelper('drizzleColumn', (fieldName: string, fieldType: string, modifiers: string[]) => {
+    this.hbs.registerHelper('drizzleColumn', (
+      fieldName: string,
+      fieldType: string,
+      modifiers: string[],
+      nullable?: boolean,
+      defaultValue?: string,
+      isUpdatedAt?: boolean,
+    ) => {
       const typeMap: Record<string, string> = {
         String: 'text',
+        Text: 'text',
         Int: 'integer',
         Boolean: 'boolean',
         DateTime: 'timestamp',
         Float: 'doublePrecision',
+        Json: 'jsonb',
       }
       const drizzleFn = typeMap[fieldType] ?? 'text'
       let col = `${drizzleFn}('${toCamelCase(fieldName)}')`
       if (Array.isArray(modifiers)) {
-        if (modifiers.includes('id')) col += '.primaryKey()'
-        if (modifiers.includes('unique')) col += '.unique()'
-        if (modifiers.includes('default_now')) col += '.defaultNow()'
+        if (modifiers.includes('id')) {
+          col += '.primaryKey()'
+        } else {
+          // Non-PK columns: notNull by default unless @nullable
+          if (!nullable && !modifiers.includes('nullable')) col += '.notNull()'
+          if (modifiers.includes('unique')) col += '.unique()'
+          if (modifiers.includes('default_now') || defaultValue === 'now') {
+            col += '.defaultNow()'
+          } else if (defaultValue !== undefined && defaultValue !== 'now') {
+            const isString = fieldType === 'String' || fieldType === 'Text'
+            col += isString ? `.default('${defaultValue}')` : `.default(${defaultValue})`
+          }
+          if (isUpdatedAt || modifiers.includes('updatedAt')) {
+            col += '.$onUpdate(() => new Date())'
+          }
+        }
       }
       return col
     })

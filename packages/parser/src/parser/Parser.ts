@@ -8,9 +8,9 @@ import type {
   EntityNode,
   FieldModifier,
   FieldNode,
-  FieldType,
   ImportExpression,
   JobNode,
+  OnDeleteBehavior,
   PageNode,
   QueryNode,
   RealtimeEvent,
@@ -188,30 +188,73 @@ class Parser {
     const name = this.consumeIdentifier()
     this.consume(TokenType.LBRACE)
 
+    // Primitive types recognized by the parser — entity names accepted for relations
+    const primitiveTypes = new Set(['String', 'Int', 'Boolean', 'DateTime', 'Float', 'Text', 'Json'])
+
     const fields: FieldNode[] = []
-    const validTypes: FieldType[] = ['String', 'Int', 'Boolean', 'DateTime', 'Float']
 
     while (!this.check(TokenType.RBRACE)) {
       const fieldName = this.consumeIdentifier()
       this.consume(TokenType.COLON)
       const fieldTypeToken = this.consumeIdentifier()
+      const fieldTypeStr = fieldTypeToken.value
 
-      if (!validTypes.includes(fieldTypeToken.value as FieldType)) {
-        throw this.error(
-          'E026_INVALID_FIELD_TYPE',
-          `Invalid field type '${fieldTypeToken.value}' in entity '${name.value}'`,
-          `Valid types: ${validTypes.join(', ')}`,
-          fieldTypeToken.loc,
-        )
+      // Detect [] suffix — marks this as an array relation (virtual, no column)
+      let isArray = false
+      if (this.check(TokenType.LBRACKET)) {
+        this.consume(TokenType.LBRACKET)
+        this.consume(TokenType.RBRACKET)
+        isArray = true
       }
 
+      const isRelation = !primitiveTypes.has(fieldTypeStr)
+
+      // Parse modifiers (@id, @unique, @default(...), @nullable, @updatedAt, @onDelete(...))
       const modifiers: FieldModifier[] = []
+      let nullable = false
+      let defaultValue: string | undefined
+      let onDelete: OnDeleteBehavior | undefined
+      let isUpdatedAt = false
+
       while (this.check(TokenType.AT_MODIFIER)) {
         const mod = this.consume(TokenType.AT_MODIFIER)
-        modifiers.push(mod.value as FieldModifier)
+        const modVal = mod.value
+
+        if (modVal === 'id') {
+          modifiers.push('id')
+        } else if (modVal === 'unique') {
+          modifiers.push('unique')
+        } else if (modVal === 'default_now') {
+          modifiers.push('default_now')
+          defaultValue = 'now'
+        } else if (modVal === 'nullable') {
+          nullable = true
+          modifiers.push('nullable')
+        } else if (modVal === 'updatedAt') {
+          isUpdatedAt = true
+          modifiers.push('updatedAt')
+        } else if (modVal.startsWith('default_')) {
+          defaultValue = modVal.slice('default_'.length)
+        } else if (modVal.startsWith('onDelete_')) {
+          onDelete = modVal.slice('onDelete_'.length) as OnDeleteBehavior
+        }
+        // Unknown modifiers are silently ignored (forward-compat)
       }
 
-      fields.push({ name: fieldName.value, type: fieldTypeToken.value as FieldType, modifiers })
+      const field: FieldNode = {
+        name: fieldName.value,
+        type: fieldTypeStr,
+        modifiers,
+        isRelation,
+        isArray,
+        nullable,
+        isUpdatedAt,
+      }
+      if (isRelation) field.relatedEntity = fieldTypeStr
+      if (defaultValue !== undefined) field.defaultValue = defaultValue
+      if (onDelete !== undefined) field.onDelete = onDelete
+
+      fields.push(field)
     }
 
     this.consume(TokenType.RBRACE)

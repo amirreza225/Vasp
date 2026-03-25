@@ -50,6 +50,71 @@ describe('TemplateEngine helpers', () => {
   })
 })
 
+describe('TemplateEngine — drizzleColumn helper (Phase 2)', () => {
+  const engine = new TemplateEngine()
+  const render = (name: string, type: string, modifiers: string[], nullable?: boolean, defaultValue?: string, isUpdatedAt?: boolean) =>
+    engine.renderString('{{{drizzleColumn name type modifiers nullable defaultValue isUpdatedAt}}}', { name, type, modifiers, nullable, defaultValue, isUpdatedAt })
+
+  it('maps String to text()', () => {
+    expect(render('title', 'String', [])).toContain('text(')
+  })
+
+  it('maps Text to text()', () => {
+    expect(render('body', 'Text', [])).toContain('text(')
+  })
+
+  it('maps Json to jsonb()', () => {
+    expect(render('meta', 'Json', [])).toContain('jsonb(')
+  })
+
+  it('maps Int to integer()', () => {
+    expect(render('count', 'Int', ['id'])).toContain('integer(')
+  })
+
+  it('maps DateTime to timestamp()', () => {
+    expect(render('createdAt', 'DateTime', [])).toContain('timestamp(')
+  })
+
+  it('maps Float to doublePrecision()', () => {
+    expect(render('price', 'Float', [])).toContain('doublePrecision(')
+  })
+
+  it('adds .primaryKey() when modifiers include "id"', () => {
+    expect(render('id', 'Int', ['id'])).toContain('.primaryKey()')
+  })
+
+  it('adds .notNull() for non-PK by default', () => {
+    const col = render('title', 'String', [])
+    expect(col).toContain('.notNull()')
+    expect(col).not.toContain('.primaryKey()')
+  })
+
+  it('omits .notNull() when nullable=true', () => {
+    const col = render('body', 'Text', [], true)
+    expect(col).not.toContain('.notNull()')
+  })
+
+  it('omits .notNull() when modifiers include "nullable"', () => {
+    const col = render('body', 'Text', ['nullable'])
+    expect(col).not.toContain('.notNull()')
+  })
+
+  it('adds .defaultNow() for @default(now)', () => {
+    const col = render('createdAt', 'DateTime', ['default_now'], false, 'now')
+    expect(col).toContain('.defaultNow()')
+  })
+
+  it('adds .default() with quoted value for string type', () => {
+    const col = render('status', 'String', [], false, 'draft')
+    expect(col).toContain(".default('draft')")
+  })
+
+  it('adds .$onUpdate() when isUpdatedAt=true', () => {
+    const col = render('updatedAt', 'DateTime', [], false, undefined, true)
+    expect(col).toContain('.$onUpdate(() => new Date())')
+  })
+})
+
 describe('String transform utils', () => {
   it('toCamelCase', () => {
     expect(toCamelCase('hello-world')).toBe('helloWorld')

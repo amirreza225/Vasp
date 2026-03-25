@@ -504,4 +504,96 @@ describe('generate()', () => {
     expect(middleware).toContain('defineNuxtRouteMiddleware')
     expect(middleware).toContain("navigateTo('/login')")
   })
+
+  // ── Phase 2: Entity Relationships & Rich Schema ─────────────────────────
+
+  it('schema: generates FK column + Drizzle relations block for many-to-one relation', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity User { id: Int @id username: String todos: Todo[] }
+      entity Todo { id: Int @id title: String author: User @onDelete(cascade) }
+
+      crud Todo { entity: Todo operations: [list, create, update, delete] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'schema-relations')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const schema = readFileSync(join(outputDir, 'drizzle/schema.js'), 'utf8')
+    // FK column for many-to-one
+    expect(schema).toContain('authorId')
+    expect(schema).toContain("references(() => users.id")
+    expect(schema).toContain("onDelete: 'cascade'")
+    // Drizzle relations blocks
+    expect(schema).toContain('todosRelations')
+    expect(schema).toContain('usersRelations')
+    expect(schema).toContain('relations(')
+    // Both entity tables generated
+    expect(schema).toContain('todos =')
+    expect(schema).toContain('users =')
+  })
+
+  it('schema: generates Text as text() and Json as jsonb() columns', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity Post { id: Int @id body: Text @nullable metadata: Json @nullable }
+      crud Post { entity: Post operations: [list, create] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'schema-types')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const schema = readFileSync(join(outputDir, 'drizzle/schema.js'), 'utf8')
+    expect(schema).toContain("text('body')")
+    expect(schema).toContain("jsonb('metadata')")
+    // @nullable means no .notNull()
+    expect(schema).not.toMatch(/text\('body'\)\.notNull\(\)/)
+    expect(schema).not.toMatch(/jsonb\('metadata'\)\.notNull\(\)/)
+  })
+
+  it('schema: generates @updatedAt column with .$onUpdate()', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity Post { id: Int @id lastModified: DateTime @updatedAt }
+      crud Post { entity: Post operations: [list] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'schema-updatedat')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const schema = readFileSync(join(outputDir, 'drizzle/schema.js'), 'utf8')
+    expect(schema).toContain('$onUpdate(() => new Date())')
+  })
+
+  it('crud: uses db.query with `with` for entities that have relations', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity User { id: Int @id username: String }
+      entity Todo { id: Int @id title: String author: User }
+
+      crud Todo { entity: Todo operations: [list, create, update, delete] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'crud-with-relations')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const route = readFileSync(join(outputDir, 'server/routes/crud/todo.js'), 'utf8')
+    // Should use db.query relational API
+    expect(route).toContain('db.query')
+    expect(route).toContain('findMany')
+    expect(route).toContain('findFirst')
+    expect(route).toContain('author: true')
+  })
 })

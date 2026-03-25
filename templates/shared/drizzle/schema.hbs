@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, boolean, timestamp, doublePrecision } from 'drizzle-orm/pg-core'
+import { pgTable, serial, text, integer, boolean, timestamp, doublePrecision, jsonb{{#if hasAnyRelations}}, relations{{/if}} } from 'drizzle-orm/pg-core'
 {{#if isTypeScript}}
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
 {{/if}}
@@ -21,28 +21,35 @@ export type NewUser = InferInsertModel<typeof users>
 {{/if}}
 
 {{/if}}
-{{#each crudsWithFields}}
-{{#if hasEntity}}
-// {{entity}} table — generated from entity block
-export const {{camelCase entity}}s = pgTable('{{camelCase entity}}s', {
-{{#each fields}}
-  {{camelCase name}}: {{{drizzleColumn name type modifiers}}},
+{{#each entitiesWithSchema}}
+// {{name}} table — generated from entity block
+export const {{camelCase name}}s = pgTable('{{camelCase name}}s', {
+{{#each scalarFields}}
+{{#if isForeignKey}}
+  {{camelCase name}}: integer('{{camelCase name}}').notNull().references(() => {{referencedTable}}.id, { onDelete: '{{onDelete}}' }),
+{{else}}
+  {{camelCase name}}: {{{drizzleColumn name type modifiers nullable defaultValue isUpdatedAt}}},
+{{/if}}
 {{/each}}
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
-{{else}}
-// {{entity}} table — no entity block found, add your columns below
-export const {{camelCase entity}}s = pgTable('{{camelCase entity}}s', {
-  id: serial('id').primaryKey(),
-  // TODO: Add your {{entity}} columns here
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
-{{/if}}
 {{#if ../isTypeScript}}
-export type {{pascalCase entity}} = InferSelectModel<typeof {{camelCase entity}}s>
-export type New{{pascalCase entity}} = InferInsertModel<typeof {{camelCase entity}}s>
+export type {{pascalCase name}} = InferSelectModel<typeof {{camelCase name}}s>
+export type New{{pascalCase name}} = InferInsertModel<typeof {{camelCase name}}s>
 {{/if}}
 
+{{/each}}
+{{#each entitiesWithSchema}}
+{{#if hasRelations}}
+export const {{camelCase name}}sRelations = relations({{camelCase name}}s, ({ one, many }) => ({
+{{#each manyToOne}}
+  {{camelCase name}}: one({{relatedTable}}, { fields: [{{camelCase ../name}}s.{{camelCase localField}}], references: [{{relatedTable}}.id] }),
+{{/each}}
+{{#each oneToMany}}
+  {{camelCase fieldName}}: many({{relatedTable}}),
+{{/each}}
+}))
+
+{{/if}}
 {{/each}}
