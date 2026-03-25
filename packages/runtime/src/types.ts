@@ -46,6 +46,8 @@ export class VaspApiError extends Error {
     this.name = 'VaspApiError'
     this.code = apiError.code
     this.statusCode = statusCode
-    this.hint = apiError.hint
+    if (apiError.hint !== undefined) {
+      this.hint = apiError.hint
+    }
   }
 }
