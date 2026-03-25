@@ -154,6 +154,39 @@ describe('TemplateEngine — tsFieldType helper (Phase 3)', () => {
   })
 })
 
+describe('TemplateEngine — valibotSchema helper (Phase 4)', () => {
+  const engine = new TemplateEngine()
+  const render = (type: string, nullable?: boolean, optional?: boolean | string) =>
+    engine.renderString('{{{valibotSchema type nullable optional}}}', { type, nullable, optional })
+
+  it('maps String/Text to required non-empty string', () => {
+    expect(render('String')).toBe('v.pipe(v.string(), v.minLength(1))')
+    expect(render('Text')).toBe('v.pipe(v.string(), v.minLength(1))')
+  })
+
+  it('maps numeric types to number', () => {
+    expect(render('Int')).toBe('v.number()')
+    expect(render('Float')).toBe('v.number()')
+  })
+
+  it('maps DateTime to string and Json to unknown', () => {
+    expect(render('DateTime')).toBe('v.string()')
+    expect(render('Json')).toBe('v.unknown()')
+  })
+
+  it('wraps nullable fields with v.nullable', () => {
+    expect(render('String', true)).toBe('v.nullable(v.pipe(v.string(), v.minLength(1)))')
+  })
+
+  it('wraps optional fields with v.optional', () => {
+    expect(render('Int', false, true)).toBe('v.optional(v.number())')
+  })
+
+  it('wraps nullable + optional fields with both wrappers', () => {
+    expect(render('Boolean', true, true)).toBe('v.optional(v.nullable(v.boolean()))')
+  })
+})
+
 describe('String transform utils', () => {
   it('toCamelCase', () => {
     expect(toCamelCase('hello-world')).toBe('helloWorld')

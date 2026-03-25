@@ -1,5 +1,6 @@
 import { ref, type Ref } from 'vue'
 import { $fetch } from 'ofetch'
+import { notifyError } from './useVaspNotifications.js'
 
 export interface AuthUser {
   id: number
@@ -26,27 +27,42 @@ export function useAuth() {
   }
 
   async function login(username: string, password: string): Promise<AuthUser> {
-    user.value = await $fetch<AuthUser>(`${API}/auth/login`, {
-      method: 'POST',
-      body: { username, password },
-      credentials: 'include',
-    })
-    return user.value!
+    try {
+      user.value = await $fetch<AuthUser>(`${API}/auth/login`, {
+        method: 'POST',
+        body: { username, password },
+        credentials: 'include',
+      })
+      return user.value!
+    } catch (error) {
+      notifyError(error)
+      throw error
+    }
   }
 
   async function register(username: string, password: string, email?: string): Promise<AuthUser> {
-    user.value = await $fetch<AuthUser>(`${API}/auth/register`, {
-      method: 'POST',
-      body: { username, password, email },
-      credentials: 'include',
-    })
-    return user.value!
+    try {
+      user.value = await $fetch<AuthUser>(`${API}/auth/register`, {
+        method: 'POST',
+        body: { username, password, email },
+        credentials: 'include',
+      })
+      return user.value!
+    } catch (error) {
+      notifyError(error)
+      throw error
+    }
   }
 
   async function logout(): Promise<void> {
-    await $fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' })
-    user.value = null
-    checked = false
+    try {
+      await $fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' })
+      user.value = null
+      checked = false
+    } catch (error) {
+      notifyError(error)
+      throw error
+    }
   }
 
   return { user, checkAuth, login, register, logout }

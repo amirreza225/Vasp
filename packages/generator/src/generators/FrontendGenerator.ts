@@ -28,6 +28,18 @@ export class FrontendGenerator extends BaseGenerator {
     // Vue app entry
     this.write(`src/main.${ext}`, this.render(`spa/${ext}/src/main.${ext}.hbs`))
     this.write(`src/App.vue`, this.render(`spa/${ext}/src/App.vue.hbs`))
+    this.write(
+      `src/components/VaspErrorBoundary.vue`,
+      this.render(`spa/${ext}/src/components/VaspErrorBoundary.vue.hbs`),
+    )
+    this.write(
+      `src/components/VaspNotifications.vue`,
+      this.render(`spa/${ext}/src/components/VaspNotifications.vue.hbs`),
+    )
+    this.write(
+      `src/vasp/useVaspNotifications.${ext}`,
+      this.render(`spa/${ext}/src/vasp/useVaspNotifications.${ext}.hbs`),
+    )
 
     // Router — build page component source map
     const pagesMap = this.buildPagesMap()
@@ -78,6 +90,7 @@ export class FrontendGenerator extends BaseGenerator {
 
     // Root app component
     this.write(`app.vue`, this.render(`ssr/${ext}/app.vue.hbs`))
+    this.write(`error.vue`, this.render(`ssr/${ext}/error.vue.hbs`))
 
     // Dual-transport plugins
     this.write(`plugins/vasp.server.${ext}`, this.render(`ssr/${ext}/plugins/vasp.server.${ext}.hbs`))

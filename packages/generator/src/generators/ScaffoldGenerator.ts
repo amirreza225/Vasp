@@ -21,6 +21,10 @@ export class ScaffoldGenerator extends BaseGenerator {
       'server/middleware',
       'server/db',
       'tests',
+      'tests/crud',
+      'tests/auth',
+      'tests/queries',
+      'tests/actions',
       ...(this.ctx.isSpa
         ? ['src/vasp/client']
         : ['composables', 'plugins', 'pages', 'middleware']),
@@ -72,6 +76,45 @@ export class ScaffoldGenerator extends BaseGenerator {
       this.write('shared/types.ts', this.render('shared/shared/types.hbs', {
         entities: this.ctx.ast.entities,
       }))
+    }
+
+    // shared/validation — Valibot schemas derived from entities
+    if (this.ctx.ast.entities.length > 0) {
+      this.write(`shared/validation.${this.ctx.ext}`, this.render('shared/shared/validation.hbs', {
+        entities: this.ctx.ast.entities,
+      }))
+    }
+
+    // Test scaffold
+    this.write(`vitest.config.${this.ctx.ext}`, this.render(`shared/tests/vitest.config.${this.ctx.ext}.hbs`))
+    this.write(`tests/setup.${this.ctx.ext}`, this.render(`shared/tests/setup.${this.ctx.ext}.hbs`))
+
+    for (const crud of this.ctx.ast.cruds) {
+      this.write(
+        `tests/crud/${crud.entity.toLowerCase()}.test.${this.ctx.ext}`,
+        this.render(`shared/tests/crud/_entity.test.${this.ctx.ext}.hbs`, { entity: crud.entity }),
+      )
+    }
+
+    for (const query of this.ctx.ast.queries) {
+      this.write(
+        `tests/queries/${query.name}.test.${this.ctx.ext}`,
+        this.render(`shared/tests/queries/_query.test.${this.ctx.ext}.hbs`, { name: query.name }),
+      )
+    }
+
+    for (const action of this.ctx.ast.actions) {
+      this.write(
+        `tests/actions/${action.name}.test.${this.ctx.ext}`,
+        this.render(`shared/tests/actions/_action.test.${this.ctx.ext}.hbs`, { name: action.name }),
+      )
+    }
+
+    if (this.ctx.ast.auth) {
+      this.write(
+        `tests/auth/login.test.${this.ctx.ext}`,
+        this.render(`shared/tests/auth/login.test.${this.ctx.ext}.hbs`),
+      )
     }
 
     // main.vasp (copy the source)

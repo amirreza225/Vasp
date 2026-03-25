@@ -109,6 +109,30 @@ export class TemplateEngine {
       return tsMap[fieldType] ?? fieldType
     })
 
+    /** valibotSchema: maps a Vasp field type + nullability to a Valibot schema expression */
+    this.hbs.registerHelper('valibotSchema', (fieldType: string, nullable?: boolean, optional?: unknown) => {
+      const baseMap: Record<string, string> = {
+        String: 'v.pipe(v.string(), v.minLength(1))',
+        Text: 'v.pipe(v.string(), v.minLength(1))',
+        Int: 'v.number()',
+        Float: 'v.number()',
+        Boolean: 'v.boolean()',
+        DateTime: 'v.string()',
+        Json: 'v.unknown()',
+      }
+
+      const isOptional = optional === true || optional === 'true'
+      const base = baseMap[fieldType] ?? 'v.unknown()'
+
+      if (nullable) {
+        return isOptional
+          ? `v.optional(v.nullable(${base}))`
+          : `v.nullable(${base})`
+      }
+
+      return isOptional ? `v.optional(${base})` : base
+    })
+
     /** drizzleColumn: maps a FieldType + modifiers to a Drizzle column call string */
     this.hbs.registerHelper('drizzleColumn', (
       fieldName: string,

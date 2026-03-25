@@ -839,4 +839,141 @@ describe('generate()', () => {
 
     expect(existsSync(join(outputDir, 'shared/types.ts'))).toBe(false)
   })
+
+  // ── Phase 4: Validation, Error UX & Testing ───────────────────────────
+
+  it('generates shared validation schemas from entities', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity Todo { id: Int @id title: String done: Boolean metadata: Json @nullable }
+      crud Todo { entity: Todo operations: [list, create, update, delete] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'phase4-validation-shared')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'shared/validation.ts'))).toBe(true)
+    const validation = readFileSync(join(outputDir, 'shared/validation.ts'), 'utf8')
+    expect(validation).toContain('CreateTodoSchema')
+    expect(validation).toContain('UpdateTodoSchema')
+    expect(validation).toContain('v.object')
+    expect(validation).toContain('v.partial(CreateTodoSchema)')
+  })
+
+  it('CRUD routes validate create/update payloads with Valibot', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list, create, update] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'phase4-crud-validation')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const route = readFileSync(join(outputDir, 'server/routes/crud/todo.js'), 'utf8')
+    expect(route).toContain('safeParse')
+    expect(route).toContain('CreateTodoSchema')
+    expect(route).toContain('UpdateTodoSchema')
+    expect(route).toContain('VALIDATION_FAILED')
+  })
+
+  it('package.json includes Valibot and vitest setup', () => {
+    const ast = parse(MINIMAL_VASP)
+    const outputDir = join(TMP_DIR, 'phase4-package')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const pkg = JSON.parse(readFileSync(join(outputDir, 'package.json'), 'utf8'))
+    expect(pkg.scripts.test).toBe('vitest run')
+    expect(pkg.dependencies).toHaveProperty('@elysiajs/valibot')
+    expect(pkg.dependencies).toHaveProperty('valibot')
+    expect(pkg.devDependencies).toHaveProperty('vitest')
+  })
+
+  it('SPA generates error boundary and notifications components', () => {
+    const ast = parse(MINIMAL_VASP)
+    const outputDir = join(TMP_DIR, 'phase4-spa-ux')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'src/components/VaspErrorBoundary.vue'))).toBe(true)
+    expect(existsSync(join(outputDir, 'src/components/VaspNotifications.vue'))).toBe(true)
+    expect(existsSync(join(outputDir, 'src/vasp/useVaspNotifications.js'))).toBe(true)
+
+    const appVue = readFileSync(join(outputDir, 'src/App.vue'), 'utf8')
+    expect(appVue).toContain('VaspErrorBoundary')
+    expect(appVue).toContain('VaspNotifications')
+  })
+
+  it('SSR generates Nuxt error page', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: true typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'phase4-ssr-error')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'error.vue'))).toBe(true)
+    const errorPage = readFileSync(join(outputDir, 'error.vue'), 'utf8')
+    expect(errorPage).toContain('Page not found')
+    expect(errorPage).toContain('Authentication required')
+  })
+
+  it('SPA client helpers wire auto-toast and loading states', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      auth U { userEntity: User methods: [usernameAndPassword] }
+      entity User { id: Int @id username: String }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list, create, update, delete] }
+      action createTodo { fn: import { createTodo } from "@src/actions.ts" entities: [Todo] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'phase4-spa-client')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const crud = readFileSync(join(outputDir, 'src/vasp/client/crud.ts'), 'utf8')
+    expect(crud).toContain('loading = ref(false)')
+    expect(crud).toContain('error = ref<string | null>(null)')
+    expect(crud).toContain('notifyError')
+    expect(crud).toContain('safeParse')
+
+    const actions = readFileSync(join(outputDir, 'src/vasp/client/actions.ts'), 'utf8')
+    expect(actions).toContain('notifyError')
+
+    const auth = readFileSync(join(outputDir, 'src/vasp/auth.ts'), 'utf8')
+    expect(auth).toContain('notifyError')
+  })
+
+  it('generates test scaffolds and Vitest config', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      auth U { userEntity: User methods: [usernameAndPassword] }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list, create] }
+      query getTodos { fn: import { getTodos } from "@src/queries.js" entities: [Todo] }
+      action createTodo { fn: import { createTodo } from "@src/actions.js" entities: [Todo] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'phase4-test-scaffold')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'vitest.config.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'tests/setup.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'tests/crud/todo.test.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'tests/queries/getTodos.test.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'tests/actions/createTodo.test.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'tests/auth/login.test.js'))).toBe(true)
+  })
 })

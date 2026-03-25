@@ -1,5 +1,6 @@
 import { ref } from 'vue'
 import { $fetch } from 'ofetch'
+import { notifyError } from './useVaspNotifications.js'
 
 const user = ref(null)
 let checked = false
@@ -18,27 +19,42 @@ export function useAuth() {
   }
 
   async function login(username, password) {
-    user.value = await $fetch(`${API}/auth/login`, {
-      method: 'POST',
-      body: { username, password },
-      credentials: 'include',
-    })
-    return user.value
+    try {
+      user.value = await $fetch(`${API}/auth/login`, {
+        method: 'POST',
+        body: { username, password },
+        credentials: 'include',
+      })
+      return user.value
+    } catch (error) {
+      notifyError(error)
+      throw error
+    }
   }
 
   async function register(username, password, email) {
-    user.value = await $fetch(`${API}/auth/register`, {
-      method: 'POST',
-      body: { username, password, email },
-      credentials: 'include',
-    })
-    return user.value
+    try {
+      user.value = await $fetch(`${API}/auth/register`, {
+        method: 'POST',
+        body: { username, password, email },
+        credentials: 'include',
+      })
+      return user.value
+    } catch (error) {
+      notifyError(error)
+      throw error
+    }
   }
 
   async function logout() {
-    await $fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' })
-    user.value = null
-    checked = false
+    try {
+      await $fetch(`${API}/auth/logout`, { method: 'POST', credentials: 'include' })
+      user.value = null
+      checked = false
+    } catch (error) {
+      notifyError(error)
+      throw error
+    }
   }
 
   return { user, checkAuth, login, register, logout }

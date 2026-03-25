@@ -1,7 +1,9 @@
 import { Elysia, t } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
+import { safeParse } from 'valibot'
 import { eq, sql, asc, desc, and } from 'drizzle-orm'
 import { {{camelCase entity}}s } from '../../../drizzle/schema.{{ext}}'
+import { Create{{pascalCase entity}}Schema, Update{{pascalCase entity}}Schema } from '../../../shared/validation.{{ext}}'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 {{#if hasAuth}}
 import { requireAuth } from '../../auth/middleware.{{ext}}'
@@ -67,7 +69,17 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{/if}}
 {{#if (includes operations "create")}}
   .post('/', async ({ body }) => {
-    const [created] = await db.insert({{camelCase entity}}s).values(body).returning()
+    const parsed = safeParse(Create{{pascalCase entity}}Schema, body)
+    if (!parsed.success) {
+      const firstIssue = parsed.issues?.[0]
+      throw new VaspError(
+        'VALIDATION_FAILED',
+        firstIssue?.message ?? 'Invalid request payload',
+        400,
+      )
+    }
+
+    const [created] = await db.insert({{camelCase entity}}s).values(parsed.output).returning()
 {{#if hasRealtime}}
     publish{{pascalCase entity}}('created', created)
 {{/if}}
@@ -92,7 +104,17 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
   })
 {{#if (includes operations "update")}}
   .put('/:id', async ({ params: { id }, body }) => {
-    const [updated] = await db.update({{camelCase entity}}s).set(body).where(eq({{camelCase entity}}s.id, Number(id))).returning()
+    const parsed = safeParse(Update{{pascalCase entity}}Schema, body)
+    if (!parsed.success) {
+      const firstIssue = parsed.issues?.[0]
+      throw new VaspError(
+        'VALIDATION_FAILED',
+        firstIssue?.message ?? 'Invalid request payload',
+        400,
+      )
+    }
+
+    const [updated] = await db.update({{camelCase entity}}s).set(parsed.output).where(eq({{camelCase entity}}s.id, Number(id))).returning()
     if (!updated) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
 {{#if hasRealtime}}
     publish{{pascalCase entity}}('updated', updated)

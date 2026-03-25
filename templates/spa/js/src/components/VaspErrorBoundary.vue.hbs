@@ -1,0 +1,33 @@
+<script setup>
+import { onErrorCaptured, ref } from 'vue'
+
+const hasError = ref(false)
+const message = ref('Something went wrong')
+
+onErrorCaptured((error) => {
+  hasError.value = true
+  message.value = import.meta.env.DEV && error instanceof Error
+    ? error.message
+    : 'Something went wrong'
+  return false
+})
+</script>
+
+<template>
+  <div v-if="hasError" class="vasp-error-boundary">
+    <h2>Unexpected error</h2>
+    <p>{{ message }}</p>
+  </div>
+  <slot v-else />
+</template>
+
+<style scoped>
+.vasp-error-boundary {
+  margin: 24px;
+  padding: 16px;
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+}
+</style>

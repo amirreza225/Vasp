@@ -1,0 +1,41 @@
+import { ref } from 'vue'
+
+export type VaspNotification = {
+  id: number
+  type: 'error' | 'success' | 'info'
+  message: string
+}
+
+export const notifications = ref<VaspNotification[]>([])
+
+export function pushNotification(type: VaspNotification['type'], message: string, timeoutMs = 3500): number {
+  const id = Date.now() + Math.floor(Math.random() * 1000)
+  notifications.value.push({ id, type, message })
+
+  if (timeoutMs > 0) {
+    setTimeout(() => removeNotification(id), timeoutMs)
+  }
+
+  return id
+}
+
+export function removeNotification(id: number): void {
+  notifications.value = notifications.value.filter((item) => item.id !== id)
+}
+
+export function notifyError(error: unknown): void {
+  if (error instanceof Error && error.message) {
+    pushNotification('error', error.message)
+    return
+  }
+  pushNotification('error', 'Request failed')
+}
+
+export function useVaspNotifications() {
+  return {
+    notifications,
+    pushNotification,
+    removeNotification,
+    notifyError,
+  }
+}
