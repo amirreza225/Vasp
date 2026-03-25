@@ -84,7 +84,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
       const authBuiltinFields = new Set(['id', 'username', 'email', 'createdAt', 'updatedAt'])
       const idx = entitiesWithSchema.findIndex((e) => e.name === authUserEntityName)
       if (idx !== -1) {
-        authUserExtraFields = entitiesWithSchema[idx].scalarFields.filter(
+        authUserExtraFields = entitiesWithSchema[idx]!.scalarFields.filter(
           (f) => !authBuiltinFields.has(f.name),
         )
         entitiesWithSchema.splice(idx, 1)
