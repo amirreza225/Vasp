@@ -19,6 +19,16 @@ import { notifyError } from '../useVaspNotifications.js'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
+/** Unwrap the server's `{ ok, data }` envelope. Throws on `ok: false`. */
+function unwrap<T>(res: unknown): T {
+  if (res && typeof res === 'object' && 'ok' in res) {
+    const env = res as { ok: boolean; data?: T; error?: { message?: string } }
+    if (!env.ok) throw new Error(env.error?.message ?? 'Request failed')
+    return env.data as T
+  }
+  return res as T
+}
+
 {{#each cruds}}
 export function use{{pascalCase entity}}Crud() {
   const base = `${API}/crud/{{camelCase entity}}`
@@ -34,11 +44,11 @@ export function use{{pascalCase entity}}Crud() {
     loading,
     error,
 {{#if (includes operations "list")}}
-    list: async (): Promise<{{pascalCase entity}}[]> => {
+    list: async (): Promise<{ items: {{pascalCase entity}}[]; total: number; limit: number; offset: number }> => {
       loading.value = true
       error.value = null
       try {
-        return await $fetch(base, { credentials: 'include' })
+        return unwrap(await $fetch(base, { credentials: 'include' }))
       } catch (err) {
         fail(err)
         throw err
@@ -60,7 +70,7 @@ export function use{{pascalCase entity}}Crud() {
       loading.value = true
       error.value = null
       try {
-        return await $fetch(base, { method: 'POST', body: parsed.output, credentials: 'include' })
+        return unwrap(await $fetch(base, { method: 'POST', body: parsed.output, credentials: 'include' }))
       } catch (err) {
         fail(err)
         throw err
@@ -73,7 +83,7 @@ export function use{{pascalCase entity}}Crud() {
       loading.value = true
       error.value = null
       try {
-        return await $fetch(`${base}/${id}`, { credentials: 'include' })
+        return unwrap(await $fetch(`${base}/${id}`, { credentials: 'include' }))
       } catch (err) {
         fail(err)
         throw err
@@ -94,7 +104,7 @@ export function use{{pascalCase entity}}Crud() {
       loading.value = true
       error.value = null
       try {
-        return await $fetch(`${base}/${id}`, { method: 'PUT', body: parsed.output, credentials: 'include' })
+        return unwrap(await $fetch(`${base}/${id}`, { method: 'PUT', body: parsed.output, credentials: 'include' }))
       } catch (err) {
         fail(err)
         throw err

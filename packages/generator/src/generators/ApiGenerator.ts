@@ -47,7 +47,7 @@ export class ApiGenerator extends BaseGenerator {
 
     for (const [source, fnNames] of bySource) {
       const relativePath = source.replace('@src/', 'src/')
-      if (existsSync(join(this.ctx.outputDir, relativePath))) continue
+      if (existsSync(join(this.ctx.projectDir, relativePath))) continue
       const content =
         fnNames
           .map(

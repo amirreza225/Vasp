@@ -17,7 +17,7 @@ import { Manifest } from './manifest/Manifest.js'
 import { TemplateEngine } from './template/TemplateEngine.js'
 import { cleanupDir, commitStagedFiles } from './utils/fs.js'
 import { dirname, join } from 'node:path'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, existsSync, rmSync } from 'node:fs'
 
 export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult {
   const logger = createConsoleLogger(opts.logLevel ?? 'info')
@@ -27,6 +27,7 @@ export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult 
   mkdirSync(stagingDir, { recursive: true })
 
   const ctx = createContext(ast, stagingDir, {
+    projectDir: realOutputDir,
     ...(opts.templateDir !== undefined ? { templateDir: opts.templateDir } : {}),
     logger,
   })
@@ -56,6 +57,16 @@ export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult 
     // All generators succeeded — commit staged files to real output dir.
     // .env is preserved if the existing one has non-placeholder values.
     commitStagedFiles(stagingDir, realOutputDir, { preserveEnv: true })
+
+    // Remove stale counterpart router file from the real output dir.
+    // Vite resolves '.js' imports literally, so if both index.js and index.ts
+    // exist, the explicit .js import in main.ts wins and the generated file is ignored.
+    const ext = ast.app.typescript ? 'ts' : 'js'
+    const staleRouterExt = ext === 'ts' ? 'js' : 'ts'
+    const staleRouterPath = join(realOutputDir, `src/router/index.${staleRouterExt}`)
+    if (existsSync(staleRouterPath)) {
+      rmSync(staleRouterPath)
+    }
 
     // Persist manifest to real output dir
     manifest.save(realOutputDir)

@@ -12,6 +12,15 @@ import { notifyError } from '../useVaspNotifications.js'
 
 const API = import.meta.env.VITE_API_URL || '/api'
 
+/** Unwrap the server's `{ ok, data }` envelope. Throws on `ok: false`. */
+function unwrap(res) {
+  if (res && typeof res === 'object' && 'ok' in res) {
+    if (!res.ok) throw new Error(res.error?.message ?? 'Request failed')
+    return res.data
+  }
+  return res
+}
+
 {{#each cruds}}
 /**
  * CRUD helpers for the '{{entity}}' entity.
@@ -34,7 +43,7 @@ export function use{{pascalCase entity}}Crud() {
             loading.value = true
             error.value = null
             try {
-                return await $fetch(base, { credentials: 'include' })
+                return unwrap(await $fetch(base, { credentials: 'include' }))
             } catch (err) {
                 fail(err)
                 throw err
@@ -56,7 +65,7 @@ export function use{{pascalCase entity}}Crud() {
             loading.value = true
             error.value = null
             try {
-                return await $fetch(base, { method: 'POST', body: parsed.output, credentials: 'include' })
+                return unwrap(await $fetch(base, { method: 'POST', body: parsed.output, credentials: 'include' }))
             } catch (err) {
                 fail(err)
                 throw err
@@ -69,7 +78,7 @@ export function use{{pascalCase entity}}Crud() {
             loading.value = true
             error.value = null
             try {
-                return await $fetch(`${base}/${id}`, { credentials: 'include' })
+                return unwrap(await $fetch(`${base}/${id}`, { credentials: 'include' }))
             } catch (err) {
                 fail(err)
                 throw err
@@ -90,7 +99,7 @@ export function use{{pascalCase entity}}Crud() {
             loading.value = true
             error.value = null
             try {
-                return await $fetch(`${base}/${id}`, { method: 'PUT', body: parsed.output, credentials: 'include' })
+                return unwrap(await $fetch(`${base}/${id}`, { method: 'PUT', body: parsed.output, credentials: 'include' }))
             } catch (err) {
                 fail(err)
                 throw err

@@ -27,8 +27,10 @@ export function createConsoleLogger(level: 'silent' | 'info' | 'verbose' = 'info
 
 export interface GeneratorContext {
   ast: VaspAST
-  /** Absolute path to the generated app root */
+  /** Absolute path to the staging directory (generators write here) */
   outputDir: string
+  /** Absolute path to the real project directory (for checking existing user files) */
+  projectDir: string
   /** Absolute path to the templates directory */
   templateDir: string
   isTypeScript: boolean
@@ -44,7 +46,7 @@ export interface GeneratorContext {
 export function createContext(
   ast: VaspAST,
   outputDir: string,
-  opts: { templateDir?: string; logger?: Logger } = {},
+  opts: { projectDir?: string; templateDir?: string; logger?: Logger } = {},
 ): GeneratorContext {
   const isTypeScript = ast.app.typescript
   const isSsr = ast.app.ssr === true
@@ -59,6 +61,7 @@ export function createContext(
   return {
     ast,
     outputDir,
+    projectDir: opts.projectDir ?? outputDir,
     templateDir,
     isTypeScript,
     isSsr,

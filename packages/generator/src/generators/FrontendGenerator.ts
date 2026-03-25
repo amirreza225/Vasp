@@ -72,7 +72,7 @@ export class FrontendGenerator extends BaseGenerator {
       const comp = page.component
       const src = comp.kind === 'default' ? comp.source : comp.source
       const relativePath = src.replace('@src/', 'src/')
-      const fullPath = join(this.ctx.outputDir, relativePath)
+      const fullPath = join(this.ctx.projectDir, relativePath)
       if (!existsSync(fullPath)) {
         const pageName = comp.kind === 'default' ? comp.defaultExport : comp.namedExport
         this.write(relativePath, this.scaffoldVuePage(pageName))
@@ -141,7 +141,7 @@ export class FrontendGenerator extends BaseGenerator {
       const comp = page.component
       const src = comp.kind === 'default' ? comp.source : comp.source
       const relativePath = src.replace('@src/', 'src/')
-      const fullPath = join(this.ctx.outputDir, relativePath)
+      const fullPath = join(this.ctx.projectDir, relativePath)
       if (!existsSync(fullPath)) {
         const pageName = comp.kind === 'default' ? comp.defaultExport : comp.namedExport
         this.write(relativePath, this.scaffoldVuePage(pageName))

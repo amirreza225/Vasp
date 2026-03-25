@@ -30,7 +30,7 @@ export class SeedGenerator extends BaseGenerator {
     if (!source.startsWith('@src/')) return
 
     const relativePath = source.replace('@src/', 'src/')
-    const fullPath = join(this.ctx.outputDir, relativePath)
+    const fullPath = join(this.ctx.projectDir, relativePath)
     if (existsSync(fullPath)) return
 
     const content = this.ctx.isTypeScript

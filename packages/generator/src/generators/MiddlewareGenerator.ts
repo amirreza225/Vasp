@@ -17,7 +17,7 @@ export class MiddlewareGenerator extends BaseGenerator {
       if (!fn.source.startsWith('@src/')) continue
 
       const relativePath = fn.source.replace('@src/', 'src/')
-      if (existsSync(join(this.ctx.outputDir, relativePath))) continue
+      if (existsSync(join(this.ctx.projectDir, relativePath))) continue
 
       const content =
         fn.kind === 'default'

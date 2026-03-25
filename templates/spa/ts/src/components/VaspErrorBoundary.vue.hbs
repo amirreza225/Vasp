@@ -3,20 +3,35 @@ import { onErrorCaptured, ref } from 'vue'
 
 const hasError = ref(false)
 const message = ref('Something went wrong')
+const stack = ref('')
 
 onErrorCaptured((error) => {
   hasError.value = true
-  message.value = import.meta.env.DEV && error instanceof Error
-    ? error.message
-    : 'Something went wrong'
+  if (error instanceof Error) {
+    message.value = error.message
+    stack.value = error.stack ?? ''
+  } else {
+    message.value = String(error)
+    stack.value = ''
+  }
   return false
 })
+
+function dismiss() {
+  hasError.value = false
+  message.value = 'Something went wrong'
+  stack.value = ''
+}
 </script>
 
 <template>
   <div v-if="hasError" class="vasp-error-boundary">
-    <h2>Unexpected error</h2>
-    <p>{{ message }}</p>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <h2 style="margin:0 0 8px">Unexpected error</h2>
+      <button @click="dismiss" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:#991b1b;padding:0 4px" title="Dismiss">&times;</button>
+    </div>
+    <p style="margin:0 0 12px;font-weight:500">{{ message }}</p>
+    <pre v-if="stack" style="font-size:0.75rem;overflow:auto;background:#fff4f4;padding:10px;border-radius:4px;border:1px solid #fca5a5;white-space:pre-wrap;max-height:300px">{{ stack }}</pre>
   </div>
   <slot v-else />
 </template>
