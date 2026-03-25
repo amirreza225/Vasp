@@ -2,6 +2,8 @@
 
 Handlebars-based code generator for Vasp. Takes a `VaspAST` and writes a complete, production-ready full-stack project to disk.
 
+**Version: 1.1.0**
+
 This is an internal package used by `vasp-cli`. You don't need to install it unless you're building custom Vasp tooling.
 
 ## Usage
@@ -31,7 +33,7 @@ Generators run in dependency order:
 |---|---|
 | `ScaffoldGenerator` | `package.json`, `.gitignore`, `.env`, `.env.example`, `bunfig.toml`, `tsconfig.json` |
 | `DrizzleSchemaGenerator` | `drizzle/schema.js\|ts` — entity-aware typed columns when `entity` blocks exist |
-| `BackendGenerator` | `server/index.js\|ts`, `server/middleware/rateLimit.js\|ts`, DB client, startup env checks for required `app.env` keys |
+| `BackendGenerator` | `server/index.js\|ts` (+ `/api/health` endpoint), `server/middleware/rateLimit.js\|ts`, DB client, startup env checks for required `app.env` keys |
 | `AuthGenerator` | Auth routes, JWT middleware, `Login.vue`, `Register.vue` |
 | `QueryActionGenerator` | `server/routes/queries/`, `server/routes/actions/` |
 | `CrudGenerator` | `server/routes/crud/` + client CRUD helpers |

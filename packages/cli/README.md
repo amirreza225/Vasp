@@ -2,6 +2,8 @@
 
 The official CLI for [Vasp](https://github.com/vasp-framework/vasp) — a declarative full-stack framework for Vue developers powered by Bun + Elysia.
 
+**Version: 1.1.0**
+
 ## Installation
 
 ```bash
@@ -18,19 +20,47 @@ npm install -g vasp-cli
 
 ### `vasp new <project-name>`
 
-Scaffold a new Vasp project.
+Scaffold a new Vasp project. When run without flags in an interactive terminal, Vasp shows a one-pass prompt sequence to guide you through template selection, TypeScript, and SSR — just like Astro, Nuxt, and create-vue.
 
 ```bash
-vasp new my-app                       # JavaScript + SPA (default)
-vasp new my-app --typescript          # TypeScript
-vasp new my-app --ssr                 # SSR via Nuxt 4
+vasp new my-app                       # Interactive prompts (TTY)
+vasp new my-app --typescript          # TypeScript, skip prompts
+vasp new my-app --ssr                 # SSR via Nuxt 4, skip prompts
 vasp new my-app --ssg                 # Static Site Generation via Nuxt 4
 vasp new my-app --ssr --typescript    # SSR + TypeScript
-vasp new my-app --starter=todo        # Use a starter template
+vasp new my-app --starter=todo        # Use a starter template, skip prompts
 vasp new my-app --no-install          # Skip bun install
 ```
 
+**Interactive prompt flow (no flags):**
+```
+Which template would you like to use?
+  1) None — blank project (just a home page)
+  2) minimal — bare-bones app
+  3) todo — Todo list with CRUD
+  4) recipe — Recipe app with auth
+  5) todo-auth-ssr — Todo + Auth + Nuxt SSR
+
+Enable TypeScript? [y/N]:
+Enable SSR (Nuxt 4)? [y/N]:
+```
+
 **Starters:** `minimal`, `todo`, `todo-auth-ssr`, `recipe`
+
+### `vasp add <type> [name] [options]`
+
+Incrementally add a new block to an existing `main.vasp`. Each sub-command validates for conflicts, appends the DSL block, creates source-file stubs, and automatically reruns generation.
+
+```bash
+vasp add entity Post                        # Add an entity with id + createdAt
+vasp add page   Dashboard --path=/dashboard # Add route + page + Vue component stub
+vasp add crud   Post                        # Add CRUD endpoints for an entity
+vasp add query  getPostById                 # Add query block + typed function stub
+vasp add action createPost                  # Add action block + typed function stub
+vasp add job    sendWelcomeEmail            # Add background job + perform stub
+vasp add auth                               # Add auth block (+ User entity if missing)
+vasp add api    webhookReceiver --method=POST --path=/api/webhooks
+```
 
 ### `vasp generate`
 
@@ -44,10 +74,11 @@ vasp generate --dry-run # Preview what would change
 
 ### `vasp start`
 
-Start the dev servers (backend + frontend) concurrently with color-prefixed output. Automatically pushes the Drizzle schema when it detects changes.
+Start the dev servers (backend + frontend) concurrently with color-prefixed output. Automatically pushes the Drizzle schema when it detects changes, and opens your browser to the app URL after the servers are ready.
 
 ```bash
 cd my-app && vasp start
+# → opens http://localhost:5173 (SPA) or http://localhost:3000 (SSR)
 ```
 
 ### `vasp build`
@@ -125,6 +156,10 @@ cd my-app && vasp enable-ssr
 
 - Patches `ssr: false` → `ssr: true` in `main.vasp`
 - Regenerates the Nuxt 4 frontend files
+
+## Health Check
+
+Every generated server exposes `GET /api/health` returning `{ status: "ok", version: "..." }`. Deployment targets (Docker, Fly, Railway) use this endpoint for health probes automatically.
 
 ## Example `main.vasp`
 

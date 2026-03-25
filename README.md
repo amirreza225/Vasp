@@ -26,11 +26,12 @@ Vasp is a batteries-included, declarative full-stack web framework for Vue devel
 # Install Vasp CLI
 bun install -g vasp-cli
 
-# Create a new app (JavaScript + SPA, the fastest path)
+# Create a new app — interactive prompts guide you through TypeScript, SSR and starter selection
 vasp new my-app
 
-# With TypeScript + SSR
+# Or pass flags directly to skip prompts
 vasp new my-app --typescript --ssr
+vasp new my-app --starter=todo
 ```
 
 That's it. Vasp generates your entire stack in under 5 seconds.
@@ -200,8 +201,17 @@ my-app/
 
 ```bash
 vasp new <name> [--typescript] [--ssr] [--ssg] [--starter=<name>] [--no-install]
+                              # Interactive prompts shown when no flags are provided
+vasp add entity <Name>        # Add an entity block + Drizzle column
+vasp add page   <Name>        # Add a page + route + Vue component stub
+vasp add crud   <Entity>      # Add CRUD endpoints for an entity
+vasp add query  <name>        # Add a query block + function stub
+vasp add action <name>        # Add an action block + function stub
+vasp add job    <name>        # Add a background job + function stub
+vasp add auth                 # Add auth block (+ User entity if missing)
+vasp add api    <name>        # Add a custom API endpoint + handler stub
 vasp generate [--force] [--dry-run]   # Regenerate from main.vasp (preserves user changes)
-vasp start            # Start dev server (auto-migrates schema on change)
+vasp start            # Start dev server (auto-migrates schema, opens browser)
 vasp build            # Production build
 vasp db push          # Push schema to database
 vasp db generate      # Generate a migration
@@ -236,7 +246,9 @@ vasp --version
 | Realtime (WebSocket with auth & rooms) | Done |
 | Background jobs (PgBoss with cron scheduling) | Done |
 | `vasp new` CLI command | Done |
+| `vasp new` interactive prompts (TypeScript / SSR / starter) | Done |
 | `vasp new --starter=<name>` | Done |
+| `vasp add` — incremental block scaffolding (8 sub-commands) | Done |
 | `vasp db` commands | Done |
 | `vasp migrate-to-ts` | Done |
 | `vasp enable-ssr` | Done |
@@ -245,7 +257,7 @@ vasp --version
 | Pre-flight checks in `vasp start` | Done |
 | Auto-generated `.env` and `README.md` | Done |
 | `vasp generate` (safe regeneration with manifest) | Done |
-| `vasp start` dev server (schema auto-migration) | Done |
+| `vasp start` dev server (schema auto-migration, browser auto-open) | Done |
 | `vasp build` | Done |
 | `vasp deploy` (Docker, Fly.io, Railway) | Done |
 | `vasp eject` (remove framework dependency) | Done |

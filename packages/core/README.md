@@ -2,6 +2,8 @@
 
 Shared types, AST node definitions, error classes, and constants for the Vasp framework.
 
+**Version: 1.1.0**
+
 This package is an internal dependency used by `@vasp-framework/parser`, `@vasp-framework/generator`, and `vasp-cli`. You don't need to install it directly unless you're building Vasp tooling.
 
 ## Contents
@@ -64,7 +66,7 @@ interface EntityNode extends BaseNode {
 ### Constants
 
 ```typescript
-VASP_VERSION           // '0.9.0'
+VASP_VERSION           // '1.1.0'
 DEFAULT_BACKEND_PORT   // 3001
 DEFAULT_SPA_PORT       // 5173
 DEFAULT_SSR_PORT       // 3000
