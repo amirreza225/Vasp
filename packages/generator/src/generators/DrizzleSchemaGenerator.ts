@@ -1,4 +1,4 @@
-import { toCamelCase } from '../template/TemplateEngine.js'
+import { toCamelCase, toPascalCase } from '../template/TemplateEngine.js'
 import { BaseGenerator } from './BaseGenerator.js'
 
 export class DrizzleSchemaGenerator extends BaseGenerator {
@@ -12,6 +12,21 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
     // Build a set of all entity names for relation resolution
     const entityNames = new Set(ast.entities.map((e) => e.name))
 
+    // Collect pgEnum declarations (one per enum field, named {entityName}{FieldName}Enum)
+    const enumDeclarations: Array<{ fnName: string; dbName: string; values: string[] }> = []
+    for (const entity of ast.entities) {
+      for (const f of entity.fields) {
+        if (f.type === 'Enum' && f.enumValues) {
+          enumDeclarations.push({
+            fnName: `${toCamelCase(entity.name)}${toPascalCase(f.name)}Enum`,
+            dbName: `${toCamelCase(entity.name)}_${toCamelCase(f.name)}`,
+            values: f.enumValues,
+          })
+        }
+      }
+    }
+    const hasEnums = enumDeclarations.length > 0
+
     // Build per-entity schema data: scalar columns + FK stubs + relation metadata
     const entitiesWithSchema = ast.entities.map((entity) => {
       // Scalar columns: primitive fields (not virtual array relations)
@@ -19,6 +34,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         .filter((f) => !reservedFields.has(f.name) && !(f.isRelation && f.isArray))
         .map((f) => {
           if (!f.isRelation) {
+            const isEnum = f.type === 'Enum'
             // Primitive column — pass through as-is
             return {
               name: f.name,
@@ -28,6 +44,8 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
               defaultValue: f.defaultValue,
               isUpdatedAt: f.isUpdatedAt,
               isForeignKey: false,
+              isEnum,
+              enumFnName: isEnum ? `${toCamelCase(entity.name)}${toPascalCase(f.name)}Enum` : undefined,
             }
           }
           // Many-to-one relation → FK column ({name}Id)
@@ -120,7 +138,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
 
     this.write(
       `drizzle/schema.${this.ctx.ext}`,
-      this.render('shared/drizzle/schema.hbs', { entitiesWithSchema, crudsWithFields, hasAnyRelations, authUserExtraFields }),
+      this.render('shared/drizzle/schema.hbs', { entitiesWithSchema, crudsWithFields, hasAnyRelations, authUserExtraFields, enumDeclarations, hasEnums }),
     )
 
     // Drizzle Kit config for migrations

@@ -9,7 +9,7 @@ export const Create{{pascalCase name}}Schema = v.object({
 {{/unless}}
 {{else}}
 {{#unless (includes modifiers "id")}}
-  {{name}}: {{valibotSchema type nullable true}},
+  {{name}}: {{valibotSchema type nullable true enumValues}},
 {{/unless}}
 {{/if}}
 {{/each}}

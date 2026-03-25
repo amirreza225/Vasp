@@ -12,7 +12,7 @@ export interface {{pascalCase name}} {
   {{name}}Id: number{{#if nullable}} | null{{/if}}
 {{/if}}
 {{else}}
-  {{name}}: {{tsFieldType type}}{{#if nullable}} | null{{/if}}
+  {{name}}: {{tsFieldType type enumValues}}{{#if nullable}} | null{{/if}}
 {{/if}}
 {{/each}}
   createdAt: Date
@@ -27,7 +27,7 @@ export interface Create{{pascalCase name}}Input {
 {{/unless}}
 {{else}}
 {{#unless (includes modifiers "id")}}
-  {{name}}{{#if nullable}}?{{/if}}: {{tsFieldType type}}{{#if nullable}} | null{{/if}}
+  {{name}}{{#if nullable}}?{{/if}}: {{tsFieldType type enumValues}}{{#if nullable}} | null{{/if}}
 {{/unless}}
 {{/if}}
 {{/each}}
@@ -41,7 +41,7 @@ export interface Update{{pascalCase name}}Input {
 {{/unless}}
 {{else}}
 {{#unless (includes modifiers "id")}}
-  {{name}}?: {{tsFieldType type}}{{#if nullable}} | null{{/if}}
+  {{name}}?: {{tsFieldType type enumValues}}{{#if nullable}} | null{{/if}}
 {{/unless}}
 {{/if}}
 {{/each}}

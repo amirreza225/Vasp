@@ -45,7 +45,7 @@ export type RealtimeEvent = 'created' | 'updated' | 'deleted'
 // ------ Entity / Schema ------
 
 /** Scalar/primitive field types supported by Vasp */
-export type PrimitiveFieldType = 'String' | 'Int' | 'Boolean' | 'DateTime' | 'Float' | 'Text' | 'Json'
+export type PrimitiveFieldType = 'String' | 'Int' | 'Boolean' | 'DateTime' | 'Float' | 'Text' | 'Json' | 'Enum'
 
 /** Kept for backward compatibility — alias for PrimitiveFieldType */
 export type FieldType = PrimitiveFieldType
@@ -73,6 +73,8 @@ export interface FieldNode {
   onDelete?: OnDeleteBehavior
   /** True when @updatedAt modifier is present */
   isUpdatedAt: boolean
+  /** Enum variant values when type === 'Enum', e.g. ['active', 'inactive', 'archived'] */
+  enumValues?: string[]
 }
 
 // ------ Job Executors ------

@@ -32,6 +32,8 @@ export enum TokenType {
   RBRACE = '}',
   LBRACKET = '[',
   RBRACKET = ']',
+  LPAREN = '(',
+  RPAREN = ')',
   COLON = ':',
   COMMA = ',',
 

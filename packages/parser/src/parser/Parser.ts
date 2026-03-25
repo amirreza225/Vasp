@@ -264,7 +264,7 @@ class Parser {
     this.consume(TokenType.LBRACE)
 
     // Primitive types recognized by the parser — entity names accepted for relations
-    const primitiveTypes = new Set(['String', 'Int', 'Boolean', 'DateTime', 'Float', 'Text', 'Json'])
+    const primitiveTypes = new Set(['String', 'Int', 'Boolean', 'DateTime', 'Float', 'Text', 'Json', 'Enum'])
 
     const fields: FieldNode[] = []
 
@@ -273,6 +273,21 @@ class Parser {
       this.consume(TokenType.COLON)
       const fieldTypeToken = this.consumeIdentifier()
       const fieldTypeStr = fieldTypeToken.value
+
+      // Parse Enum variant list: Enum(active, inactive, archived)
+      let enumValues: string[] | undefined
+      if (fieldTypeStr === 'Enum') {
+        this.consume(TokenType.LPAREN)
+        enumValues = []
+        while (!this.check(TokenType.RPAREN)) {
+          enumValues.push(this.consumeIdentifier().value)
+          if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA)
+        }
+        this.consume(TokenType.RPAREN)
+        if (enumValues.length === 0) {
+          throw this.error('E116_EMPTY_ENUM', `Enum field '${fieldName.value}' must have at least one variant`, 'Example: status: Enum(active, inactive, archived)', fieldTypeToken.loc)
+        }
+      }
 
       // Detect [] suffix — marks this as an array relation (virtual, no column)
       let isArray = false
@@ -328,6 +343,7 @@ class Parser {
       if (isRelation) field.relatedEntity = fieldTypeStr
       if (defaultValue !== undefined) field.defaultValue = defaultValue
       if (onDelete !== undefined) field.onDelete = onDelete
+      if (enumValues !== undefined) field.enumValues = enumValues
 
       fields.push(field)
     }

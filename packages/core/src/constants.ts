@@ -10,7 +10,7 @@ export const SUPPORTED_MIDDLEWARE_SCOPES = ['global', 'route'] as const
 export const SUPPORTED_CRUD_OPERATIONS = ['list', 'create', 'update', 'delete'] as const
 export const SUPPORTED_REALTIME_EVENTS = ['created', 'updated', 'deleted'] as const
 export const SUPPORTED_JOB_EXECUTORS = ['PgBoss'] as const
-export const SUPPORTED_FIELD_TYPES = ['String', 'Int', 'Boolean', 'DateTime', 'Float', 'Text', 'Json'] as const
+export const SUPPORTED_FIELD_TYPES = ['String', 'Int', 'Boolean', 'DateTime', 'Float', 'Text', 'Json', 'Enum'] as const
 
 export const DEFAULT_BACKEND_PORT = 3001
 export const DEFAULT_SPA_PORT = 5173

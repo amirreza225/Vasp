@@ -96,7 +96,10 @@ export class TemplateEngine {
     })
 
     /** tsFieldType: maps a Vasp field type to a TypeScript type string */
-    this.hbs.registerHelper('tsFieldType', (fieldType: string) => {
+    this.hbs.registerHelper('tsFieldType', (fieldType: string, enumValues?: unknown) => {
+      if (fieldType === 'Enum' && Array.isArray(enumValues) && enumValues.length > 0) {
+        return enumValues.map((v: string) => `'${v}'`).join(' | ')
+      }
       const tsMap: Record<string, string> = {
         String: 'string',
         Text: 'string',
@@ -110,19 +113,25 @@ export class TemplateEngine {
     })
 
     /** valibotSchema: maps a Vasp field type + nullability to a Valibot schema expression */
-    this.hbs.registerHelper('valibotSchema', (fieldType: string, nullable?: boolean, optional?: unknown) => {
-      const baseMap: Record<string, string> = {
-        String: 'v.pipe(v.string(), v.minLength(1))',
-        Text: 'v.pipe(v.string(), v.minLength(1))',
-        Int: 'v.number()',
-        Float: 'v.number()',
-        Boolean: 'v.boolean()',
-        DateTime: 'v.string()',
-        Json: 'v.unknown()',
+    this.hbs.registerHelper('valibotSchema', (fieldType: string, nullable?: boolean, optional?: unknown, enumValues?: unknown) => {
+      let base: string
+      if (fieldType === 'Enum' && Array.isArray(enumValues) && enumValues.length > 0) {
+        const items = enumValues.map((v: string) => `'${v}'`).join(', ')
+        base = `v.picklist([${items}])`
+      } else {
+        const baseMap: Record<string, string> = {
+          String: 'v.pipe(v.string(), v.minLength(1))',
+          Text: 'v.pipe(v.string(), v.minLength(1))',
+          Int: 'v.number()',
+          Float: 'v.number()',
+          Boolean: 'v.boolean()',
+          DateTime: 'v.string()',
+          Json: 'v.unknown()',
+        }
+        base = baseMap[fieldType] ?? 'v.unknown()'
       }
 
       const isOptional = optional === true || optional === 'true'
-      const base = baseMap[fieldType] ?? 'v.unknown()'
 
       if (nullable) {
         return isOptional

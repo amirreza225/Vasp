@@ -165,6 +165,20 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
           "type": "Json",
         },
         {
+          "enumValues": [
+            "active",
+            "inactive",
+            "archived",
+          ],
+          "isArray": false,
+          "isRelation": false,
+          "isUpdatedAt": false,
+          "modifiers": [],
+          "name": "status",
+          "nullable": false,
+          "type": "Enum",
+        },
+        {
           "isArray": false,
           "isRelation": true,
           "isUpdatedAt": false,
