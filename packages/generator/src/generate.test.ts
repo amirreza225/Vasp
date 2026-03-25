@@ -587,6 +587,9 @@ describe('generate()', () => {
     expect(job).toContain('registerSendWelcomeEmailWorker')
     expect(job).toContain('scheduleSendWelcomeEmail')
 
+    const schedule = readFileSync(join(outputDir, 'server/routes/jobs/sendWelcomeEmailSchedule.js'), 'utf8')
+    expect(schedule).toContain("from '../../jobs/sendWelcomeEmail.js'")
+
     const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
     expect(serverIndex).toContain('sendWelcomeEmailScheduleRoute')
   })

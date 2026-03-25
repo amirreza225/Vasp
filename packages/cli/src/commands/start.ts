@@ -149,7 +149,7 @@ async function autoMigrateIfNeeded(projectDir: string): Promise<void> {
     process.stdout.write(`${label} Schema changed — running db push...\n`)
   }
 
-  const pushProc = Bun.spawn(['bunx', 'drizzle-kit', 'push', '--accept-data-loss'], {
+  const pushProc = Bun.spawn(['bunx', 'drizzle-kit', 'push'], {
     cwd: projectDir,
     stdout: 'inherit',
     stderr: 'inherit',
