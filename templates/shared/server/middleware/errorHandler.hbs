@@ -9,13 +9,16 @@ import { Elysia } from 'elysia'
  */
 export class VaspError extends Error {
   constructor(
-    public readonly code{{#if isTypeScript}}: string{{/if}},
+    code{{#if isTypeScript}}: string{{/if}},
     message{{#if isTypeScript}}: string{{/if}},
-    public readonly statusCode{{#if isTypeScript}}: number{{/if}} = 400,
-    public readonly hint{{#if isTypeScript}}?: string{{/if}},
+    statusCode{{#if isTypeScript}}: number{{/if}} = 400,
+    hint{{#if isTypeScript}}?: string{{/if}},
   ) {
     super(message)
     this.name = 'VaspError'
+    this.code = code
+    this.statusCode = statusCode
+    this.hint = hint
   }
 }
 
