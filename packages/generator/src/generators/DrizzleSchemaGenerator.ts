@@ -73,6 +73,24 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
       }
     })
 
+    // When auth is present, filter out the auth user entity from the entity loop
+    // to avoid duplicate table definitions (the template already emits a hardcoded
+    // users table for auth). Any extra fields the user defined on the User entity
+    // are forwarded as `authUserExtraFields` so the template can merge them.
+    const authUserEntityName = ast.auth?.userEntity
+    let authUserExtraFields: typeof entitiesWithSchema[0]['scalarFields'] = []
+
+    if (authUserEntityName) {
+      const authBuiltinFields = new Set(['id', 'username', 'email', 'createdAt', 'updatedAt'])
+      const idx = entitiesWithSchema.findIndex((e) => e.name === authUserEntityName)
+      if (idx !== -1) {
+        authUserExtraFields = entitiesWithSchema[idx].scalarFields.filter(
+          (f) => !authBuiltinFields.has(f.name),
+        )
+        entitiesWithSchema.splice(idx, 1)
+      }
+    }
+
     // For crud blocks that reference an entity with no explicit entity block,
     // generate a minimal stub table (id, createdAt, updatedAt only)
     const entityNamesWithBlocks = new Set(ast.entities.map((e) => e.name))
@@ -102,7 +120,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
 
     this.write(
       `drizzle/schema.${this.ctx.ext}`,
-      this.render('shared/drizzle/schema.hbs', { entitiesWithSchema, crudsWithFields, hasAnyRelations }),
+      this.render('shared/drizzle/schema.hbs', { entitiesWithSchema, crudsWithFields, hasAnyRelations, authUserExtraFields }),
     )
 
     // Drizzle Kit config for migrations

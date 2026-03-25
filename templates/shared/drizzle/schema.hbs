@@ -12,6 +12,9 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'),
   googleId: text('google_id').unique(),
   githubId: text('github_id').unique(),
+{{#each authUserExtraFields}}
+  {{camelCase name}}: {{{drizzleColumn name type modifiers nullable defaultValue isUpdatedAt}}},
+{{/each}}
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
