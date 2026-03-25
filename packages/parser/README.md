@@ -60,18 +60,31 @@ try {
 | `E003_UNTERMINATED_STRING` | String literal missing closing quote |
 | `E010_UNEXPECTED_TOKEN` | Parser got a token it didn't expect |
 | `E011_DUPLICATE_BLOCK` | Block name already defined |
+| `E038_INVALID_ENV_REQUIREMENT` | Invalid `app.env` requirement (must be `required` or `optional`) |
+| `E039_DUPLICATE_ENV_KEY` | Duplicate key inside `app.env` |
 | `E100_MISSING_APP_BLOCK` | No `app` block found |
-| `E101_INVALID_ROUTE_REF` | Route `to` references undefined page |
-| `E102_EMPTY_CRUD_OPS` | CRUD `operations` array is empty |
-| `E103_INVALID_CRUD_OP` | Unknown CRUD operation |
-| `E104_REALTIME_NO_CRUD` | Realtime entity has no matching CRUD block |
-| `E105_INVALID_REALTIME_EVENT` | Unknown realtime event |
+| `E101_UNKNOWN_PAGE_REF` | Route `to` references undefined page |
+| `E102_EMPTY_CRUD_OPERATIONS` | CRUD `operations` array is empty |
+| `E103_UNKNOWN_CRUD_OPERATION` | Unknown CRUD operation |
+| `E104_REALTIME_ENTITY_NOT_CRUD` | Realtime entity has no matching CRUD block |
+| `E105_UNKNOWN_REALTIME_EVENT` | Unknown realtime event |
 | `E106_EMPTY_AUTH_METHODS` | Auth `methods` array is empty |
-| `E107_INVALID_AUTH_METHOD` | Unknown auth method |
-| `E108_QUERY_ENTITY_REF` | Query entity not defined |
-| `E109_ACTION_ENTITY_REF` | Action entity not defined |
+| `E107_UNKNOWN_AUTH_METHOD` | Unknown auth method |
+| `E108_UNKNOWN_ENTITY_REF` | Query references unknown entity |
+| `E109_UNKNOWN_ENTITY_REF` | Action references unknown entity |
 | `E110_UNKNOWN_JOB_EXECUTOR` | Unknown job executor |
 | `E111_CRUD_ENTITY_NOT_DECLARED` | CRUD entity has no matching `entity` block |
+| `E112_DUPLICATE_ENTITY` | Duplicate entity name |
+| `E113_DUPLICATE_ROUTE_PATH` | Duplicate route path |
+| `E114_INVALID_FIELD_TYPE` | Unsupported primitive field type |
+| `E115_UNDEFINED_RELATION_ENTITY` | Relation field references unknown entity |
+| `E116_UNKNOWN_API_METHOD` | API block uses unsupported HTTP method |
+| `E117_DUPLICATE_API_ENDPOINT` | Duplicate API method+path combination |
+| `E118_ROLES_WITHOUT_AUTH_CONFIG` | Roles used without `auth.roles` declaration |
+| `E119_ROLES_REQUIRE_AUTH` | Roles used while `auth: false` |
+| `E120_UNKNOWN_ROLE_REF` | Query/action/api references unknown role |
+| `E121_UNKNOWN_MIDDLEWARE_SCOPE` | Unsupported middleware scope |
+| `E122_INVALID_ENV_KEY` | `app.env` key is not uppercase snake case |
 
 ## License
 

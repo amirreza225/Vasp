@@ -19,22 +19,32 @@ interface VaspAST {
   pages: PageNode[]
   queries: QueryNode[]
   actions: ActionNode[]
+  apis?: ApiNode[]
+  middlewares?: MiddlewareNode[]
   cruds: CrudNode[]
   realtimes: RealtimeNode[]
   jobs: JobNode[]
+  seed?: SeedNode
 }
 ```
 
 ### Entity Types
 
 ```typescript
-type FieldType = 'String' | 'Int' | 'Boolean' | 'DateTime' | 'Float'
-type FieldModifier = 'id' | 'unique' | 'default_now'
+type PrimitiveFieldType = 'String' | 'Int' | 'Boolean' | 'DateTime' | 'Float' | 'Text' | 'Json'
+type FieldModifier = 'id' | 'unique' | 'default_now' | 'nullable' | 'updatedAt'
 
 interface FieldNode {
   name: string
-  type: FieldType
+  type: string // primitive type or related entity name
   modifiers: FieldModifier[]
+  isRelation: boolean
+  relatedEntity?: string
+  isArray: boolean
+  nullable: boolean
+  defaultValue?: string
+  onDelete?: 'cascade' | 'restrict' | 'setNull'
+  isUpdatedAt: boolean
 }
 
 interface EntityNode extends BaseNode {
@@ -54,13 +64,14 @@ interface EntityNode extends BaseNode {
 ### Constants
 
 ```typescript
-VASP_VERSION           // '0.3.0'
+VASP_VERSION           // '0.9.0'
 DEFAULT_BACKEND_PORT   // 3001
 DEFAULT_SPA_PORT       // 5173
 DEFAULT_SSR_PORT       // 3000
 SUPPORTED_AUTH_METHODS // ['usernameAndPassword', 'google', 'github']
 SUPPORTED_CRUD_OPERATIONS // ['list', 'create', 'update', 'delete']
 SUPPORTED_REALTIME_EVENTS // ['created', 'updated', 'deleted']
+SUPPORTED_FIELD_TYPES // ['String', 'Int', 'Boolean', 'DateTime', 'Float', 'Text', 'Json']
 ```
 
 ## License

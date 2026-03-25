@@ -44,9 +44,14 @@ Every project starts with a single `main.vasp` file:
 ```vasp
 app MyTodoApp {
   title: "Vasp Todo"
-  db: PostgreSQL
+  db: Drizzle
   ssr: false        // false = SPA (default), true = SSR, "ssg" = Static Site Generation
   typescript: false // false = pure JS (default), true = TypeScript
+  env: {
+    DATABASE_URL: required
+    JWT_SECRET: required
+    GOOGLE_CLIENT_ID: optional
+  }
 }
 
 auth User {
@@ -233,6 +238,7 @@ vasp --version
 | `vasp migrate-to-ts` | Done |
 | `vasp enable-ssr` | Done |
 | Rate limiting (IP-based, configurable) | Done |
+| `app.env` schema + startup env validation | Done |
 | Pre-flight checks in `vasp start` | Done |
 | Auto-generated `.env` and `README.md` | Done |
 | `vasp start` dev server | Done |
