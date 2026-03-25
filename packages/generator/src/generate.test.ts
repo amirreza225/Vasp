@@ -1223,4 +1223,141 @@ describe('generate()', () => {
     expect(existsSync(join(outputDir, 'tests/actions/createTodo.test.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'tests/auth/login.test.js'))).toBe(true)
   })
+
+  describe('generateMainVasp() field and block serialization', () => {
+    it('preserves Enum variants in entity fields', () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity Post {
+          id: Int @id
+          status: Enum(draft, published, archived) @default("draft")
+        }
+      `
+      const ast = parse(source)
+      const outputDir = join(TMP_DIR, 'main-vasp-enum')
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+      const mainVasp = readFileSync(join(outputDir, 'main.vasp'), 'utf8')
+      expect(mainVasp).toContain('status: Enum(draft, published, archived)')
+      expect(mainVasp).toContain('@default("draft")')
+    })
+
+    it('preserves array relation fields (Todo[])', () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity User {
+          id: Int @id
+          todos: Todo[]
+        }
+        entity Todo {
+          id: Int @id
+          title: String
+          author: User @onDelete(cascade)
+        }
+      `
+      const ast = parse(source)
+      const outputDir = join(TMP_DIR, 'main-vasp-array')
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+      const mainVasp = readFileSync(join(outputDir, 'main.vasp'), 'utf8')
+      expect(mainVasp).toContain('todos: Todo[]')
+    })
+
+    it('preserves @onDelete modifier on relation fields', () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity User { id: Int @id }
+        entity Todo {
+          id: Int @id
+          title: String
+          author: User @onDelete(cascade)
+          reviewer: User @onDelete(setNull) @nullable
+        }
+      `
+      const ast = parse(source)
+      const outputDir = join(TMP_DIR, 'main-vasp-ondelete')
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+      const mainVasp = readFileSync(join(outputDir, 'main.vasp'), 'utf8')
+      expect(mainVasp).toContain('@onDelete(cascade)')
+      expect(mainVasp).toContain('@onDelete(setNull)')
+    })
+
+    it('preserves @default(now) with closing parenthesis', () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity Event {
+          id: Int @id
+          createdAt: DateTime @default(now)
+          updatedAt: DateTime @updatedAt
+        }
+      `
+      const ast = parse(source)
+      const outputDir = join(TMP_DIR, 'main-vasp-defaultnow')
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+      const mainVasp = readFileSync(join(outputDir, 'main.vasp'), 'utf8')
+      expect(mainVasp).toContain('@default(now)')
+      expect(mainVasp).not.toContain('@default(now\n')
+      expect(mainVasp).toContain('@updatedAt')
+    })
+
+    it('emits realtime blocks in main.vasp', () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity Todo { id: Int @id title: String }
+        crud Todo { entity: Todo operations: [list, create] }
+        realtime TodoChannel { entity: Todo events: [created, updated, deleted] }
+      `
+      const ast = parse(source)
+      const outputDir = join(TMP_DIR, 'main-vasp-realtime')
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+      const mainVasp = readFileSync(join(outputDir, 'main.vasp'), 'utf8')
+      expect(mainVasp).toContain('realtime TodoChannel {')
+      expect(mainVasp).toContain('entity: Todo')
+      expect(mainVasp).toContain('events: [created, updated, deleted]')
+    })
+
+    it('emits job blocks (with and without schedule) in main.vasp', () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        job sendWelcomeEmail {
+          executor: PgBoss
+          perform: {
+            fn: import { sendWelcomeEmail } from "@src/jobs.js"
+          }
+        }
+        job cleanup {
+          executor: PgBoss
+          perform: {
+            fn: import { cleanup } from "@src/jobs.js"
+          }
+          schedule: "0 2 * * *"
+        }
+      `
+      const ast = parse(source)
+      const outputDir = join(TMP_DIR, 'main-vasp-jobs')
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+      const mainVasp = readFileSync(join(outputDir, 'main.vasp'), 'utf8')
+      expect(mainVasp).toContain('job sendWelcomeEmail {')
+      expect(mainVasp).toContain('executor: PgBoss')
+      expect(mainVasp).toContain('fn: import { sendWelcomeEmail } from "@src/jobs.js"')
+      expect(mainVasp).toContain('job cleanup {')
+      expect(mainVasp).toContain('schedule: "0 2 * * *"')
+    })
+  })
 })
