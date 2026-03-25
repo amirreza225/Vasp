@@ -3,6 +3,7 @@ import { parse } from '@vasp-framework/parser'
 import { join, resolve } from 'node:path'
 import { existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { log } from '../utils/logger.js'
+import { handleParseError } from '../utils/parse-error.js'
 import { VASP_VERSION } from '@vasp-framework/core'
 import { resolveTemplateDir, resolveStartersDir } from '../utils/template-dir.js'
 
@@ -62,8 +63,7 @@ export async function newCommand(args: string[]): Promise<void> {
   try {
     ast = parse(vaspSource, 'main.vasp')
   } catch (err) {
-    log.error(`Internal error generating initial config: ${String(err)}`)
-    process.exit(1)
+    handleParseError(err, vaspSource, 'main.vasp')
   }
 
   const templateDir = resolveTemplateDir(import.meta.dirname)

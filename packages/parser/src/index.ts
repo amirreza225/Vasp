@@ -14,5 +14,6 @@ export function parse(source: string, filename = 'main.vasp'): VaspAST {
 
 export { Lexer } from './lexer/Lexer.js'
 export { SemanticValidator } from './validator/SemanticValidator.js'
+export { formatDiagnostics } from './errors/DiagnosticFormatter.js'
 export type { Token } from './lexer/Token.js'
 export { TokenType } from './lexer/TokenType.js'

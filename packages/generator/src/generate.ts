@@ -1,4 +1,5 @@
 import type { GeneratorOptions, GeneratorResult, VaspAST } from '@vasp-framework/core'
+import { VASP_VERSION } from '@vasp-framework/core'
 import { createConsoleLogger, createContext } from './GeneratorContext.js'
 import { AuthGenerator } from './generators/AuthGenerator.js'
 import { BackendGenerator } from './generators/BackendGenerator.js'
@@ -9,6 +10,7 @@ import { JobGenerator } from './generators/JobGenerator.js'
 import { QueryActionGenerator } from './generators/QueryActionGenerator.js'
 import { RealtimeGenerator } from './generators/RealtimeGenerator.js'
 import { ScaffoldGenerator } from './generators/ScaffoldGenerator.js'
+import { Manifest } from './manifest/Manifest.js'
 import { TemplateEngine } from './template/TemplateEngine.js'
 import { join } from 'node:path'
 
@@ -24,18 +26,22 @@ export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult 
 
   const filesWritten: string[] = []
   const warnings: string[] = []
+  const manifest = new Manifest(VASP_VERSION)
 
   try {
     // Execute generators in dependency order
-    new ScaffoldGenerator(ctx, engine, filesWritten).run()
-    new DrizzleSchemaGenerator(ctx, engine, filesWritten).run()
-    new BackendGenerator(ctx, engine, filesWritten).run()
-    new AuthGenerator(ctx, engine, filesWritten).run()
-    new QueryActionGenerator(ctx, engine, filesWritten).run()
-    new CrudGenerator(ctx, engine, filesWritten).run()
-    new RealtimeGenerator(ctx, engine, filesWritten).run()
-    new JobGenerator(ctx, engine, filesWritten).run()
-    new FrontendGenerator(ctx, engine, filesWritten).run()
+    new ScaffoldGenerator(ctx, engine, filesWritten, manifest).run()
+    new DrizzleSchemaGenerator(ctx, engine, filesWritten, manifest).run()
+    new BackendGenerator(ctx, engine, filesWritten, manifest).run()
+    new AuthGenerator(ctx, engine, filesWritten, manifest).run()
+    new QueryActionGenerator(ctx, engine, filesWritten, manifest).run()
+    new CrudGenerator(ctx, engine, filesWritten, manifest).run()
+    new RealtimeGenerator(ctx, engine, filesWritten, manifest).run()
+    new JobGenerator(ctx, engine, filesWritten, manifest).run()
+    new FrontendGenerator(ctx, engine, filesWritten, manifest).run()
+
+    // Persist manifest
+    manifest.save(ctx.outputDir)
 
     logger.info(`✓ Generated ${filesWritten.length} files`)
 

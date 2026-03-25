@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia'
+import { VaspError } from './errorHandler.{{ext}}'
 
 const MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX) || 100
 const WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000
@@ -37,8 +38,7 @@ export function rateLimit() {
       set.headers['x-ratelimit-remaining'] = String(Math.max(0, MAX_REQUESTS - entry.count))
 
       if (entry.count > MAX_REQUESTS) {
-        set.status = 429
-        return { error: 'Too many requests. Please try again later.' }
+        throw new VaspError('RATE_LIMITED', 'Too many requests. Please try again later.', 429)
       }
     })
 }

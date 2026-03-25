@@ -10,6 +10,7 @@
         "@types/bun": "latest",
         "@types/handlebars": "^4.1.0",
         "@vitest/coverage-v8": "^2.0.0",
+        "bun-types": "^1.3.11",
         "eslint": "^10.1.0",
         "typescript": "^5.6.0",
         "typescript-eslint": "^8.57.2",
@@ -18,7 +19,7 @@
     },
     "packages/cli": {
       "name": "vasp-cli",
-      "version": "0.1.4",
+      "version": "0.4.0",
       "bin": {
         "vasp": "dist/vasp",
       },
@@ -32,7 +33,7 @@
     },
     "packages/core": {
       "name": "@vasp-framework/core",
-      "version": "0.1.1",
+      "version": "0.4.0",
       "devDependencies": {
         "typescript": "*",
         "vitest": "*",
@@ -40,7 +41,7 @@
     },
     "packages/generator": {
       "name": "@vasp-framework/generator",
-      "version": "0.1.0",
+      "version": "0.4.0",
       "dependencies": {
         "@vasp-framework/core": "workspace:*",
         "@vasp-framework/parser": "workspace:*",
@@ -54,7 +55,7 @@
     },
     "packages/parser": {
       "name": "@vasp-framework/parser",
-      "version": "0.1.0",
+      "version": "0.4.0",
       "dependencies": {
         "@vasp-framework/core": "workspace:*",
       },
@@ -65,7 +66,7 @@
     },
     "packages/runtime": {
       "name": "@vasp-framework/runtime",
-      "version": "0.1.1",
+      "version": "0.4.0",
       "dependencies": {
         "ofetch": "^1.3.4",
         "vue": "^3.5.0",

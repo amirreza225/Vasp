@@ -1,5 +1,6 @@
 import { join } from 'node:path'
 import type { GeneratorContext } from '../GeneratorContext.js'
+import type { Manifest } from '../manifest/Manifest.js'
 import type { TemplateEngine } from '../template/TemplateEngine.js'
 import { writeFile } from '../utils/fs.js'
 
@@ -8,6 +9,7 @@ export abstract class BaseGenerator {
     protected readonly ctx: GeneratorContext,
     protected readonly engine: TemplateEngine,
     protected readonly filesWritten: string[],
+    protected readonly manifest: Manifest,
   ) {}
 
   abstract run(): void
@@ -16,6 +18,7 @@ export abstract class BaseGenerator {
     const fullPath = join(this.ctx.outputDir, relativePath)
     writeFile(fullPath, content)
     this.filesWritten.push(relativePath)
+    this.manifest.record(relativePath, content, this.constructor.name)
     this.ctx.logger.verbose(`  write ${relativePath}`)
   }
 

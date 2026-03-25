@@ -143,6 +143,10 @@ import { Parser } from './Parser'      // ❌ breaks ESM resolution
 
 **10. `SUPPORTED_FIELD_TYPES`** — Defined in `packages/core/src/constants.ts`: `['String', 'Int', 'Boolean', 'DateTime', 'Float']`. SemanticValidator E114 enforces this.
 
+**11. Auth middleware uses `jose` for JWT verification** — The `requireAuth` middleware (`templates/shared/auth/server/middleware.hbs`) uses `jose.jwtVerify()` directly to verify JWT tokens from cookies. The `@elysiajs/jwt` plugin is only used in `authPlugin` (`plugin.hbs`) for **signing** tokens during login/register. Never use `@elysiajs/jwt`'s `jwt.verify()` decorator inside `.resolve()` in a plugin — it doesn't propagate correctly.
+
+**12. Elysia 1.x scoping** — `.resolve()`, `.onBeforeHandle()`, and `.derive()` default to **local** scope in Elysia 1.x. When used inside a plugin that is `.use()`-d by a parent Elysia instance, their values/guards do **not** propagate unless `{ as: 'scoped' }` (or `{ as: 'global' }`) is passed. The auth middleware uses `{ as: 'scoped' }` on both `.resolve()` and `.onBeforeHandle()` so `user` is available in parent routes.
+
 ---
 
 ## Testing
@@ -167,6 +171,7 @@ After editing any `.hbs` template or generator, run `bun run test` to catch regr
 - **Realtime requires CRUD** — A `realtime` block's entity must have a matching `crud` block; SemanticValidator enforces this.
 - **`vasp db` requires generated app** — The `vasp db` subcommands shell out to `bunx drizzle-kit` inside the generated app directory. Ensure `vasp new` has been run first.
 - **`.env` auto-generation** — `ScaffoldGenerator` emits `.env` and `.env.example` with `DATABASE_URL` and `JWT_SECRET` placeholders. The `vasp start` pre-flight copies `.env.example` → `.env` if missing.
+- **`@elysiajs/cookie` is deprecated** — Elysia 1.x has built-in cookie support (`cookie` in handler context). Do not import or use `@elysiajs/cookie` in templates or generated code.
 
 ---
 
@@ -181,6 +186,8 @@ After editing any `.hbs` template or generator, run `bun run test` to catch regr
 | [`packages/cli/src/utils/template-dir.ts`](../packages/cli/src/utils/template-dir.ts) | Prod/dev template path resolution |
 | [`packages/runtime/src/client/ofetch.ts`](../packages/runtime/src/client/ofetch.ts) | `$vasp` client factory (ofetch-based) |
 | [`templates/shared/server/middleware/rateLimit.hbs`](../templates/shared/server/middleware/rateLimit.hbs) | Rate limiter middleware template |
+| [`templates/shared/auth/server/middleware.hbs`](../templates/shared/auth/server/middleware.hbs) | Auth middleware — jose-based JWT verification |
+| [`templates/shared/auth/server/plugin.hbs`](../templates/shared/auth/server/plugin.hbs) | Auth plugin — `@elysiajs/jwt` for signing tokens |
 | [`e2e/fixtures/full-featured.vasp`](../e2e/fixtures/full-featured.vasp) | Reference .vasp with all block types |
 | [`packages/cli/src/commands/db.ts`](../packages/cli/src/commands/db.ts) | `vasp db` subcommand (push/generate/migrate/studio) |
 | [`templates/shared/.env.hbs`](../templates/shared/.env.hbs) | Environment variables template |

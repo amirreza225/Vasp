@@ -21,6 +21,10 @@ export class ParseError extends VaspError {
     this.diagnostics = diagnostics
   }
 
+  /**
+   * Fallback plain-text format (no source context).
+   * For rich Rust-style output with source context, use DiagnosticFormatter.formatDiagnostics().
+   */
   format(): string {
     return this.diagnostics
       .map((d) => {

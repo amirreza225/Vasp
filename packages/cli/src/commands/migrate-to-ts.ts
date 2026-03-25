@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path'
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { readdirSync, statSync } from 'node:fs'
 import { log } from '../utils/logger.js'
+import { handleParseError } from '../utils/parse-error.js'
 import { resolveTemplateDir } from '../utils/template-dir.js'
 
 export async function migrateToTsCommand(): Promise<void> {
@@ -16,7 +17,12 @@ export async function migrateToTsCommand(): Promise<void> {
   }
 
   const source = readFileSync(vaspFile, 'utf8')
-  const ast = parse(source, 'main.vasp')
+  let ast
+  try {
+    ast = parse(source, 'main.vasp')
+  } catch (err) {
+    handleParseError(err, source, 'main.vasp')
+  }
 
   if (ast.app.typescript) {
     log.warn("Project is already using TypeScript (typescript: true in main.vasp)")

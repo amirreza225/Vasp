@@ -3,6 +3,7 @@ import { db } from '../db/client.{{ext}}'
 import { users } from '../../drizzle/schema.{{ext}}'
 import { eq } from 'drizzle-orm'
 import { authPlugin } from './plugin.{{ext}}'
+import { VaspError } from '../middleware/errorHandler.{{ext}}'
 {{#if (includes authMethods "usernameAndPassword")}}
 import { usernameAndPasswordRoutes } from './providers/usernameAndPassword.{{ext}}'
 {{/if}}

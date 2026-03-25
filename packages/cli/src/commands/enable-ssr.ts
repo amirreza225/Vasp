@@ -3,6 +3,7 @@ import { parse } from '@vasp-framework/parser'
 import { join, resolve } from 'node:path'
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { log } from '../utils/logger.js'
+import { handleParseError } from '../utils/parse-error.js'
 import { resolveTemplateDir } from '../utils/template-dir.js'
 
 /**
@@ -39,8 +40,7 @@ export async function enableSsrCommand(): Promise<void> {
   try {
     ast = parse(source, 'main.vasp')
   } catch (err) {
-    log.error(`Failed to parse updated main.vasp: ${String(err)}`)
-    process.exit(1)
+    handleParseError(err, source, 'main.vasp')
   }
 
   const templateDir = resolveTemplateDir(import.meta.dirname)

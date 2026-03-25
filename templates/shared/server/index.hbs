@@ -2,7 +2,10 @@ import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { staticPlugin } from '@elysiajs/static'
 import { db } from './db/client.{{ext}}'
+import { logger } from './middleware/logger.{{ext}}'
 import { rateLimit } from './middleware/rateLimit.{{ext}}'
+import { errorHandler } from './middleware/errorHandler.{{ext}}'
+import { vaspDiagnosticRoutes } from './routes/_vasp.{{ext}}'
 {{#if isSsr}}
 import { csrfProtection } from './middleware/csrf.{{ext}}'
 {{/if}}
@@ -28,6 +31,8 @@ import { {{camelCase name}}ScheduleRoute } from './routes/jobs/{{camelCase name}
 const PORT = Number(process.env.PORT) || {{backendPort}}
 
 const app = new Elysia()
+  .use(logger())
+  .use(errorHandler())
   .use(cors({
     origin: process.env.CORS_ORIGIN || 'http://localhost:{{frontendPort}}',
     credentials: true,
@@ -37,6 +42,7 @@ const app = new Elysia()
   .use(csrfProtection())
 {{/if}}
   .get('/api/health', () => ({ status: 'ok', version: '{{vaspVersion}}' }))
+  .use(vaspDiagnosticRoutes)
 {{#if hasAuth}}
   .use(authRoutes)
 {{/if}}
@@ -55,19 +61,6 @@ const app = new Elysia()
 {{#each jobs}}
   .use({{camelCase name}}ScheduleRoute)
 {{/each}}
-  .onError(({ code, error, set }) => {
-    if (code === 'NOT_FOUND') {
-      set.status = 404
-      return { error: 'Not found' }
-    }
-    if (code === 'VALIDATION') {
-      set.status = 400
-      return { error: 'Validation failed', details: error.message }
-    }
-    console.error('[server error]', error)
-    set.status = 500
-    return { error: 'Internal server error' }
-  })
   .listen(PORT)
 
 console.log(`🚀 Vasp backend running at http://localhost:${PORT}`)

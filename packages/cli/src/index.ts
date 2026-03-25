@@ -1,5 +1,6 @@
 import { log } from './utils/logger.js'
 import { newCommand } from './commands/new.js'
+import { generateCommand } from './commands/generate.js'
 import { migrateToTsCommand } from './commands/migrate-to-ts.js'
 import { enableSsrCommand } from './commands/enable-ssr.js'
 import { startCommand } from './commands/start.js'
@@ -14,6 +15,11 @@ export async function run(args: string[]): Promise<void> {
   switch (command) {
     case 'new':
       await newCommand(args.slice(1))
+      break
+
+    case 'generate':
+    case 'gen':
+      await generateCommand(args.slice(1))
       break
 
     case '--version':
@@ -64,6 +70,7 @@ function printHelp(): void {
 
   Usage:
     vasp new <project-name> [options]    Create a new Vasp project
+    vasp generate [options]              Regenerate from main.vasp (preserves user changes)
     vasp enable-ssr                      Convert existing SPA project to SSR (Nuxt 4)
     vasp migrate-to-ts                   Convert existing JS project to TypeScript
     vasp start                           Start the dev server
@@ -77,10 +84,17 @@ function printHelp(): void {
     --ssg                 Enable Static Site Generation via Nuxt 4
     --no-install          Skip bun install
 
+  Options for 'vasp generate':
+    --force, -f           Overwrite user-modified files
+    --dry-run             Preview what would change without writing files
+
   Examples:
     vasp new my-app
     vasp new my-app --typescript
     vasp new my-app --ssr --typescript
     vasp new my-app --ssg
+    vasp generate
+    vasp generate --dry-run
+    vasp generate --force
   `)
 }

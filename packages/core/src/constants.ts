@@ -1,4 +1,4 @@
-export const VASP_VERSION = '0.4.0'
+export const VASP_VERSION = '0.5.0'
 
 export const VASP_FILE_EXTENSION = '.vasp'
 export const VASP_ENTRY_FILE = 'main.vasp'
