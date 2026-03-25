@@ -63,7 +63,10 @@ export const {{camelCase name}}Channel = new Elysia()
         const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg
         if (parsed.action === 'join' && parsed.room) {
           const oldRoom = {{#if isTypeScript}}(ws.data as Record<string, unknown>)._room{{else}}ws.data._room{{/if}}
-          if (oldRoom) rooms.get(oldRoom{{#if isTypeScript}} as string{{/if}})?.delete(ws)
+          if (oldRoom) {
+            const oldRoomSet = rooms.get(oldRoom{{#if isTypeScript}} as string{{/if}})
+            if (oldRoomSet) oldRoomSet.delete(ws)
+          }
           {{#if isTypeScript}}(ws.data as Record<string, unknown>)._room = parsed.room{{else}}ws.data._room = parsed.room{{/if}}
           getRoom(parsed.room).add(ws)
           ws.send(JSON.stringify({ ack: 'joined', room: parsed.room }))
