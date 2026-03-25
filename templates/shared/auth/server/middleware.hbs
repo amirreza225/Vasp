@@ -5,7 +5,14 @@ import { users } from '../../drizzle/schema.{{ext}}'
 import { eq } from 'drizzle-orm'
 import { VaspError } from '../middleware/errorHandler.{{ext}}'
 
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'change-me-in-production')
+if (!process.env.JWT_SECRET) {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production')
+  }
+  console.warn('[vasp] JWT_SECRET not set \u2014 using insecure default. Set JWT_SECRET in .env for production.')
+}
+
+const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'vasp-dev-secret-do-not-use-in-production')
 
 /**
  * requireAuth — Elysia plugin that verifies the JWT cookie and injects `user` into the context.
@@ -29,7 +36,8 @@ export const requireAuth = new Elysia({ name: 'require-auth' })
       }
       const { passwordHash: _ph, ...safeUser } = user
       return { user: safeUser }
-    } catch {
+    } catch (err) {
+      console.debug('[auth] JWT verification failed:', err instanceof Error ? err.message : err)
       return { user: null }
     }
   })

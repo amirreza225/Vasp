@@ -3,6 +3,7 @@ import { db } from '../../db/client.{{ext}}'
 import { users } from '../../../drizzle/schema.{{ext}}'
 import { eq } from 'drizzle-orm'
 import { authPlugin } from '../plugin.{{ext}}'
+import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || ''
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || ''
@@ -10,28 +11,44 @@ const REDIRECT_URI = process.env.GITHUB_REDIRECT_URI || 'http://localhost:{{back
 
 export const githubRoutes = new Elysia()
   .use(authPlugin)
-  .get('/github', ({ set }) => {
+  .get('/github', ({ set, cookie: { oauth_state } }) => {
+    const state = crypto.randomUUID()
+    oauth_state.set({ value: state, httpOnly: true, sameSite: 'lax', path: '/', maxAge: 600 })
     const params = new URLSearchParams({
       client_id: GITHUB_CLIENT_ID,
       redirect_uri: REDIRECT_URI,
       scope: 'read:user user:email',
+      state,
     })
     set.redirect = `https://github.com/login/oauth/authorize?${params}`
   })
-  .get('/github/callback', async ({ query, jwt, cookie: { token }, set }) => {
-    const { code } = query
+  .get('/github/callback', async ({ query, jwt, cookie: { token, oauth_state }, set }) => {
+    const { code, state } = query
     if (!code) { set.status = 400; return { error: 'Missing code' } }
+
+    // Verify CSRF state parameter
+    const storedState = oauth_state?.value
+    oauth_state.remove()
+    if (!state || !storedState || state !== storedState) {
+      throw new VaspError('AUTH_INVALID_STATE', 'OAuth state mismatch — possible CSRF attack', 403)
+    }
 
     const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ client_id: GITHUB_CLIENT_ID, client_secret: GITHUB_CLIENT_SECRET, code }),
     })
+    if (!tokenRes.ok) {
+      throw new VaspError('AUTH_PROVIDER_ERROR', 'GitHub token exchange failed', 502)
+    }
     const { access_token } = await tokenRes.json()
 
     const userRes = await fetch('https://api.github.com/user', {
       headers: { Authorization: `Bearer ${access_token}`, Accept: 'application/json' },
     })
+    if (!userRes.ok) {
+      throw new VaspError('AUTH_PROVIDER_ERROR', 'GitHub user info request failed', 502)
+    }
     const ghUser = await userRes.json()
     const githubId = String(ghUser.id)
     const email = ghUser.email || `${ghUser.login}@github.local`

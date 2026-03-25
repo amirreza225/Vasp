@@ -39,13 +39,14 @@ export function broadcast{{pascalCase name}}(event, data) {
 
 export const {{camelCase name}}Channel = new Elysia()
 {{#if ../hasAuth}}
-  .use(jwt({ name: 'jwt', secret: process.env.JWT_SECRET || 'vasp-dev-secret' }))
+  .use(jwt({ name: 'jwt', secret: process.env.JWT_SECRET || 'vasp-dev-secret-do-not-use-in-production' }))
 {{/if}}
   .ws('/ws/{{camelCase name}}', {
 {{#if ../hasAuth}}
     async beforeHandle({ jwt: jwtPlugin, request }) {
-      const url = new URL(request.url)
-      const token = url.searchParams.get('token')
+      // Read JWT from Sec-WebSocket-Protocol header instead of URL query
+      const protocols = request.headers.get('sec-websocket-protocol') ?? ''
+      const token = protocols.split(',').map(p => p.trim()).find(p => p !== 'vasp-realtime')
       if (!token) return new Response('Unauthorized', { status: 401 })
       const payload = await jwtPlugin.verify(token)
       if (!payload) return new Response('Unauthorized', { status: 401 })
@@ -73,6 +74,12 @@ export const {{camelCase name}}Channel = new Elysia()
     },
     close(ws) {
       const room = ws.data?._room
-      if (room) rooms.get(room)?.delete(ws)
+      if (room) {
+        const roomSet = rooms.get(room)
+        if (roomSet) {
+          roomSet.delete(ws)
+          if (roomSet.size === 0) rooms.delete(room)
+        }
+      }
     },
   })

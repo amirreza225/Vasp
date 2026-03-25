@@ -68,7 +68,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
   })
 {{/if}}
 {{#if (includes operations "create")}}
-  .post('/', async ({ body }) => {
+  .post('/', async ({ body, set }) => {
     const parsed = safeParse(Create{{pascalCase entity}}Schema, body)
     if (!parsed.success) {
       const firstIssue = parsed.issues?.[0]
@@ -83,6 +83,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{#if hasRealtime}}
     publish{{pascalCase entity}}('created', created)
 {{/if}}
+    set.status = 201
     return created
   })
 {{/if}}

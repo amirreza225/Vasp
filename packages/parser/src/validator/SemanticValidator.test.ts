@@ -171,7 +171,7 @@ describe('SemanticValidator', () => {
     expect(() => validate(`
       ${APP}
       entity User { id: Int @id }
-      entity Todo { id: Int @id author: User }
+      entity Todo { id: Int @id author: User @onDelete(cascade) }
     `)).not.toThrow()
   })
 
@@ -205,7 +205,7 @@ describe('SemanticValidator', () => {
     expect(() => validate(`
       ${APP}
       entity User { id: Int @id todos: Todo[] }
-      entity Todo { id: Int @id author: User }
+      entity Todo { id: Int @id author: User @onDelete(cascade) }
     `)).not.toThrow()
   })
 

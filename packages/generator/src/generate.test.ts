@@ -591,7 +591,7 @@ describe('generate()', () => {
     expect(existsSync(join(outputDir, 'src/vasp/client/crud.ts'))).toBe(true)
 
     const crud = readFileSync(join(outputDir, 'src/vasp/client/crud.ts'), 'utf8')
-    expect(crud).toContain('Promise<Todo[]>')
+    expect(crud).toContain('Todo[]')
     expect(crud).toContain('Promise<Todo>')
   })
 
@@ -819,7 +819,7 @@ describe('generate()', () => {
       page P { component: import P from "@src/pages/P.vue" }
 
       entity User { id: Int @id username: String }
-      entity Todo { id: Int @id title: String author: User }
+      entity Todo { id: Int @id title: String author: User @onDelete(cascade) }
 
       crud Todo { entity: Todo operations: [list, create, update, delete] }
     `

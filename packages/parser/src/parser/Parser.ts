@@ -26,6 +26,7 @@ import type {
   VaspAST,
 } from '@vasp-framework/core'
 import { ParseError, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_REALTIME_EVENTS } from '@vasp-framework/core'
+import type { ParseDiagnostic } from '@vasp-framework/core'
 import { Lexer } from '../lexer/Lexer.js'
 import type { Token } from '../lexer/Token.js'
 import { BLOCK_KEYWORDS, TokenType } from '../lexer/TokenType.js'
@@ -43,6 +44,7 @@ function extractRouteParams(path: string): string[] {
 
 class Parser {
   private pos = 0
+  private readonly diagnostics: ParseDiagnostic[] = []
 
   constructor(
     private readonly tokens: Token[],
@@ -67,65 +69,102 @@ class Parser {
     while (!this.isEOF()) {
       const kw = this.peek()
 
-      switch (kw.type) {
-        case TokenType.KW_APP:
-          ast.app = this.parseApp()
-          break
-        case TokenType.KW_AUTH:
-          ast.auth = this.parseAuth()
-          break
-        case TokenType.KW_ENTITY:
-          ast.entities.push(this.parseEntity())
-          break
-        case TokenType.KW_ROUTE:
-          ast.routes.push(this.parseRoute())
-          break
-        case TokenType.KW_PAGE:
-          ast.pages.push(this.parsePage())
-          break
-        case TokenType.KW_QUERY:
-          ast.queries.push(this.parseQuery())
-          break
-        case TokenType.KW_ACTION:
-          ast.actions.push(this.parseAction())
-          break
-        case TokenType.KW_MIDDLEWARE:
-          ;(ast.middlewares ??= []).push(this.parseMiddleware())
-          break
-        case TokenType.KW_API:
-          ;(ast.apis ??= []).push(this.parseApi())
-          break
-        case TokenType.KW_CRUD:
-          ast.cruds.push(this.parseCrud())
-          break
-        case TokenType.KW_REALTIME:
-          ast.realtimes.push(this.parseRealtime())
-          break
-        case TokenType.KW_JOB:
-          ast.jobs.push(this.parseJob())
-          break
-        case TokenType.KW_SEED:
-          if (ast.seed) {
+      try {
+        switch (kw.type) {
+          case TokenType.KW_APP:
+            ast.app = this.parseApp()
+            break
+          case TokenType.KW_AUTH:
+            ast.auth = this.parseAuth()
+            break
+          case TokenType.KW_ENTITY:
+            ast.entities.push(this.parseEntity())
+            break
+          case TokenType.KW_ROUTE:
+            ast.routes.push(this.parseRoute())
+            break
+          case TokenType.KW_PAGE:
+            ast.pages.push(this.parsePage())
+            break
+          case TokenType.KW_QUERY:
+            ast.queries.push(this.parseQuery())
+            break
+          case TokenType.KW_ACTION:
+            ast.actions.push(this.parseAction())
+            break
+          case TokenType.KW_MIDDLEWARE:
+            ;(ast.middlewares ??= []).push(this.parseMiddleware())
+            break
+          case TokenType.KW_API:
+            ;(ast.apis ??= []).push(this.parseApi())
+            break
+          case TokenType.KW_CRUD:
+            ast.cruds.push(this.parseCrud())
+            break
+          case TokenType.KW_REALTIME:
+            ast.realtimes.push(this.parseRealtime())
+            break
+          case TokenType.KW_JOB:
+            ast.jobs.push(this.parseJob())
+            break
+          case TokenType.KW_SEED:
+            if (ast.seed) {
+              throw this.error(
+                'E040_DUPLICATE_SEED_BLOCK',
+                'Duplicate seed block found',
+                'Only one seed block is allowed in main.vasp',
+                kw.loc,
+              )
+            }
+            ast.seed = this.parseSeed()
+            break
+          default:
             throw this.error(
-              'E040_DUPLICATE_SEED_BLOCK',
-              'Duplicate seed block found',
-              'Only one seed block is allowed in main.vasp',
+              'E010_UNEXPECTED_TOKEN',
+              `Unexpected token '${kw.value}' at top level`,
+              'Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, or seed',
               kw.loc,
             )
-          }
-          ast.seed = this.parseSeed()
-          break
-        default:
-          throw this.error(
-            'E010_UNEXPECTED_TOKEN',
-            `Unexpected token '${kw.value}' at top level`,
-            'Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, or seed',
-            kw.loc,
-          )
+        }
+      } catch (err) {
+        if (err instanceof ParseError) {
+          this.diagnostics.push(...err.diagnostics)
+          this.skipToNextBlock()
+        } else {
+          throw err
+        }
       }
     }
 
+    if (this.diagnostics.length > 0) {
+      throw new ParseError(this.diagnostics)
+    }
+
     return ast
+  }
+
+  /** Skip tokens until we reach the closing `}` of the current block, then resume at the next top-level keyword. */
+  private skipToNextBlock(): void {
+    let depth = 0
+    while (!this.isEOF()) {
+      const tok = this.peek()
+      if (tok.type === TokenType.LBRACE) {
+        depth++
+        this.pos++
+      } else if (tok.type === TokenType.RBRACE) {
+        if (depth <= 1) {
+          this.pos++ // consume the closing brace
+          return
+        }
+        depth--
+        this.pos++
+      } else if (depth === 0 && BLOCK_KEYWORDS.has(tok.type)) {
+        // We've hit the next block keyword at top level — stop skipping
+        return
+      } else {
+        this.pos++
+      }
+    }
   }
 
   // ---- Block parsers ----
@@ -279,8 +318,14 @@ class Parser {
       if (fieldTypeStr === 'Enum') {
         this.consume(TokenType.LPAREN)
         enumValues = []
+        const seenVariants = new Set<string>()
         while (!this.check(TokenType.RPAREN)) {
-          enumValues.push(this.consumeIdentifier().value)
+          const variant = this.consumeIdentifier()
+          if (seenVariants.has(variant.value)) {
+            throw this.error('E150_DUPLICATE_ENUM_VARIANT', `Duplicate enum variant '${variant.value}' in field '${fieldName.value}'`, 'Each enum variant must be unique', variant.loc)
+          }
+          seenVariants.add(variant.value)
+          enumValues.push(variant.value)
           if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA)
         }
         this.consume(TokenType.RPAREN)

@@ -3,25 +3,38 @@ import { db } from '../../db/client.{{ext}}'
 import { users } from '../../../drizzle/schema.{{ext}}'
 import { eq } from 'drizzle-orm'
 import { authPlugin } from '../plugin.{{ext}}'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
+import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:{{backendPort}}/auth/google/callback'
+const GOOGLE_JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'))
 
 export const googleRoutes = new Elysia()
   .use(authPlugin)
-  .get('/google', ({ set }) => {
+  .get('/google', ({ set, cookie: { oauth_state } }) => {
+    const state = crypto.randomUUID()
+    oauth_state.set({ value: state, httpOnly: true, sameSite: 'lax', path: '/', maxAge: 600 })
     const params = new URLSearchParams({
       client_id: GOOGLE_CLIENT_ID,
       redirect_uri: REDIRECT_URI,
       response_type: 'code',
       scope: 'openid email profile',
+      state,
     })
     set.redirect = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
   })
-  .get('/google/callback', async ({ query, jwt, cookie: { token }, set }) => {
-    const { code } = query
+  .get('/google/callback', async ({ query, jwt, cookie: { token, oauth_state }, set }) => {
+    const { code, state } = query
     if (!code) { set.status = 400; return { error: 'Missing code' } }
+
+    // Verify CSRF state parameter
+    const storedState = oauth_state?.value
+    oauth_state.remove()
+    if (!state || !storedState || state !== storedState) {
+      throw new VaspError('AUTH_INVALID_STATE', 'OAuth state mismatch — possible CSRF attack', 403)
+    }
 
     // Exchange code for tokens
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -35,9 +48,17 @@ export const googleRoutes = new Elysia()
         grant_type: 'authorization_code',
       }),
     })
+    if (!tokenRes.ok) {
+      throw new VaspError('AUTH_PROVIDER_ERROR', 'Google token exchange failed', 502)
+    }
     const tokenData = await tokenRes.json()
     const idToken = tokenData.id_token
-    const payload = JSON.parse(Buffer.from(idToken.split('.')[1], 'base64').toString())
+
+    // Verify Google ID token signature using Google's JWKS
+    const { payload } = await jwtVerify(idToken, GOOGLE_JWKS, {
+      issuer: ['https://accounts.google.com', 'accounts.google.com'],
+      audience: GOOGLE_CLIENT_ID,
+    })
     const googleId = payload.sub
     const email = payload.email
 

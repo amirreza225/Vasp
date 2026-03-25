@@ -20,6 +20,8 @@ export class SemanticValidator {
     this.checkDuplicateEntities(ast)
     this.checkDuplicateRoutes(ast)
     this.checkFieldTypes(ast)
+    this.checkRelationModifiers(ast)
+    this.checkModifierTypeConstraints(ast)
 
     if (this.diagnostics.length > 0) {
       throw new ParseError(this.diagnostics)
@@ -387,6 +389,78 @@ export class SemanticValidator {
             })
           }
         }
+      }
+    }
+  }
+
+  /** 2.2 — Warn on singular-looking relation that may need [] + 2.3 — Warn on missing @onDelete for non-nullable relations */
+  private checkRelationModifiers(ast: VaspAST): void {
+    for (const entity of ast.entities) {
+      for (const field of entity.fields) {
+        if (!field.isRelation) continue
+
+        // 2.2: Warn if field name ends in 's' but missing [] (likely should be a collection)
+        if (!field.isArray && field.name.endsWith('s') && field.name.length > 1) {
+          this.diagnostics.push({
+            code: 'W200_SINGULAR_RELATION_LOOKS_PLURAL',
+            message: `Relation field '${field.name}' in entity '${entity.name}' looks plural but is not an array`,
+            hint: `If this is a collection, add []: ${field.name}: ${field.type}[]. If it is a singular relation, consider renaming it.`,
+            loc: entity.loc,
+          })
+        }
+
+        // 2.3: Warn if non-nullable, non-array relation has no @onDelete
+        if (!field.isArray && !field.nullable && !field.onDelete) {
+          this.diagnostics.push({
+            code: 'W201_MISSING_ON_DELETE',
+            message: `Relation field '${field.name}' in entity '${entity.name}' has no @onDelete modifier`,
+            hint: `Add @onDelete(cascade), @onDelete(restrict), or @onDelete(setNull) to specify deletion behavior`,
+            loc: entity.loc,
+          })
+        }
+      }
+    }
+  }
+
+  /** 2.4 — Validate modifier-type constraints */
+  private checkModifierTypeConstraints(ast: VaspAST): void {
+    for (const entity of ast.entities) {
+      let idCount = 0
+
+      for (const field of entity.fields) {
+        if (field.modifiers.includes('id')) {
+          idCount++
+        }
+
+        // @updatedAt only valid on DateTime fields
+        if (field.isUpdatedAt && field.type !== 'DateTime') {
+          this.diagnostics.push({
+            code: 'E151_UPDATEDAT_REQUIRES_DATETIME',
+            message: `Field '${field.name}' in entity '${entity.name}' has @updatedAt but type is '${field.type}'`,
+            hint: `@updatedAt can only be used on DateTime fields`,
+            loc: entity.loc,
+          })
+        }
+
+        // @onDelete only valid on relation fields
+        if (field.onDelete && !field.isRelation) {
+          this.diagnostics.push({
+            code: 'E152_ONDELETE_REQUIRES_RELATION',
+            message: `Field '${field.name}' in entity '${entity.name}' has @onDelete but is not a relation`,
+            hint: `@onDelete can only be used on relation fields`,
+            loc: entity.loc,
+          })
+        }
+      }
+
+      // Only one @id per entity
+      if (idCount > 1) {
+        this.diagnostics.push({
+          code: 'E153_MULTIPLE_ID_FIELDS',
+          message: `Entity '${entity.name}' has ${idCount} @id fields`,
+          hint: `Each entity must have at most one @id field`,
+          loc: entity.loc,
+        })
       }
     }
   }
