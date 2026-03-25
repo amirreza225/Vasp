@@ -1,4 +1,4 @@
-import { DEFAULT_BACKEND_PORT, DEFAULT_SPA_PORT, VASP_VERSION } from '@vasp-framework/core'
+import { DEFAULT_BACKEND_PORT, DEFAULT_SPA_PORT, DEFAULT_SSR_PORT, VASP_VERSION } from '@vasp-framework/core'
 import { BaseGenerator } from './BaseGenerator.js'
 
 export class BackendGenerator extends BaseGenerator {
@@ -16,7 +16,7 @@ export class BackendGenerator extends BaseGenerator {
 
     const data = {
       backendPort: DEFAULT_BACKEND_PORT,
-      frontendPort: DEFAULT_SPA_PORT,
+      frontendPort: this.ctx.isSpa ? DEFAULT_SPA_PORT : DEFAULT_SSR_PORT,
       vaspVersion: VASP_VERSION,
       middlewares,
       requiredEnvVars,

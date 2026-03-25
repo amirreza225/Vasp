@@ -73,7 +73,7 @@ export class FrontendGenerator extends BaseGenerator {
     // Scaffold empty page files if they don't exist
     for (const page of ast.pages) {
       const comp = page.component
-      const src = comp.kind === 'default' ? comp.source : comp.source
+      const src = comp.source
       const relativePath = src.replace('@src/', 'src/')
       const fullPath = join(this.ctx.projectDir, relativePath)
       if (!existsSync(fullPath)) {
@@ -142,7 +142,7 @@ export class FrontendGenerator extends BaseGenerator {
     // Scaffold empty src/pages/ component files if they don't exist
     for (const page of ast.pages) {
       const comp = page.component
-      const src = comp.kind === 'default' ? comp.source : comp.source
+      const src = comp.source
       const relativePath = src.replace('@src/', 'src/')
       const fullPath = join(this.ctx.projectDir, relativePath)
       if (!existsSync(fullPath)) {
@@ -166,8 +166,7 @@ export class FrontendGenerator extends BaseGenerator {
   private buildPagesMap(): Record<string, string> {
     const map: Record<string, string> = {}
     for (const page of this.ctx.ast.pages) {
-      const src = page.component.kind === 'default' ? page.component.source : page.component.source
-      map[page.name] = src
+      map[page.name] = page.component.source
     }
     return map
   }

@@ -45,6 +45,10 @@ export class ApiGenerator extends BaseGenerator {
       bySource.get(fn.source)!.push(fnName)
     }
 
+    const paramType = this.ctx.isTypeScript
+      ? '(ctx: { db: any; user?: any; args: any })'
+      : '({ db, user, args })'
+
     for (const [source, fnNames] of bySource) {
       const relativePath = source.replace('@src/', 'src/')
       if (existsSync(join(this.ctx.projectDir, relativePath))) continue
@@ -52,7 +56,7 @@ export class ApiGenerator extends BaseGenerator {
         fnNames
           .map(
             (name) =>
-              `export async function ${name}({ db, user, args }) {\n  // TODO: implement\n  return { success: true }\n}`,
+              `export async function ${name}${paramType} {\n  // TODO: implement\n  return { success: true }\n}`,
           )
           .join('\n\n') + '\n'
       this.write(relativePath, content)

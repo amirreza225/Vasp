@@ -567,6 +567,26 @@ describe('generate()', () => {
     expect(crudFile).toContain("publishTodoChannel")
   })
 
+  it('realtime TS: channel file emits TypeScript type annotations', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      crud Todo { entity: Todo operations: [list, create] }
+      realtime TodoChannel { entity: Todo events: [created, updated] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'realtime-ts-test')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+    const channel = readFileSync(join(outputDir, 'server/routes/realtime/todoChannel.ts'), 'utf8')
+    // TypeScript type annotations must be present
+    expect(channel).toContain(': Map<string, Set<WebSocket>>')
+    expect(channel).toContain('roomId: string')
+    expect(channel).toContain('event: string')
+    expect(channel).toContain('data: unknown')
+  })
+
   it('generates job worker and schedule endpoint', () => {
     const source = `
       app A { title: "T" db: Drizzle ssr: false typescript: false }
@@ -760,7 +780,67 @@ describe('generate()', () => {
     expect(middleware).toContain("navigateTo('/login')")
   })
 
-  // ── Phase 2: Entity Relationships & Rich Schema ─────────────────────────
+  it('SSR: server/index.js CORS origin uses SSR port (3000), not SPA port (5173)', () => {
+    const source = `
+      app SsrApp {
+        title: "SSR App"
+        db: Drizzle
+        ssr: true
+        typescript: false
+      }
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'ssr-cors-port')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+    const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
+    expect(serverIndex).toContain('localhost:3000')
+    expect(serverIndex).not.toContain('localhost:5173')
+  })
+
+  it('SPA: server/index.js CORS origin uses SPA port (5173)', () => {
+    const source = `
+      app SpaApp {
+        title: "SPA App"
+        db: Drizzle
+        ssr: false
+        typescript: false
+      }
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'spa-cors-port')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+    const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
+    expect(serverIndex).toContain('localhost:5173')
+    expect(serverIndex).not.toContain('localhost:3000')
+  })
+
+  it('TS: api route stub uses typed ctx parameter', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      api uploadImage {
+        method: POST
+        path: "/api/upload"
+        fn: import { uploadImage } from "@src/api.ts"
+        auth: false
+      }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'api-ts-stub')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+    const stub = readFileSync(join(outputDir, 'src/api.ts'), 'utf8')
+    // TypeScript stub uses typed ctx parameter, not plain destructuring
+    expect(stub).toContain('ctx: { db: any; user?: any; args: any }')
+    expect(stub).not.toContain('({ db, user, args })')
+  })
 
   it('schema: generates FK column + Drizzle relations block for many-to-one relation', () => {
     const source = `

@@ -1,13 +1,13 @@
 import { Elysia } from 'elysia'
-{{#if ../hasAuth}}
+{{#if hasAuth}}
 import jwt from '@elysiajs/jwt'
 {{/if}}
 
 // Room-based subscriber map for '{{name}}' channel
 // Each room key maps to a set of connected WebSocket clients
-const rooms{{#if ../isTypeScript}}: Map<string, Set<WebSocket>>{{/if}} = new Map()
+const rooms{{#if isTypeScript}}: Map<string, Set<WebSocket>>{{/if}} = new Map()
 
-function getRoom(roomId{{#if ../isTypeScript}}: string{{/if}}) {
+function getRoom(roomId{{#if isTypeScript}}: string{{/if}}) {
   if (!rooms.has(roomId)) rooms.set(roomId, new Set())
   return rooms.get(roomId)
 }
@@ -16,7 +16,7 @@ function getRoom(roomId{{#if ../isTypeScript}}: string{{/if}}) {
  * Publish a realtime event to all subscribers in a specific room of '{{name}}'.
  * Called automatically by CRUD mutation handlers.
  */
-export function publish{{pascalCase name}}(event{{#if ../isTypeScript}}: string{{/if}}, data{{#if ../isTypeScript}}: unknown{{/if}}, roomId{{#if ../isTypeScript}}: string{{/if}} = 'default') {
+export function publish{{pascalCase name}}(event{{#if isTypeScript}}: string{{/if}}, data{{#if isTypeScript}}: unknown{{/if}}, roomId{{#if isTypeScript}}: string{{/if}} = 'default') {
   const room = rooms.get(roomId)
   if (!room) return
   const message = JSON.stringify({ channel: '{{camelCase name}}', room: roomId, event, data })
@@ -28,7 +28,7 @@ export function publish{{pascalCase name}}(event{{#if ../isTypeScript}}: string{
 /**
  * Broadcast to all rooms of '{{name}}'.
  */
-export function broadcast{{pascalCase name}}(event{{#if ../isTypeScript}}: string{{/if}}, data{{#if ../isTypeScript}}: unknown{{/if}}) {
+export function broadcast{{pascalCase name}}(event{{#if isTypeScript}}: string{{/if}}, data{{#if isTypeScript}}: unknown{{/if}}) {
   const message = JSON.stringify({ channel: '{{camelCase name}}', event, data })
   for (const [, room] of rooms) {
     for (const ws of room) {
@@ -38,11 +38,11 @@ export function broadcast{{pascalCase name}}(event{{#if ../isTypeScript}}: strin
 }
 
 export const {{camelCase name}}Channel = new Elysia()
-{{#if ../hasAuth}}
+{{#if hasAuth}}
   .use(jwt({ name: 'jwt', secret: process.env.JWT_SECRET || 'vasp-dev-secret-do-not-use-in-production' }))
 {{/if}}
   .ws('/ws/{{camelCase name}}', {
-{{#if ../hasAuth}}
+{{#if hasAuth}}
     async beforeHandle({ jwt: jwtPlugin, request }) {
       // Read JWT from Sec-WebSocket-Protocol header instead of URL query
       const protocols = request.headers.get('sec-websocket-protocol') ?? ''
@@ -55,16 +55,16 @@ export const {{camelCase name}}Channel = new Elysia()
     open(ws) {
       const room = ws.data?.query?.room ?? 'default'
       getRoom(room).add(ws)
-      {{#if ../isTypeScript}}(ws.data as Record<string, unknown>)._room = room{{else}}ws.data._room = room{{/if}}
+      {{#if isTypeScript}}(ws.data as Record<string, unknown>)._room = room{{else}}ws.data._room = room{{/if}}
     },
     message(ws, msg) {
       // Client can switch rooms via { action: 'join', room: 'roomId' }
       try {
         const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg
         if (parsed.action === 'join' && parsed.room) {
-          const oldRoom = {{#if ../isTypeScript}}(ws.data as Record<string, unknown>)._room{{else}}ws.data._room{{/if}}
-          if (oldRoom) rooms.get(oldRoom{{#if ../isTypeScript}} as string{{/if}})?.delete(ws)
-          {{#if ../isTypeScript}}(ws.data as Record<string, unknown>)._room = parsed.room{{else}}ws.data._room = parsed.room{{/if}}
+          const oldRoom = {{#if isTypeScript}}(ws.data as Record<string, unknown>)._room{{else}}ws.data._room{{/if}}
+          if (oldRoom) rooms.get(oldRoom{{#if isTypeScript}} as string{{/if}})?.delete(ws)
+          {{#if isTypeScript}}(ws.data as Record<string, unknown>)._room = parsed.room{{else}}ws.data._room = parsed.room{{/if}}
           getRoom(parsed.room).add(ws)
           ws.send(JSON.stringify({ ack: 'joined', room: parsed.room }))
           return
@@ -73,7 +73,7 @@ export const {{camelCase name}}Channel = new Elysia()
       ws.send(JSON.stringify({ ack: msg }))
     },
     close(ws) {
-      const room = {{#if ../isTypeScript}}(ws.data as Record<string, unknown>)?._room as string | undefined{{else}}ws.data?._room{{/if}}
+      const room = {{#if isTypeScript}}(ws.data as Record<string, unknown>)?._room as string | undefined{{else}}ws.data?._room{{/if}}
       if (room) {
         const roomSet = rooms.get(room)
         if (roomSet) {

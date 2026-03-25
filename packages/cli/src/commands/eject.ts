@@ -45,7 +45,7 @@ function rewriteRuntimeImport(content: string, fileDir: string, runtimeDir: stri
   const importRegex = /(['"])@vasp-framework\/runtime\1/g
   if (!importRegex.test(content)) return null
 
-  return content.replace(/(['"])@vasp-framework\/runtime\1/g, `'${normalized}'`)
+  return content.replace(/(['"])@vasp-framework\/runtime\1/g, `$1${normalized}$1`)
 }
 
 export async function ejectCommand(args: string[] = []): Promise<void> {
