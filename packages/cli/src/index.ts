@@ -6,6 +6,7 @@ import { enableSsrCommand } from './commands/enable-ssr.js'
 import { startCommand } from './commands/start.js'
 import { buildCommand } from './commands/build.js'
 import { deployCommand } from './commands/deploy.js'
+import { ejectCommand } from './commands/eject.js'
 import { dbCommand } from './commands/db.js'
 import { VASP_VERSION } from '@vasp-framework/core'
 
@@ -50,7 +51,11 @@ export async function run(args: string[]): Promise<void> {
       break
 
     case 'deploy':
-      await deployCommand()
+      await deployCommand(args.slice(1))
+      break
+
+    case 'eject':
+      await ejectCommand(args.slice(1))
       break
 
     case 'db':
@@ -76,7 +81,8 @@ function printHelp(): void {
     vasp start                           Start the dev server
     vasp build                           Build for production
     vasp db <push|generate|migrate|studio|seed>  Run database commands
-    vasp deploy                          Deploy your app (planned)
+    vasp deploy --target=<docker|fly|railway>    Generate deployment config files
+    vasp eject                           Remove Vasp framework dependency
 
   Options for 'vasp new':
     --typescript, --ts    Enable TypeScript (default: JavaScript)

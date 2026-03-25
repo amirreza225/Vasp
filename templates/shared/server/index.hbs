@@ -1,6 +1,7 @@
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { staticPlugin } from '@elysiajs/static'
+import { swagger } from '@elysiajs/swagger'
 import { db } from './db/client.{{ext}}'
 import { logger } from './middleware/logger.{{ext}}'
 import { rateLimit } from './middleware/rateLimit.{{ext}}'
@@ -57,6 +58,12 @@ if (missingEnvVars.length > 0) {
 }
 
 const app = new Elysia()
+  .use(swagger({
+    path: '/api/docs',
+    documentation: {
+      info: { title: '{{appName}} API', version: '1.0.0' },
+    },
+  }))
   .use(logger())
   .use(errorHandler())
   .use(cors({

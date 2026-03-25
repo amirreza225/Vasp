@@ -1,5 +1,6 @@
 import { join, resolve } from 'node:path'
-import { existsSync, readFileSync, watch } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, watch } from 'node:fs'
+import { createHash } from 'node:crypto'
 import { log } from '../utils/logger.js'
 import { runRegenerate } from './generate.js'
 import { isPlaceholderValue, parseEnvFile } from '@vasp-framework/generator'
@@ -77,6 +78,11 @@ export async function startCommand(): Promise<void> {
     }
   }
 
+  // Auto-migrate: push schema if it changed since last run (dev only)
+  if (process.env['NODE_ENV'] !== 'production') {
+    await autoMigrateIfNeeded(projectDir)
+  }
+
   log.step('Starting Vasp dev servers...')
   log.dim(`  server: ${serverScript}`)
   log.dim(`  client: ${clientScript}`)
@@ -111,6 +117,55 @@ export async function startCommand(): Promise<void> {
   if (serverCode !== 0 || clientCode !== 0) {
     process.exit(1)
   }
+}
+
+/**
+ * Detect if the Drizzle schema file has changed since the last `db push`.
+ * If so, run `bunx drizzle-kit push` automatically before starting dev servers.
+ * The schema hash is stored in `.vasp/schema-hash`.
+ */
+async function autoMigrateIfNeeded(projectDir: string): Promise<void> {
+  const schemaTs = join(projectDir, 'drizzle', 'schema.ts')
+  const schemaJs = join(projectDir, 'drizzle', 'schema.js')
+  const schemaFile = existsSync(schemaTs) ? schemaTs : existsSync(schemaJs) ? schemaJs : null
+
+  if (!schemaFile) return // no schema yet
+
+  const content = readFileSync(schemaFile, 'utf8')
+  const currentHash = createHash('sha256').update(content, 'utf8').digest('hex')
+
+  const vaspDir = join(projectDir, '.vasp')
+  const hashFile = join(vaspDir, 'schema-hash')
+
+  const previousHash = existsSync(hashFile) ? readFileSync(hashFile, 'utf8').trim() : null
+
+  if (previousHash === currentHash) return // schema unchanged
+
+  const label = pc.yellow('[vasp]')
+  const isFirstRun = previousHash === null
+  if (isFirstRun) {
+    process.stdout.write(`${label} First run — pushing schema to database...\n`)
+  } else {
+    process.stdout.write(`${label} Schema changed — running db push...\n`)
+  }
+
+  const pushProc = Bun.spawn(['bunx', 'drizzle-kit', 'push', '--accept-data-loss'], {
+    cwd: projectDir,
+    stdout: 'inherit',
+    stderr: 'inherit',
+  })
+  const pushCode = await pushProc.exited
+
+  if (pushCode === 0) {
+    mkdirSync(vaspDir, { recursive: true })
+    writeFileSync(hashFile, currentHash, 'utf8')
+    process.stdout.write(`${label} ${pc.green('Schema pushed successfully')}\n`)
+  } else {
+    process.stdout.write(
+      `${label} ${pc.yellow('db push failed — continuing anyway. Fix your DATABASE_URL and retry.')}\n`,
+    )
+  }
+  console.log()
 }
 
 async function spawnPrefixed(

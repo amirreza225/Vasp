@@ -24,7 +24,7 @@ Vasp is a batteries-included, declarative full-stack web framework for Vue devel
 
 ```bash
 # Install Vasp CLI
-bun install -g vasp
+bun install -g vasp-cli
 
 # Create a new app (JavaScript + SPA, the fastest path)
 vasp new my-app
@@ -200,15 +200,18 @@ my-app/
 
 ```bash
 vasp new <name> [--typescript] [--ssr] [--ssg] [--starter=<name>] [--no-install]
-vasp start            # Start dev server (with pre-flight checks)
+vasp generate [--force] [--dry-run]   # Regenerate from main.vasp (preserves user changes)
+vasp start            # Start dev server (auto-migrates schema on change)
 vasp build            # Production build
 vasp db push          # Push schema to database
 vasp db generate      # Generate a migration
 vasp db migrate       # Run pending migrations
 vasp db studio        # Open Drizzle Studio
+vasp db seed          # Seed the database
 vasp migrate-to-ts    # Upgrade an existing JS project to TypeScript
 vasp enable-ssr       # Switch a SPA project to SSR/SSG
-vasp deploy           # Deploy to production
+vasp deploy --target=<docker|fly|railway>   # Generate deployment config files
+vasp eject            # Remove Vasp framework dependency (one-way)
 vasp --version
 ```
 
@@ -241,9 +244,19 @@ vasp --version
 | `app.env` schema + startup env validation | Done |
 | Pre-flight checks in `vasp start` | Done |
 | Auto-generated `.env` and `README.md` | Done |
-| `vasp start` dev server | Done |
+| `vasp generate` (safe regeneration with manifest) | Done |
+| `vasp start` dev server (schema auto-migration) | Done |
 | `vasp build` | Done |
-| `vasp deploy` | Planned |
+| `vasp deploy` (Docker, Fly.io, Railway) | Done |
+| `vasp eject` (remove framework dependency) | Done |
+| OpenAPI / Swagger UI (`/api/docs`) | Done |
+| Entity relations (foreign keys + Drizzle relations) | Done |
+| Enum field type | Done |
+| Rich field modifiers (`@nullable`, `@default`, `@updatedAt`) | Done |
+| Valibot validation schemas (server + client) | Done |
+| Structured error envelope (`{ ok, data, error }`) | Done |
+| Request tracing + dev logger | Done |
+| Test scaffold generation (Vitest) | Done |
 
 ---
 

@@ -30,11 +30,21 @@ vasp new my-app --starter=todo        # Use a starter template
 vasp new my-app --no-install          # Skip bun install
 ```
 
-**Starters:** `minimal`, `todo`, `todo-auth-ssr`
+**Starters:** `minimal`, `todo`, `todo-auth-ssr`, `recipe`
+
+### `vasp generate`
+
+Safely regenerate your project from `main.vasp`. Preserves files you've manually edited.
+
+```bash
+vasp generate           # Regenerate, keep user-modified files
+vasp generate --force   # Overwrite all generated files
+vasp generate --dry-run # Preview what would change
+```
 
 ### `vasp start`
 
-Start the dev servers (backend + frontend) concurrently with color-prefixed output.
+Start the dev servers (backend + frontend) concurrently with color-prefixed output. Automatically pushes the Drizzle schema when it detects changes.
 
 ```bash
 cd my-app && vasp start
@@ -46,6 +56,51 @@ Build for production — compiles the Elysia backend with Bun and the frontend w
 
 ```bash
 cd my-app && vasp build
+```
+
+### `vasp db`
+
+Run Drizzle database commands.
+
+```bash
+vasp db push        # Push schema changes to the database
+vasp db generate    # Generate a SQL migration file
+vasp db migrate     # Run pending migrations
+vasp db studio      # Open Drizzle Studio GUI
+vasp db seed        # Seed the database
+```
+
+### `vasp deploy`
+
+Generate deployment configuration files for your target platform. Vasp generates the files — you deploy using the platform's CLI.
+
+```bash
+vasp deploy --target=docker    # Dockerfile + docker-compose.yml + .dockerignore
+vasp deploy --target=fly       # fly.toml + Dockerfile
+vasp deploy --target=railway   # railway.json + Dockerfile
+vasp deploy --target=docker --force  # Overwrite existing files
+```
+
+**Docker example:**
+```bash
+vasp deploy --target=docker
+docker-compose up --build
+```
+
+**Fly.io example:**
+```bash
+vasp deploy --target=fly
+fly secrets set DATABASE_URL=<your-postgres-url>
+fly deploy
+```
+
+### `vasp eject`
+
+Remove the `@vasp-framework/runtime` dependency and inline all composables into your project. The result is a standard Vue/Nuxt + Elysia app with no Vasp dependency.
+
+```bash
+vasp eject            # Preview what will happen
+vasp eject --confirm  # Proceed with eject
 ```
 
 ### `vasp migrate-to-ts`

@@ -10,7 +10,7 @@ Vasp is a declarative full-stack framework for Vue developers. A single `main.va
 packages/
   core/       → @vasp-framework/core     — Types (VaspAST, errors, constants)
   parser/     → @vasp-framework/parser   — Lexer + Parser + SemanticValidator
-  generator/  → @vasp-framework/generator — 9 generators + Handlebars TemplateEngine
+  generator/  → @vasp-framework/generator — 12 generators + Handlebars TemplateEngine
   runtime/    → @vasp-framework/runtime  — $vasp composable shipped into generated apps
   cli/        → vasp-cli                 — CLI commands, scaffolding, starter templates
 templates/                               — Handlebars (.hbs) source for generated files
@@ -35,7 +35,8 @@ bun run lint           # ESLint on packages/*/src/**/*.ts
 # CLI (after global install: bun add -g vasp-cli)
 vasp new <name>        # Scaffold a new app from main.vasp
 vasp new <name> --starter <name>  # Use a starter template (minimal, todo, todo-auth-ssr, recipe)
-vasp start             # Dev server (backend + frontend with hot reload)
+vasp generate [--force] [--dry-run]  # Safe regeneration from main.vasp
+vasp start             # Dev server (backend + frontend with hot reload + schema auto-migration)
 vasp build             # Production build
 vasp enable-ssr        # Upgrade SPA app to SSR
 vasp migrate-to-ts     # Convert JS app to TypeScript
@@ -43,6 +44,9 @@ vasp db push           # Push Drizzle schema to database
 vasp db generate       # Generate Drizzle migrations
 vasp db migrate        # Run pending migrations
 vasp db studio         # Open Drizzle Studio GUI
+vasp db seed           # Seed the database
+vasp deploy --target=<docker|fly|railway>  # Generate deployment config files
+vasp eject [--confirm] # Remove Vasp framework dependency, inline runtime
 ```
 
 **Building the CLI** (`packages/cli`):
@@ -79,15 +83,18 @@ Semantic errors E100–E114 cover: missing app, undefined route targets, empty/i
 All generators extend `BaseGenerator` — [`packages/generator/src/generators/BaseGenerator.ts`](../packages/generator/src/generators/BaseGenerator.ts).
 
 **Execution order** in [`generate.ts`](../packages/generator/src/generate.ts):
-1. `ScaffoldGenerator` — package.json, tsconfig, bunfig, .gitignore, .env, .env.example, README.md
-2. `DrizzleSchemaGenerator` — DB schema
-3. `BackendGenerator` — Elysia server entry + DB client + rate-limiting middleware
+1. `ScaffoldGenerator` — package.json, tsconfig, bunfig, .gitignore, .env, .env.example, README.md, test scaffold
+2. `DrizzleSchemaGenerator` — DB schema (entities, enums, relations, FK constraints)
+3. `BackendGenerator` — Elysia server entry + DB client + middleware + Swagger (`/api/docs`)
 4. `AuthGenerator` — auth routes + Login/Register Vue components
-5. `QueryActionGenerator` — server query/action handlers
-6. `CrudGenerator` — CRUD REST endpoints
-7. `RealtimeGenerator` — WebSocket channels
-8. `JobGenerator` — PgBoss background jobs
-9. `FrontendGenerator` — full Vue SPA (Vite) or Nuxt 4 SSR/SSG scaffold
+5. `MiddlewareGenerator` — custom middleware blocks
+6. `QueryActionGenerator` — server query/action handlers
+7. `ApiGenerator` — custom API endpoints
+8. `CrudGenerator` — CRUD REST endpoints
+9. `RealtimeGenerator` — WebSocket channels
+10. `JobGenerator` — PgBoss background jobs
+11. `SeedGenerator` — database seed script
+12. `FrontendGenerator` — full Vue SPA (Vite) or Nuxt 4 SSR/SSG scaffold
 
 **GeneratorContext** — [`GeneratorContext.ts`](../packages/generator/src/GeneratorContext.ts):
 ```ts
