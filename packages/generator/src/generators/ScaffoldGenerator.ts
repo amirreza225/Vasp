@@ -170,8 +170,42 @@ export class ScaffoldGenerator extends BaseGenerator {
     for (const entity of ast.entities) {
       lines.push(`entity ${entity.name} {`)
       for (const field of entity.fields) {
-        const mods = field.modifiers.map((m) => `@${m.replace('_', '(').replace('default_now', 'default(now)')}`).join(' ')
-        lines.push(`  ${field.name}: ${field.type}${mods ? ' ' + mods : ''}`)
+        // Reconstruct the type string with enum variants and array notation
+        let typeStr = field.type
+        if (field.enumValues && field.enumValues.length > 0) {
+          typeStr = `Enum(${field.enumValues.join(', ')})`
+        }
+        if (field.isArray) {
+          typeStr += '[]'
+        }
+
+        // Reconstruct modifiers in canonical order
+        const modParts: string[] = []
+        if (field.modifiers.includes('id')) modParts.push('@id')
+        if (field.modifiers.includes('unique')) modParts.push('@unique')
+        if (field.defaultValue !== undefined) {
+          if (field.defaultValue === 'now') {
+            modParts.push('@default(now)')
+          } else if (
+            !isNaN(Number(field.defaultValue)) ||
+            field.defaultValue === 'true' ||
+            field.defaultValue === 'false'
+          ) {
+            modParts.push(`@default(${field.defaultValue})`)
+          } else {
+            modParts.push(`@default("${field.defaultValue}")`)
+          }
+        }
+        if (field.onDelete) {
+          // AST stores 'set null' (with space); DSL keyword is 'setNull'
+          const onDeleteStr = field.onDelete === 'set null' ? 'setNull' : field.onDelete
+          modParts.push(`@onDelete(${onDeleteStr})`)
+        }
+        if (field.nullable) modParts.push('@nullable')
+        if (field.isUpdatedAt) modParts.push('@updatedAt')
+
+        const mods = modParts.join(' ')
+        lines.push(`  ${field.name}: ${typeStr}${mods ? ' ' + mods : ''}`)
       }
       lines.push(`}`, '')
     }
@@ -244,6 +278,33 @@ export class ScaffoldGenerator extends BaseGenerator {
         `crud ${crud.name} {`,
         `  entity: ${crud.entity}`,
         `  operations: [${crud.operations.join(', ')}]`,
+        `}`,
+        '',
+      )
+    }
+
+    for (const realtime of ast.realtimes) {
+      lines.push(
+        `realtime ${realtime.name} {`,
+        `  entity: ${realtime.entity}`,
+        `  events: [${realtime.events.join(', ')}]`,
+        `}`,
+        '',
+      )
+    }
+
+    for (const job of ast.jobs) {
+      const performFn = job.perform.fn
+      const performFnStr = performFn.kind === 'named'
+        ? `import { ${performFn.namedExport} } from "${performFn.source}"`
+        : `import ${performFn.defaultExport} from "${performFn.source}"`
+      lines.push(
+        `job ${job.name} {`,
+        `  executor: ${job.executor}`,
+        `  perform: {`,
+        `    fn: ${performFnStr}`,
+        `  }`,
+        ...(job.schedule ? [`  schedule: "${job.schedule}"`] : []),
         `}`,
         '',
       )
