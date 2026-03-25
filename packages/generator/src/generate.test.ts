@@ -207,6 +207,50 @@ middleware RouteOnly {
 }
 `
 
+const WITH_ENV_SCHEMA_VASP = `
+app EnvApp {
+  title: "Env App"
+  db: Drizzle
+  ssr: false
+  typescript: false
+  env: {
+    DATABASE_URL: required
+    GOOGLE_CLIENT_ID: optional
+  }
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+`
+
+const WITH_SEED_VASP = `
+app SeedApp {
+  title: "Seed App"
+  db: Drizzle
+  ssr: false
+  typescript: false
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+seed {
+  fn: import seedData from "@src/seed.js"
+}
+`
+
 describe('generate()', () => {
   beforeEach(() => {
     mkdirSync(TMP_DIR, { recursive: true })
@@ -322,6 +366,34 @@ describe('generate()', () => {
 
     expect(existsSync(join(outputDir, 'src/middleware/logger.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'src/middleware/routeOnly.js'))).toBe(true)
+  })
+
+  it('generates startup env validation for required app.env keys', () => {
+    const ast = parse(WITH_ENV_SCHEMA_VASP)
+    const outputDir = join(TMP_DIR, 'with-env-schema')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
+    expect(serverIndex).toContain('const REQUIRED_ENV_VARS = [\'DATABASE_URL\']')
+    expect(serverIndex).toContain('Missing required environment variables')
+    expect(serverIndex).toContain('process.exit(1)')
+    expect(serverIndex).not.toContain('GOOGLE_CLIENT_ID')
+  })
+
+  it('generates seed runner, script, and source seed stub', () => {
+    const ast = parse(WITH_SEED_VASP)
+    const outputDir = join(TMP_DIR, 'with-seed')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'server/db/seed.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'src/seed.js'))).toBe(true)
+
+    const seedRunner = readFileSync(join(outputDir, 'server/db/seed.js'), 'utf8')
+    expect(seedRunner).toContain("import seedData from '../../src/seed.js'")
+    expect(seedRunner).toContain('Seed completed')
+
+    const pkg = JSON.parse(readFileSync(join(outputDir, 'package.json'), 'utf8'))
+    expect(pkg.scripts['db:seed']).toBe('bun server/db/seed.js')
   })
 
   it('router/index.js includes generated routes', () => {

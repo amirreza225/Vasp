@@ -2,7 +2,7 @@ import { resolve, join } from 'node:path'
 import { existsSync, readFileSync } from 'node:fs'
 import { log } from '../utils/logger.js'
 
-const DB_SUBCOMMANDS = ['push', 'generate', 'migrate', 'studio'] as const
+const DB_SUBCOMMANDS = ['push', 'generate', 'migrate', 'studio', 'seed'] as const
 type DbSubcommand = (typeof DB_SUBCOMMANDS)[number]
 
 export async function dbCommand(args: string[]): Promise<void> {

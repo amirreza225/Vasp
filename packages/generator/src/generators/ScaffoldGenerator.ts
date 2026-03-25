@@ -133,6 +133,13 @@ export class ScaffoldGenerator extends BaseGenerator {
       `  db: ${ast.app.db}`,
       `  ssr: ${typeof ast.app.ssr === 'string' ? `"${ast.app.ssr}"` : ast.app.ssr}`,
       `  typescript: ${ast.app.typescript}`,
+      ...(ast.app.env && Object.keys(ast.app.env).length > 0
+        ? [
+          `  env: {`,
+          ...Object.entries(ast.app.env).map(([key, requirement]) => `    ${key}: ${requirement}`),
+          `  }`,
+        ]
+        : []),
       `}`,
       '',
     ]
@@ -142,6 +149,7 @@ export class ScaffoldGenerator extends BaseGenerator {
         `auth ${ast.auth.name} {`,
         `  userEntity: ${ast.auth.userEntity}`,
         `  methods: [ ${ast.auth.methods.join(', ')} ]`,
+        ...(ast.auth.roles && ast.auth.roles.length > 0 ? [`  roles: [ ${ast.auth.roles.join(', ')} ]`] : []),
         `}`,
         '',
       )
@@ -178,6 +186,7 @@ export class ScaffoldGenerator extends BaseGenerator {
         `  fn: ${fnStr}`,
         `  entities: [${query.entities.join(', ')}]`,
         ...(query.auth ? [`  auth: true`] : []),
+        ...(query.roles && query.roles.length > 0 ? [`  roles: [${query.roles.join(', ')}]`] : []),
         `}`,
         '',
       )
@@ -193,6 +202,38 @@ export class ScaffoldGenerator extends BaseGenerator {
         `  fn: ${fnStr}`,
         `  entities: [${action.entities.join(', ')}]`,
         ...(action.auth ? [`  auth: true`] : []),
+        ...(action.roles && action.roles.length > 0 ? [`  roles: [${action.roles.join(', ')}]`] : []),
+        `}`,
+        '',
+      )
+    }
+
+    for (const middleware of ast.middlewares ?? []) {
+      const fn = middleware.fn
+      const fnStr = fn.kind === 'named'
+        ? `import { ${fn.namedExport} } from "${fn.source}"`
+        : `import ${fn.defaultExport} from "${fn.source}"`
+      lines.push(
+        `middleware ${middleware.name} {`,
+        `  fn: ${fnStr}`,
+        `  scope: ${middleware.scope}`,
+        `}`,
+        '',
+      )
+    }
+
+    for (const api of ast.apis ?? []) {
+      const fn = api.fn
+      const fnStr = fn.kind === 'named'
+        ? `import { ${fn.namedExport} } from "${fn.source}"`
+        : `import ${fn.defaultExport} from "${fn.source}"`
+      lines.push(
+        `api ${api.name} {`,
+        `  method: ${api.method}`,
+        `  path: "${api.path}"`,
+        `  fn: ${fnStr}`,
+        ...(api.auth ? [`  auth: true`] : []),
+        ...(api.roles && api.roles.length > 0 ? [`  roles: [${api.roles.join(', ')}]`] : []),
         `}`,
         '',
       )
@@ -203,6 +244,19 @@ export class ScaffoldGenerator extends BaseGenerator {
         `crud ${crud.name} {`,
         `  entity: ${crud.entity}`,
         `  operations: [${crud.operations.join(', ')}]`,
+        `}`,
+        '',
+      )
+    }
+
+    if (ast.seed) {
+      const seedFn = ast.seed.fn
+      const seedFnStr = seedFn.kind === 'named'
+        ? `import { ${seedFn.namedExport} } from "${seedFn.source}"`
+        : `import ${seedFn.defaultExport} from "${seedFn.source}"`
+      lines.push(
+        `seed {`,
+        `  fn: ${seedFnStr}`,
         `}`,
         '',
       )

@@ -39,6 +39,55 @@ describe('Parser — minimal app', () => {
     const ast = parse(`app A { title: "T" db: Drizzle ssr: false typescript: true }`)
     expect(ast.app.typescript).toBe(true)
   })
+
+  it('parses app env schema', () => {
+    const ast = parse(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          DATABASE_URL: required
+          GOOGLE_CLIENT_ID: optional
+        }
+      }
+    `)
+
+    expect(ast.app.env).toEqual({
+      DATABASE_URL: 'required',
+      GOOGLE_CLIENT_ID: 'optional',
+    })
+  })
+
+  it('throws on invalid app env requirement', () => {
+    expect(() => parse(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          DATABASE_URL: mandatory
+        }
+      }
+    `)).toThrow('E038_INVALID_ENV_REQUIREMENT')
+  })
+
+  it('throws on duplicate app env keys', () => {
+    expect(() => parse(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          DATABASE_URL: required
+          DATABASE_URL: optional
+        }
+      }
+    `)).toThrow('E039_DUPLICATE_ENV_KEY')
+  })
 })
 
 describe('Parser — auth block', () => {
@@ -346,6 +395,26 @@ describe('Parser — job', () => {
   })
 })
 
+describe('Parser — seed', () => {
+  it('parses seed block', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      seed {
+        fn: import seedData from "@src/seed.js"
+      }
+    `)
+
+    expect(ast.seed).toMatchObject({
+      type: 'Seed',
+      fn: {
+        kind: 'default',
+        defaultExport: 'seedData',
+        source: '@src/seed.js',
+      },
+    })
+  })
+})
+
 describe('Parser — error cases', () => {
   it('throws on unknown top-level token', () => {
     expect(() => parse('unknown Foo {}')).toThrow('E010_UNEXPECTED_TOKEN')
@@ -366,6 +435,21 @@ describe('Parser — error cases', () => {
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       middleware Logger { scope: global }
     `)).toThrow('E037_MISSING_FN')
+  })
+
+  it('throws when seed fn is missing', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      seed {}
+    `)).toThrow('E042_MISSING_FN')
+  })
+
+  it('throws on duplicate seed blocks', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      seed { fn: import seedData from "@src/seed.js" }
+      seed { fn: import otherSeed from "@src/seed2.js" }
+    `)).toThrow('E040_DUPLICATE_SEED_BLOCK')
   })
 
   it('throws on missing component in page', () => {

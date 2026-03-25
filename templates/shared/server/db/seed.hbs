@@ -1,0 +1,16 @@
+import { db } from './client.{{ext}}'
+{{#if (eq seedImportKind "default")}}
+import {{seedImportName}} from '{{importPath fnSource ext}}'
+{{else}}
+import { {{seedImportName}} } from '{{importPath fnSource ext}}'
+{{/if}}
+
+async function runSeed() {
+  await {{seedImportName}}({ db })
+  console.log('✅ Seed completed')
+}
+
+runSeed().catch((error) => {
+  console.error('❌ Seed failed', error)
+  process.exit(1)
+})

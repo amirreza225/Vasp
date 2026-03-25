@@ -75,7 +75,7 @@ function printHelp(): void {
     vasp migrate-to-ts                   Convert existing JS project to TypeScript
     vasp start                           Start the dev server
     vasp build                           Build for production
-    vasp db <push|generate|migrate|studio>  Run database commands
+    vasp db <push|generate|migrate|studio|seed>  Run database commands
     vasp deploy                          Deploy your app (planned)
 
   Options for 'vasp new':

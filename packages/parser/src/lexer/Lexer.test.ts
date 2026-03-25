@@ -28,7 +28,7 @@ describe('Lexer', () => {
   })
 
   it('tokenizes block keywords', () => {
-    const keywords = ['app', 'auth', 'route', 'page', 'query', 'action', 'api', 'middleware', 'crud', 'realtime', 'job']
+    const keywords = ['app', 'auth', 'route', 'page', 'query', 'action', 'api', 'middleware', 'crud', 'realtime', 'job', 'seed']
     for (const kw of keywords) {
       const tokens = lex(kw)
       expect(tokens[0]?.type).toBe(kw)

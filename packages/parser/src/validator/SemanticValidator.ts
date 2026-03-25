@@ -15,6 +15,7 @@ export class SemanticValidator {
     this.checkQueryActionEntities(ast)
     this.checkApiMethods(ast)
     this.checkMiddlewareScopes(ast)
+    this.checkEnvSchema(ast)
     this.checkJobExecutors(ast)
     this.checkDuplicateEntities(ast)
     this.checkDuplicateRoutes(ast)
@@ -310,6 +311,21 @@ export class SemanticValidator {
           message: `Unknown middleware scope '${middleware.scope}' in '${middleware.name}'`,
           hint: `Supported scopes: ${SUPPORTED_MIDDLEWARE_SCOPES.join(', ')}`,
           loc: middleware.loc,
+        })
+      }
+    }
+  }
+
+  private checkEnvSchema(ast: VaspAST): void {
+    const envSchema = ast.app?.env ?? {}
+    const envKeyPattern = /^[A-Z][A-Z0-9_]*$/
+    for (const envKey of Object.keys(envSchema)) {
+      if (!envKeyPattern.test(envKey)) {
+        this.diagnostics.push({
+          code: 'E122_INVALID_ENV_KEY',
+          message: `Invalid env key '${envKey}' in app.env`,
+          hint: 'Use uppercase env names like DATABASE_URL or JWT_SECRET',
+          loc: ast.app.loc,
         })
       }
     }

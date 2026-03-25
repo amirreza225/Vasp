@@ -341,4 +341,18 @@ describe('SemanticValidator', () => {
       }
     `)).toThrow('E121_UNKNOWN_MIDDLEWARE_SCOPE')
   })
+
+  it('fails with invalid env key format in app.env', () => {
+    expect(() => validate(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          database_url: required
+        }
+      }
+    `)).toThrow('E122_INVALID_ENV_KEY')
+  })
 })

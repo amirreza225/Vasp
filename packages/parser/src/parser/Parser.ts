@@ -8,6 +8,7 @@ import type {
   CrudNode,
   CrudOperation,
   EntityNode,
+  EnvRequirement,
   FieldModifier,
   FieldNode,
   ImportExpression,
@@ -20,6 +21,7 @@ import type {
   RealtimeEvent,
   RealtimeNode,
   RouteNode,
+  SeedNode,
   SourceLocation,
   VaspAST,
 } from '@vasp-framework/core'
@@ -102,11 +104,22 @@ class Parser {
         case TokenType.KW_JOB:
           ast.jobs.push(this.parseJob())
           break
+        case TokenType.KW_SEED:
+          if (ast.seed) {
+            throw this.error(
+              'E040_DUPLICATE_SEED_BLOCK',
+              'Duplicate seed block found',
+              'Only one seed block is allowed in main.vasp',
+              kw.loc,
+            )
+          }
+          ast.seed = this.parseSeed()
+          break
         default:
           throw this.error(
             'E010_UNEXPECTED_TOKEN',
             `Unexpected token '${kw.value}' at top level`,
-            'Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, or job',
+            'Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, or seed',
             kw.loc,
           )
       }
@@ -126,6 +139,7 @@ class Parser {
     let db = 'Drizzle' as const
     let ssr: boolean | 'ssg' = false
     let typescript = false
+    let env: Record<string, EnvRequirement> = {}
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier()
@@ -156,13 +170,53 @@ class Parser {
         case 'typescript':
           typescript = this.consume(TokenType.BOOLEAN).value === 'true'
           break
+        case 'env': {
+          this.consume(TokenType.LBRACE)
+          while (!this.check(TokenType.RBRACE)) {
+            const envKey = this.consumeIdentifier().value
+            this.consume(TokenType.COLON)
+            const requirement = this.consumeIdentifier().value as EnvRequirement
+
+            if (requirement !== 'required' && requirement !== 'optional') {
+              throw this.error(
+                'E038_INVALID_ENV_REQUIREMENT',
+                `Invalid env requirement '${requirement}' for '${envKey}'`,
+                'Use required or optional',
+                this.peek().loc,
+              )
+            }
+
+            if (envKey in env) {
+              throw this.error(
+                'E039_DUPLICATE_ENV_KEY',
+                `Duplicate env key '${envKey}' in app.env`,
+                'Each env key must be declared once',
+                this.peek().loc,
+              )
+            }
+
+            env[envKey] = requirement
+            if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA)
+          }
+          this.consume(TokenType.RBRACE)
+          break
+        }
         default:
-          throw this.error('E012_UNKNOWN_PROP', `Unknown app property '${key.value}'`, 'Valid properties: title, db, ssr, typescript', key.loc)
+          throw this.error('E012_UNKNOWN_PROP', `Unknown app property '${key.value}'`, 'Valid properties: title, db, ssr, typescript, env', key.loc)
       }
     }
 
     this.consume(TokenType.RBRACE)
-    return { type: 'App', name: name.value, loc, title, db, ssr, typescript }
+    return {
+      type: 'App',
+      name: name.value,
+      loc,
+      title,
+      db,
+      ssr,
+      typescript,
+      ...(Object.keys(env).length > 0 ? { env } : {}),
+    }
   }
 
   private parseAuth(): AuthNode {
@@ -614,6 +668,34 @@ class Parser {
       perform: { fn: performFn },
       ...(schedule !== undefined ? { schedule } : {}),
     }
+  }
+
+  private parseSeed(): SeedNode {
+    const loc = this.consume(TokenType.KW_SEED).loc
+    this.consume(TokenType.LBRACE)
+
+    let fn: ImportExpression | null = null
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier()
+      this.consume(TokenType.COLON)
+
+      switch (key.value) {
+        case 'fn':
+          fn = this.parseImportExpression()
+          break
+        default:
+          throw this.error('E041_UNKNOWN_PROP', `Unknown seed property '${key.value}'`, 'Valid properties: fn', key.loc)
+      }
+    }
+
+    this.consume(TokenType.RBRACE)
+
+    if (!fn) {
+      throw this.error('E042_MISSING_FN', 'Seed block is missing fn', 'Add: fn: import seedData from "@src/seed.js"', loc)
+    }
+
+    return { type: 'Seed', fn, loc }
   }
 
   // ---- Value parsers ----

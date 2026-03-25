@@ -49,6 +49,7 @@ export abstract class BaseGenerator {
       cruds: ast.cruds,
       realtimes: ast.realtimes,
       jobs: ast.jobs,
+      seed: ast.seed,
       auth: ast.auth,
     }
   }

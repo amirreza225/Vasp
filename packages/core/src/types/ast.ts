@@ -14,6 +14,8 @@ export interface SourceLocation {
 
 // ------ Import Expressions ------
 
+export type EnvRequirement = 'required' | 'optional'
+
 export interface DefaultImportExpression {
   kind: 'default'
   defaultExport: string   // e.g. "Home" from `import Home from "@src/pages/Home.vue"`
@@ -100,6 +102,7 @@ export interface AppNode extends BaseNode {
   db: 'Drizzle'
   ssr: boolean | 'ssg'   // false = SPA (default), true = SSR, 'ssg' = Static Site Generation
   typescript: boolean
+  env?: Record<string, EnvRequirement>
 }
 
 export interface AuthNode extends BaseNode {
@@ -160,6 +163,12 @@ export interface JobNode extends BaseNode {
   schedule?: string      // optional cron expression
 }
 
+export interface SeedNode {
+  type: 'Seed'
+  fn: ImportExpression
+  loc: SourceLocation
+}
+
 export interface ApiNode extends BaseNode {
   type: 'Api'
   method: ApiMethod
@@ -195,6 +204,7 @@ export interface VaspAST {
   cruds: CrudNode[]
   realtimes: RealtimeNode[]
   jobs: JobNode[]
+  seed?: SeedNode
 }
 
 // ------ Union of all node types ------
@@ -212,5 +222,6 @@ export type VaspNode =
   | CrudNode
   | RealtimeNode
   | JobNode
+  | SeedNode
 
 export type NodeType = VaspNode['type']

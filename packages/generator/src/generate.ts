@@ -12,6 +12,7 @@ import { MiddlewareGenerator } from './generators/MiddlewareGenerator.js'
 import { QueryActionGenerator } from './generators/QueryActionGenerator.js'
 import { RealtimeGenerator } from './generators/RealtimeGenerator.js'
 import { ScaffoldGenerator } from './generators/ScaffoldGenerator.js'
+import { SeedGenerator } from './generators/SeedGenerator.js'
 import { Manifest } from './manifest/Manifest.js'
 import { TemplateEngine } from './template/TemplateEngine.js'
 import { join } from 'node:path'
@@ -42,6 +43,7 @@ export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult 
     new CrudGenerator(ctx, engine, filesWritten, manifest).run()
     new RealtimeGenerator(ctx, engine, filesWritten, manifest).run()
     new JobGenerator(ctx, engine, filesWritten, manifest).run()
+    new SeedGenerator(ctx, engine, filesWritten, manifest).run()
     new FrontendGenerator(ctx, engine, filesWritten, manifest).run()
 
     // Persist manifest
