@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 import { log } from '../utils/logger.js'
 import { runRegenerate } from './generate.js'
 import { isPlaceholderValue, parseEnvFile } from '@vasp-framework/generator'
+import { DEFAULT_SPA_PORT, DEFAULT_SSR_PORT } from '@vasp-framework/core'
 import pc from 'picocolors'
 
 /**
@@ -92,6 +93,9 @@ export async function startCommand(): Promise<void> {
     spawnPrefixed('server', pc.cyan, 'dev:server', projectDir),
     spawnPrefixed('client', pc.magenta, 'dev:client', projectDir),
   ])
+
+  // Open the browser after a short delay to let the dev servers warm up
+  openBrowser(projectDir)
 
   // Watch main.vasp and re-generate on change (debounced 300ms)
   const vaspFile = join(projectDir, 'main.vasp')
@@ -264,4 +268,43 @@ function watchVaspFile(vaspFile: string, projectDir: string): void {
       }
     }, 300)
   })
+}
+
+/**
+ * Open the browser after a short delay (1.5 s) to let the dev servers warm up.
+ * Reads the SSR flag from main.vasp to determine the correct port.
+ * Silently no-ops in headless / CI environments where the open command fails.
+ */
+function openBrowser(projectDir: string): void {
+  const vaspFile = join(projectDir, 'main.vasp')
+  let isSsr = false
+  if (existsSync(vaspFile)) {
+    const source = readFileSync(vaspFile, 'utf8')
+    isSsr = /ssr:\s*true/.test(source) || /ssr:\s*"ssg"/.test(source)
+  }
+
+  const port = isSsr ? DEFAULT_SSR_PORT : DEFAULT_SPA_PORT
+  const url = `http://localhost:${port}`
+
+  setTimeout(() => {
+    const label = pc.yellow('[vasp]')
+    process.stdout.write(`${label} ${pc.cyan(url)} — opening in browser...\n`)
+
+    let cmd: string
+    if (process.platform === 'darwin') {
+      cmd = 'open'
+    } else if (process.platform === 'win32') {
+      cmd = 'cmd'
+    } else {
+      cmd = 'xdg-open'
+    }
+
+    try {
+      const spawnArgs: [string, ...string[]] =
+        process.platform === 'win32' ? [cmd, '/c', 'start', url] : [cmd, url]
+      Bun.spawn(spawnArgs, { stdout: 'ignore', stderr: 'ignore' })
+    } catch {
+      // Silently ignore — CI or headless environments without a display server
+    }
+  }, 1500)
 }

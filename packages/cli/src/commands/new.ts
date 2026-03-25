@@ -6,6 +6,7 @@ import { log } from '../utils/logger.js'
 import { handleParseError } from '../utils/parse-error.js'
 import { VASP_VERSION } from '@vasp-framework/core'
 import { resolveTemplateDir, resolveStartersDir } from '../utils/template-dir.js'
+import { isInteractive, select, confirm } from '../utils/prompt.js'
 
 const STARTERS_DIR = resolveStartersDir(import.meta.dirname)
 const KNOWN_STARTERS = ['minimal', 'todo', 'todo-auth-ssr', 'recipe']
@@ -26,7 +27,14 @@ export async function newCommand(args: string[]): Promise<void> {
     process.exit(1)
   }
 
-  const opts = parseOptions(args.slice(1))
+  let opts = parseOptions(args.slice(1))
+
+  // Run interactive prompts when stdin is a TTY and no flags/starter were provided.
+  const hasExplicitFlags = args.slice(1).some((a) => a.startsWith('--'))
+  if (isInteractive() && !hasExplicitFlags) {
+    opts = await promptOptions()
+  }
+
   const outputDir = resolve(process.cwd(), appName)
 
   if (existsSync(outputDir)) {
@@ -121,6 +129,35 @@ function parseOptions(args: string[]): NewOptions {
     noInstall: args.includes('--no-install'),
     ...(starter !== undefined && { starter }),
   }
+}
+
+/**
+ * Ask a short series of questions when no CLI flags were given.
+ * Lets first-time users discover TypeScript + SSR and starter templates
+ * without needing to read the docs first.
+ */
+async function promptOptions(): Promise<NewOptions> {
+  const starterChoices = [
+    'None — blank project (just a home page)',
+    'minimal — bare-bones app',
+    'todo — Todo list with CRUD',
+    'recipe — Recipe app with auth',
+    'todo-auth-ssr — Todo + Auth + Nuxt SSR',
+  ]
+  const starterKeys = [undefined, 'minimal', 'todo', 'recipe', 'todo-auth-ssr']
+
+  const starterIdx = await select('Which template would you like to use?', starterChoices)
+  const starter = starterKeys[starterIdx]
+
+  // Starters already encode TS/SSR settings — only ask for blank projects
+  if (starter !== undefined) {
+    return { typescript: false, ssr: false, ssg: false, noInstall: false, starter }
+  }
+
+  const typescript = await confirm('Enable TypeScript?', false)
+  const ssr = await confirm('Enable SSR (Nuxt 4)?', false)
+
+  return { typescript, ssr, ssg: false, noInstall: false }
 }
 
 function buildInitialVasp(appName: string, opts: NewOptions): string {
