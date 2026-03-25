@@ -1128,7 +1128,7 @@ describe('generate()', () => {
 
     const pkg = JSON.parse(readFileSync(join(outputDir, 'package.json'), 'utf8'))
     expect(pkg.scripts.test).toBe('vitest run')
-    expect(pkg.dependencies).toHaveProperty('@elysiajs/valibot')
+    expect(pkg.dependencies).not.toHaveProperty('@elysiajs/valibot')
     expect(pkg.dependencies).toHaveProperty('valibot')
     expect(pkg.devDependencies).toHaveProperty('vitest')
   })

@@ -155,7 +155,12 @@ export class TemplateEngine {
       let col = `${drizzleFn}('${toCamelCase(fieldName)}')`
       if (Array.isArray(modifiers)) {
         if (modifiers.includes('id')) {
-          col += '.primaryKey()'
+          // Use identity column for auto-incrementing integer primary keys
+          if (fieldType === 'Int') {
+            col = `integer('${toCamelCase(fieldName)}').primaryKey().generatedByDefaultAsIdentity()`
+          } else {
+            col += '.primaryKey()'
+          }
         } else {
           // Non-PK columns: notNull by default unless @nullable
           if (!nullable && !modifiers.includes('nullable')) col += '.notNull()'

@@ -39,7 +39,7 @@ export const requireAuth = new Elysia({ name: 'require-auth' })
     }
   })
 
-export function requireRole(roles: string[]) {
+export function requireRole(roles{{#if isTypeScript}}: string[]{{/if}}) {
   return new Elysia({ name: 'require-role' })
     .use(requireAuth)
     .onBeforeHandle({ as: 'scoped' }, ({ user }) => {

@@ -67,8 +67,14 @@ describe('TemplateEngine — drizzleColumn helper (Phase 2)', () => {
     expect(render('meta', 'Json', [])).toContain('jsonb(')
   })
 
-  it('maps Int to integer()', () => {
-    expect(render('count', 'Int', ['id'])).toContain('integer(')
+  it('maps Int to integer() for non-PK fields', () => {
+    expect(render('count', 'Int', [])).toContain('integer(')
+  })
+
+  it('maps Int @id to identity column for auto-increment PK', () => {
+    const col = render('id', 'Int', ['id'])
+    expect(col).toContain('integer(')
+    expect(col).toContain('.generatedByDefaultAsIdentity()')
   })
 
   it('maps DateTime to timestamp()', () => {
@@ -80,7 +86,10 @@ describe('TemplateEngine — drizzleColumn helper (Phase 2)', () => {
   })
 
   it('adds .primaryKey() when modifiers include "id"', () => {
-    expect(render('id', 'Int', ['id'])).toContain('.primaryKey()')
+    const col = render('id', 'Int', ['id'])
+    expect(col).toContain('integer(')
+    expect(col).toContain('.primaryKey()')
+    expect(col).toContain('.generatedByDefaultAsIdentity()')
   })
 
   it('adds .notNull() for non-PK by default', () => {
