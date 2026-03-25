@@ -38,6 +38,7 @@ export abstract class BaseGenerator {
       ext,
       mode,
       hasAuth: !!ast.auth,
+      hasAnyRelations: ast.entities.some(e => e.fields.some(f => f.isRelation)),
       hasRealtime: ast.realtimes.length > 0,
       hasJobs: ast.jobs.length > 0,
       routes: ast.routes,

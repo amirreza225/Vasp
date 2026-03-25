@@ -774,10 +774,10 @@ describe('generate()', () => {
     expect(schema).toContain('authorId')
     expect(schema).toContain("references(() => users.id")
     expect(schema).toContain("onDelete: 'cascade'")
-    // Drizzle relations blocks
-    expect(schema).toContain('todosRelations')
-    expect(schema).toContain('usersRelations')
-    expect(schema).toContain('relations(')
+    // Drizzle relations block (v2 defineRelations API)
+    expect(schema).toContain('defineRelations')
+    expect(schema).toContain('r.one.users(')
+    expect(schema).toContain('r.many.todos()')
     // Both entity tables generated
     expect(schema).toContain('todos =')
     expect(schema).toContain('users =')

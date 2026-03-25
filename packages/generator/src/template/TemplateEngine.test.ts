@@ -178,8 +178,8 @@ describe('TemplateEngine — valibotSchema helper (Phase 4)', () => {
     expect(render('Float')).toBe('v.number()')
   })
 
-  it('maps DateTime to string and Json to unknown', () => {
-    expect(render('DateTime')).toBe('v.string()')
+  it('maps DateTime to pipe+transform and Json to unknown', () => {
+    expect(render('DateTime')).toBe('v.pipe(v.string(), v.transform(s => new Date(s)))')
     expect(render('Json')).toBe('v.unknown()')
   })
 
