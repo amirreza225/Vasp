@@ -3,7 +3,8 @@ import { $fetch } from 'ofetch'
 import type {
 {{#each cruds}}
   {{pascalCase entity}},
-  New{{pascalCase entity}},
+  Create{{pascalCase entity}}Input,
+  Update{{pascalCase entity}}Input,
 {{/each}}
 } from './types.js'
 
@@ -18,13 +19,13 @@ export function use{{pascalCase entity}}Crud() {
     list: (): Promise<{{pascalCase entity}}[]> => $fetch(base, { credentials: 'include' }),
 {{/if}}
 {{#if (includes operations "create")}}
-    create: (data: New{{pascalCase entity}}): Promise<{{pascalCase entity}}> =>
+    create: (data: Create{{pascalCase entity}}Input): Promise<{{pascalCase entity}}> =>
       $fetch(base, { method: 'POST', body: data, credentials: 'include' }),
 {{/if}}
     get: (id: number): Promise<{{pascalCase entity}}> =>
       $fetch(`${base}/${id}`, { credentials: 'include' }),
 {{#if (includes operations "update")}}
-    update: (id: number, data: Partial<New{{pascalCase entity}}>): Promise<{{pascalCase entity}}> =>
+    update: (id: number, data: Update{{pascalCase entity}}Input): Promise<{{pascalCase entity}}> =>
       $fetch(`${base}/${id}`, { method: 'PUT', body: data, credentials: 'include' }),
 {{/if}}
 {{#if (includes operations "delete")}}

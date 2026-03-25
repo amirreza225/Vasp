@@ -95,6 +95,20 @@ export class TemplateEngine {
       return imp.kind === 'default' ? (imp.defaultExport ?? '') : (imp.namedExport ?? '')
     })
 
+    /** tsFieldType: maps a Vasp field type to a TypeScript type string */
+    this.hbs.registerHelper('tsFieldType', (fieldType: string) => {
+      const tsMap: Record<string, string> = {
+        String: 'string',
+        Text: 'string',
+        Int: 'number',
+        Float: 'number',
+        Boolean: 'boolean',
+        DateTime: 'Date',
+        Json: 'unknown',
+      }
+      return tsMap[fieldType] ?? fieldType
+    })
+
     /** drizzleColumn: maps a FieldType + modifiers to a Drizzle column call string */
     this.hbs.registerHelper('drizzleColumn', (
       fieldName: string,

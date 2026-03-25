@@ -49,8 +49,10 @@ export class FrontendGenerator extends BaseGenerator {
     }
 
     // TS-only: generate types.ts from entity schema + query/action signatures
-    if (this.ctx.isTypeScript && (ast.queries.length > 0 || ast.actions.length > 0 || ast.cruds.length > 0)) {
-      this.write(`src/vasp/client/types.ts`, this.render(`spa/ts/src/vasp/client/types.ts.hbs`))
+    if (this.ctx.isTypeScript && (ast.queries.length > 0 || ast.actions.length > 0 || ast.cruds.length > 0 || ast.entities.length > 0)) {
+      this.write(`src/vasp/client/types.ts`, this.render(`spa/ts/src/vasp/client/types.ts.hbs`, {
+        entities: ast.entities,
+      }))
     }
 
     // Scaffold empty page files if they don't exist

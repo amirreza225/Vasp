@@ -5,6 +5,7 @@ export default defineNuxtConfig({
   devtools: { enabled: true },
   alias: {
     '@src': '~/src',
+    '@shared': '~/shared',
   },
   runtimeConfig: {
     backendUrl: process.env.BACKEND_URL || 'http://localhost:{{backendPort}}',

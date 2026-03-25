@@ -596,4 +596,247 @@ describe('generate()', () => {
     expect(route).toContain('findFirst')
     expect(route).toContain('author: true')
   })
+
+  // ── Phase 3: End-to-End Type Safety ────────────────────────────────────
+
+  it('TS: generates shared/types.ts with entity interfaces and input types', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity User { id: Int @id username: String @unique email: String @nullable }
+      entity Todo { id: Int @id title: String done: Boolean author: User @onDelete(cascade) }
+
+      crud Todo { entity: Todo operations: [list, create, update, delete] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'shared-types')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'shared/types.ts'))).toBe(true)
+    const types = readFileSync(join(outputDir, 'shared/types.ts'), 'utf8')
+
+    // User interface with proper TS types
+    expect(types).toContain('export interface User')
+    expect(types).toContain('username: string')
+    expect(types).toContain('email: string | null')
+    expect(types).toContain('createdAt: Date')
+    expect(types).toContain('updatedAt: Date')
+
+    // Todo interface with relation types
+    expect(types).toContain('export interface Todo')
+    expect(types).toContain('title: string')
+    expect(types).toContain('done: boolean')
+    expect(types).toContain('author: User')
+    expect(types).toContain('authorId: number')
+
+    // Create/Update input types
+    expect(types).toContain('export interface CreateUserInput')
+    expect(types).toContain('export interface UpdateUserInput')
+    expect(types).toContain('export interface CreateTodoInput')
+    expect(types).toContain('export interface UpdateTodoInput')
+
+    // CreateTodoInput has authorId (required FK) but not id
+    expect(types).toMatch(/CreateTodoInput[\s\S]*?authorId.*: number/)
+  })
+
+  it('TS: shared/types.ts includes query/action type stubs', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity Todo { id: Int @id title: String }
+
+      query getTodos {
+        fn: import { getTodos } from "@src/queries.ts"
+        entities: [Todo]
+      }
+      action createTodo {
+        fn: import { createTodo } from "@src/actions.ts"
+        entities: [Todo]
+      }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'shared-types-stubs')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const types = readFileSync(join(outputDir, 'shared/types.ts'), 'utf8')
+    expect(types).toContain('export type GetTodosArgs')
+    expect(types).toContain('export type GetTodosReturn')
+    expect(types).toContain('export type CreateTodoArgs')
+    expect(types).toContain('export type CreateTodoReturn')
+  })
+
+  it('TS: client types.ts re-exports from @shared/types', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list, create] }
+
+      query getTodos {
+        fn: import { getTodos } from "@src/queries.ts"
+        entities: [Todo]
+      }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'client-types-reexport')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const types = readFileSync(join(outputDir, 'src/vasp/client/types.ts'), 'utf8')
+    expect(types).toContain("@shared/types.js")
+    expect(types).toContain('Todo,')
+    expect(types).toContain('CreateTodoInput,')
+    expect(types).toContain('UpdateTodoInput,')
+    expect(types).toContain('GetTodosArgs,')
+    expect(types).toContain('GetTodosReturn,')
+  })
+
+  it('TS: typed crud composable uses Create/Update input types', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity Recipe { id: Int @id title: String description: Text @nullable }
+      crud Recipe { entity: Recipe operations: [list, create, update, delete] }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'typed-crud')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const crud = readFileSync(join(outputDir, 'src/vasp/client/crud.ts'), 'utf8')
+    expect(crud).toContain('CreateRecipeInput')
+    expect(crud).toContain('UpdateRecipeInput')
+    // Should NOT reference the old New... type pattern
+    expect(crud).not.toContain('NewRecipe')
+    expect(crud).not.toContain('Partial<')
+  })
+
+  it('TS: tsconfig includes @shared path alias', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'tsconfig-shared')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const tsconfig = readFileSync(join(outputDir, 'tsconfig.json'), 'utf8')
+    expect(tsconfig).toContain('"@shared/*"')
+    expect(tsconfig).toContain('"./shared/*"')
+    expect(tsconfig).toContain('"shared/**/*.ts"')
+  })
+
+  it('TS: vite.config.ts includes @shared alias', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'vite-shared')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const viteConfig = readFileSync(join(outputDir, 'vite.config.ts'), 'utf8')
+    expect(viteConfig).toContain("'@shared'")
+    expect(viteConfig).toContain("'./shared'")
+  })
+
+  it('JS SPA: vite.config.js includes @shared alias', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'vite-js-shared')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const viteConfig = readFileSync(join(outputDir, 'vite.config.js'), 'utf8')
+    expect(viteConfig).toContain("'@shared'")
+  })
+
+  it('SSR TS: nuxt.config includes @shared alias', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: true typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'nuxt-shared')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const nuxtConfig = readFileSync(join(outputDir, 'nuxt.config.ts'), 'utf8')
+    expect(nuxtConfig).toContain("'@shared'")
+    expect(nuxtConfig).toContain("'~/shared'")
+  })
+
+  it('shared/types.ts maps field types correctly', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity Post {
+        id: Int @id
+        title: String
+        body: Text @nullable
+        metadata: Json @nullable
+        score: Float
+        published: Boolean
+        publishedAt: DateTime @nullable
+      }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'types-mapping')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const types = readFileSync(join(outputDir, 'shared/types.ts'), 'utf8')
+    // String → string
+    expect(types).toContain('title: string')
+    // Text → string
+    expect(types).toContain('body: string | null')
+    // Json → unknown
+    expect(types).toContain('metadata: unknown | null')
+    // Float → number
+    expect(types).toContain('score: number')
+    // Boolean → boolean
+    expect(types).toContain('published: boolean')
+    // DateTime → Date
+    expect(types).toContain('publishedAt: Date | null')
+  })
+
+  it('TS: no shared/types.ts generated when no entities exist', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'no-entities')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'shared/types.ts'))).toBe(false)
+  })
+
+  it('JS: no shared/types.ts generated for JavaScript apps', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+
+      entity Todo { id: Int @id title: String }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'js-no-types')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'shared/types.ts'))).toBe(false)
+  })
 })

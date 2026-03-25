@@ -13,6 +13,7 @@ export class ScaffoldGenerator extends BaseGenerator {
       'src/pages',
       'src/components',
       'src/lib',
+      'shared',
       'drizzle',
       'drizzle/migrations',
       'server/routes/queries',
@@ -64,6 +65,13 @@ export class ScaffoldGenerator extends BaseGenerator {
     // tsconfig.json — only when typescript: true
     if (this.ctx.isTypeScript) {
       this.write('tsconfig.json', this.render('shared/tsconfig.json.hbs'))
+    }
+
+    // shared/types — entity interfaces + query/action type stubs (TS only)
+    if (this.ctx.isTypeScript && this.ctx.ast.entities.length > 0) {
+      this.write('shared/types.ts', this.render('shared/shared/types.hbs', {
+        entities: this.ctx.ast.entities,
+      }))
     }
 
     // main.vasp (copy the source)

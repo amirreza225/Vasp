@@ -115,6 +115,45 @@ describe('TemplateEngine — drizzleColumn helper (Phase 2)', () => {
   })
 })
 
+describe('TemplateEngine — tsFieldType helper (Phase 3)', () => {
+  const engine = new TemplateEngine()
+  const render = (type: string) =>
+    engine.renderString('{{tsFieldType type}}', { type })
+
+  it('maps String to string', () => {
+    expect(render('String')).toBe('string')
+  })
+
+  it('maps Text to string', () => {
+    expect(render('Text')).toBe('string')
+  })
+
+  it('maps Int to number', () => {
+    expect(render('Int')).toBe('number')
+  })
+
+  it('maps Float to number', () => {
+    expect(render('Float')).toBe('number')
+  })
+
+  it('maps Boolean to boolean', () => {
+    expect(render('Boolean')).toBe('boolean')
+  })
+
+  it('maps DateTime to Date', () => {
+    expect(render('DateTime')).toBe('Date')
+  })
+
+  it('maps Json to unknown', () => {
+    expect(render('Json')).toBe('unknown')
+  })
+
+  it('passes through entity names (unknown types)', () => {
+    expect(render('User')).toBe('User')
+    expect(render('Todo')).toBe('Todo')
+  })
+})
+
 describe('String transform utils', () => {
   it('toCamelCase', () => {
     expect(toCamelCase('hello-world')).toBe('helloWorld')
