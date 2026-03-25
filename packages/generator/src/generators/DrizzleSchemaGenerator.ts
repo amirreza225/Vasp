@@ -95,8 +95,12 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
     // to avoid duplicate table definitions (the template already emits a hardcoded
     // users table for auth). Any extra fields the user defined on the User entity
     // are forwarded as `authUserExtraFields` so the template can merge them.
+    // Relation metadata is forwarded separately so the template can emit a
+    // usersRelations block with the correct one/many sides.
     const authUserEntityName = ast.auth?.userEntity
     let authUserExtraFields: typeof entitiesWithSchema[0]['scalarFields'] = []
+    let authUserOneToMany: typeof entitiesWithSchema[0]['oneToMany'] = []
+    let authUserManyToOne: typeof entitiesWithSchema[0]['manyToOne'] = []
 
     if (authUserEntityName) {
       const authBuiltinFields = new Set(['id', 'username', 'email', 'createdAt', 'updatedAt'])
@@ -105,9 +109,13 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         authUserExtraFields = entitiesWithSchema[idx]!.scalarFields.filter(
           (f) => !authBuiltinFields.has(f.name),
         )
+        authUserOneToMany = entitiesWithSchema[idx]!.oneToMany
+        authUserManyToOne = entitiesWithSchema[idx]!.manyToOne
         entitiesWithSchema.splice(idx, 1)
       }
     }
+
+    const authUserHasRelations = authUserOneToMany.length > 0 || authUserManyToOne.length > 0
 
     // For crud blocks that reference an entity with no explicit entity block,
     // generate a minimal stub table (id, createdAt, updatedAt only)
@@ -134,11 +142,11 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
       hasEntity: entityMap.has(crud.entity),
     }))
 
-    const hasAnyRelations = entitiesWithSchema.some((e) => e.hasRelations)
+    const hasAnyRelations = entitiesWithSchema.some((e) => e.hasRelations) || authUserHasRelations
 
     this.write(
       `drizzle/schema.${this.ctx.ext}`,
-      this.render('shared/drizzle/schema.hbs', { entitiesWithSchema, crudsWithFields, hasAnyRelations, authUserExtraFields, enumDeclarations, hasEnums }),
+      this.render('shared/drizzle/schema.hbs', { entitiesWithSchema, crudsWithFields, hasAnyRelations, authUserExtraFields, authUserOneToMany, authUserManyToOne, authUserHasRelations, enumDeclarations, hasEnums }),
     )
 
     // Drizzle Kit config for migrations

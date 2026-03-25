@@ -1,8 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import * as schema from '../../drizzle/schema.{{ext}}'
-{{#if hasAnyRelations}}import { relations } from '../../drizzle/schema.{{ext}}'
-{{/if}}
 
 const connectionString = process.env.DATABASE_URL
 
@@ -29,4 +27,4 @@ try {
   process.exit(1)
 }
 
-export const db = drizzle(client, { {{#if hasAnyRelations}}relations{{else}}schema{{/if}} })
+export const db = drizzle(client, { schema })

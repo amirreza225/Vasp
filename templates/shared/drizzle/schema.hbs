@@ -1,6 +1,6 @@
 import { pgTable, text, integer, boolean, timestamp, doublePrecision, jsonb{{#if hasEnums}}, pgEnum{{/if}} } from 'drizzle-orm/pg-core'
 {{#if hasAnyRelations}}
-import { defineRelations } from 'drizzle-orm'
+import { relations } from 'drizzle-orm'
 {{/if}}
 {{#if isTypeScript}}
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
@@ -59,17 +59,17 @@ export type New{{pascalCase name}} = InferInsertModel<typeof {{camelCase name}}s
 {{/if}}
 
 {{/each}}
-{{#if hasAnyRelations}}
-export const relations = defineRelations(
-  { {{#if hasAuth}}users, {{/if}}{{#each entitiesWithSchema}}{{camelCase name}}s{{#unless @last}}, {{/unless}}{{/each}} },
-  (r) => ({
-{{#each entitiesWithSchema}}{{#if hasRelations}}
-    {{camelCase name}}s: {
-{{#each manyToOne}}      {{camelCase name}}: r.one.{{relatedTable}}({ from: r.{{camelCase ../name}}s.{{camelCase localField}}, to: r.{{relatedTable}}.id }),
+{{#if hasAuth}}{{#if authUserHasRelations}}
+export const usersRelations = relations(users, ({ one, many }) => ({
+{{#each authUserManyToOne}}  {{camelCase name}}: one({{relatedTable}}, { fields: [users.{{camelCase localField}}], references: [{{relatedTable}}.id] }),
+{{/each}}{{#each authUserOneToMany}}  {{camelCase fieldName}}: many({{relatedTable}}),
 {{/each}}
-{{#each oneToMany}}      {{camelCase fieldName}}: r.many.{{relatedTable}}(),
-{{/each}}    },
+}))
+{{/if}}{{/if}}
+{{#each entitiesWithSchema}}{{#if hasRelations}}
+export const {{camelCase name}}sRelations = relations({{camelCase name}}s, ({ one, many }) => ({
+{{#each manyToOne}}  {{camelCase name}}: one({{relatedTable}}, { fields: [{{camelCase ../name}}s.{{camelCase localField}}], references: [{{relatedTable}}.id] }),
+{{/each}}{{#each oneToMany}}  {{camelCase fieldName}}: many({{relatedTable}}),
+{{/each}}
+}))
 {{/if}}{{/each}}
-  })
-)
-{{/if}}
