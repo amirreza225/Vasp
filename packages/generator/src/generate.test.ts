@@ -560,6 +560,9 @@ describe('generate()', () => {
     const channel = readFileSync(join(outputDir, 'server/routes/realtime/todoChannel.js'), 'utf8')
     expect(channel).toContain('publishTodoChannel')
     expect(channel).toContain('/ws/todoChannel')
+    // Room removal must not use ?.delete() — Bun's parser rejects `delete` as a keyword in optional chaining
+    expect(channel).not.toContain('?.delete(ws)')
+    expect(channel).toContain('oldRoomSet.delete(ws)')
 
     // CRUD file must import using the realtime block name (publishTodoChannel),
     // not the entity name (publishTodo)
@@ -585,6 +588,9 @@ describe('generate()', () => {
     expect(channel).toContain('roomId: string')
     expect(channel).toContain('event: string')
     expect(channel).toContain('data: unknown')
+    // Room removal must not use ?.delete() — Bun's parser rejects `delete` as a keyword in optional chaining
+    expect(channel).not.toContain('?.delete(ws)')
+    expect(channel).toContain('oldRoomSet.delete(ws)')
   })
 
   it('generates job worker and schedule endpoint', () => {
