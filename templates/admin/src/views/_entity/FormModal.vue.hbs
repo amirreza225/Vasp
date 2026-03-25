@@ -1,0 +1,78 @@
+<script setup>
+import { ref, watch } from 'vue'
+import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{ext}}'
+
+const props = defineProps({
+  visible: Boolean,
+  record: Object,
+})
+
+const emit = defineEmits(['close', 'saved'])
+
+function emptyForm() {
+  return {
+{{#each fields}}
+{{#unless isRelation}}
+{{#unless (includes modifiers "id")}}
+    {{name}}: {{#if (eq type "Boolean")}}false{{else if (eq type "Int")}}0{{else if (eq type "Float")}}0{{else}}''{{/if}},
+{{/unless}}
+{{/unless}}
+{{/each}}
+  }
+}
+
+const form = ref(emptyForm())
+const loading = ref(false)
+
+watch(() => props.record, (val) => {
+  form.value = val ? { ...val } : emptyForm()
+}, { immediate: true })
+
+async function handleSubmit() {
+  loading.value = true
+  try {
+    if (props.record?.id) {
+      await {{pascalCase name}}Api.update(props.record.id, form.value)
+    } else {
+      await {{pascalCase name}}Api.create(form.value)
+    }
+    emit('saved')
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
+<template>
+  <a-modal
+    :open="visible"
+    :title="record?.id ? 'Edit {{pascalCase name}}' : 'Create {{pascalCase name}}'"
+    :confirm-loading="loading"
+    @ok="handleSubmit"
+    @cancel="emit('close')"
+  >
+    <a-form :model="form" layout="vertical" style="margin-top: 16px">
+{{#each fields}}
+{{#unless isRelation}}
+{{#unless (includes modifiers "id")}}
+      <a-form-item label="{{pascalCase name}}" name="{{name}}">
+{{#if (eq type "Boolean")}}
+        <a-switch v-model:checked="form.{{name}}" />
+{{else if (eq type "Int")}}
+        <a-input-number v-model:value="form.{{name}}" style="width: 100%" />
+{{else if (eq type "Float")}}
+        <a-input-number v-model:value="form.{{name}}" :step="0.01" style="width: 100%" />
+{{else if (eq type "DateTime")}}
+        <a-input v-model:value="form.{{name}}" placeholder="YYYY-MM-DD" />
+{{else if (eq type "Text")}}
+        <a-textarea v-model:value="form.{{name}}" :rows="4" />
+{{else}}
+        <a-input v-model:value="form.{{name}}" />
+{{/if}}
+      </a-form-item>
+{{/unless}}
+{{/unless}}
+{{/each}}
+    </a-form>
+  </a-modal>
+</template>

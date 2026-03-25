@@ -191,6 +191,13 @@ export interface EntityNode extends BaseNode {
   fields: FieldNode[]
 }
 
+export interface AdminNode {
+  type: 'Admin'
+  /** Entity names to expose in the admin panel */
+  entities: string[]
+  loc: SourceLocation
+}
+
 // ------ Top-level AST ------
 
 export interface VaspAST {
@@ -207,6 +214,7 @@ export interface VaspAST {
   realtimes: RealtimeNode[]
   jobs: JobNode[]
   seed?: SeedNode
+  admin?: AdminNode
 }
 
 // ------ Union of all node types ------
@@ -225,5 +233,6 @@ export type VaspNode =
   | RealtimeNode
   | JobNode
   | SeedNode
+  | AdminNode
 
 export type NodeType = VaspNode['type']

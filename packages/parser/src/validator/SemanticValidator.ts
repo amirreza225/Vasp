@@ -23,6 +23,7 @@ export class SemanticValidator {
     this.checkFieldTypes(ast)
     this.checkRelationModifiers(ast)
     this.checkModifierTypeConstraints(ast)
+    this.checkAdminEntities(ast)
 
     const hasErrors = this.diagnostics.some((d) => d.code.startsWith('E'))
     if (hasErrors) {
@@ -496,6 +497,32 @@ export class SemanticValidator {
         })
       }
       seen.add(node.name)
+    }
+  }
+
+  private checkAdminEntities(ast: VaspAST): void {
+    if (!ast.admin) return
+
+    if (ast.admin.entities.length === 0) {
+      this.diagnostics.push({
+        code: 'E131_EMPTY_ADMIN_ENTITIES',
+        message: 'admin block has no entities',
+        hint: 'Add at least one entity: entities: [User, Todo]',
+        loc: ast.admin.loc,
+      })
+      return
+    }
+
+    const knownEntities = new Set(ast.entities.map((e) => e.name))
+    for (const entityName of ast.admin.entities) {
+      if (!knownEntities.has(entityName)) {
+        this.diagnostics.push({
+          code: 'E132_ADMIN_ENTITY_NOT_DECLARED',
+          message: `admin block references entity '${entityName}' which has no entity block`,
+          hint: `Add an entity block for '${entityName}', or remove it from the admin entities list`,
+          loc: ast.admin.loc,
+        })
+      }
     }
   }
 }

@@ -1,0 +1,20 @@
+<script setup>
+// Dashboard overview
+</script>
+
+<template>
+  <div>
+    <a-row :gutter="16" style="margin-bottom: 24px">
+{{#each adminEntities}}
+      <a-col :xs="24" :sm="12" :lg="6">
+        <a-card hoverable>
+          <a-statistic title="{{pascalCase name}}" :value="0" />
+        </a-card>
+      </a-col>
+{{/each}}
+    </a-row>
+    <a-card title="Welcome to {{appTitle}} Admin">
+      <p>Manage your application data using the sidebar navigation.</p>
+    </a-card>
+  </div>
+</template>

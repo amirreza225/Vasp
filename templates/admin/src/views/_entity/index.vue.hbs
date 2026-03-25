@@ -1,0 +1,102 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{ext}}'
+import FormModal from './FormModal.vue'
+
+const data = ref([])
+const loading = ref(false)
+const total = ref(0)
+const pagination = ref({ current: 1, pageSize: 20 })
+const modalVisible = ref(false)
+const editingRecord = ref(null)
+
+const columns = [
+{{#each fields}}
+{{#unless isRelation}}
+  { title: '{{pascalCase name}}', dataIndex: '{{name}}', key: '{{name}}', ellipsis: true },
+{{/unless}}
+{{/each}}
+  { title: 'Actions', key: 'actions', width: 160, fixed: 'right' },
+]
+
+async function fetchData() {
+  loading.value = true
+  try {
+    const res = await {{pascalCase name}}Api.list({
+      limit: pagination.value.pageSize,
+      offset: (pagination.value.current - 1) * pagination.value.pageSize,
+    })
+    data.value = res.items
+    total.value = res.total
+  } finally {
+    loading.value = false
+  }
+}
+
+function openCreate() {
+  editingRecord.value = null
+  modalVisible.value = true
+}
+
+function openEdit(record) {
+  editingRecord.value = { ...record }
+  modalVisible.value = true
+}
+
+async function handleDelete(id) {
+  await {{pascalCase name}}Api.remove(id)
+  fetchData()
+}
+
+function onTableChange(pag) {
+  pagination.value = { current: pag.current, pageSize: pag.pageSize }
+  fetchData()
+}
+
+function onSaved() {
+  modalVisible.value = false
+  fetchData()
+}
+
+onMounted(fetchData)
+</script>
+
+<template>
+  <a-card :title="'{{pascalCase name}} Management'">
+    <template #extra>
+      <a-button type="primary" @click="openCreate">+ Add {{pascalCase name}}</a-button>
+    </template>
+    <a-table
+      :columns="columns"
+      :data-source="data"
+      :loading="loading"
+      :pagination="{ current: pagination.current, pageSize: pagination.pageSize, total, showSizeChanger: true }"
+      row-key="id"
+      @change="onTableChange"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'actions'">
+          <a-space>
+            <a-button size="small" @click="openEdit(record)">Edit</a-button>
+            <a-popconfirm
+              title="Delete this record?"
+              ok-text="Yes"
+              cancel-text="No"
+              @confirm="handleDelete(record.id)"
+            >
+              <a-button size="small" danger>Delete</a-button>
+            </a-popconfirm>
+          </a-space>
+        </template>
+      </template>
+    </a-table>
+  </a-card>
+
+  <FormModal
+    v-if="modalVisible"
+    :visible="modalVisible"
+    :record="editingRecord"
+    @close="modalVisible = false"
+    @saved="onSaved"
+  />
+</template>

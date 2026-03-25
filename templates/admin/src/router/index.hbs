@@ -1,0 +1,31 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import AdminLayout from '@/layouts/AdminLayout.vue'
+import Dashboard from '@/views/dashboard/index.vue'
+{{#each adminEntities}}
+import {{pascalCase name}}List from '@/views/{{kebabCase name}}/index.vue'
+{{/each}}
+
+export const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    {
+      path: '/',
+      component: AdminLayout,
+      children: [
+        { path: '', redirect: '/dashboard' },
+        {
+          path: 'dashboard',
+          component: Dashboard,
+          meta: { title: 'Dashboard' },
+        },
+{{#each adminEntities}}
+        {
+          path: '{{kebabCase name}}',
+          component: {{pascalCase name}}List,
+          meta: { title: '{{pascalCase name}} Management' },
+        },
+{{/each}}
+      ],
+    },
+  ],
+})
