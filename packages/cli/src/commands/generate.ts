@@ -12,6 +12,59 @@ interface GenerateOptions {
   dryRun: boolean
 }
 
+export interface RegenerateResult {
+  success: boolean
+  added: number
+  updated: number
+  skipped: number
+  errors: string[]
+}
+
+/**
+ * Shared generation logic used by both `vasp generate` and the `main.vasp` watcher
+ * in `vasp start`. Reads main.vasp from `projectDir`, parses it, and generates
+ * into `projectDir` — preserving user-modified files (unless `force` is true).
+ *
+ * Returns a result object instead of calling process.exit() so callers (e.g. the
+ * watcher in start.ts) can decide how to handle errors gracefully.
+ */
+export async function runRegenerate(
+  projectDir: string,
+  force = false,
+): Promise<RegenerateResult> {
+  const vaspFile = join(projectDir, 'main.vasp')
+
+  if (!existsSync(vaspFile)) {
+    return { success: false, added: 0, updated: 0, skipped: 0, errors: ['main.vasp not found'] }
+  }
+
+  const source = readFileSync(vaspFile, 'utf8')
+
+  let ast
+  try {
+    ast = parse(source, 'main.vasp')
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return { success: false, added: 0, updated: 0, skipped: 0, errors: [msg] }
+  }
+
+  const previousManifest = Manifest.load(projectDir)
+  const templateDir = resolveTemplateDir(import.meta.dirname)
+
+  const result = generate(ast, {
+    outputDir: projectDir,
+    templateDir,
+    logLevel: force ? 'info' : 'silent',
+  })
+
+  if (!result.success) {
+    return { success: false, added: 0, updated: 0, skipped: 0, errors: result.errors }
+  }
+
+  const stats = computeDiff(previousManifest, result.filesWritten, projectDir)
+  return { success: true, errors: [], ...stats }
+}
+
 /**
  * `vasp generate` — regenerate the app from main.vasp, preserving user-modified files.
  *
@@ -62,12 +115,7 @@ export async function generateCommand(args: string[]): Promise<void> {
 
   log.step('Regenerating app...')
 
-  const templateDir = resolveTemplateDir(import.meta.dirname)
-  const result = generate(ast, {
-    outputDir: projectDir,
-    templateDir,
-    logLevel: opts.force ? 'info' : 'silent',
-  })
+  const result = await runRegenerate(projectDir, opts.force)
 
   if (!result.success) {
     log.error('Generation failed:')
@@ -75,17 +123,11 @@ export async function generateCommand(args: string[]): Promise<void> {
     process.exit(1)
   }
 
-  // After generation, detect what actually changed vs was preserved
-  const newManifest = Manifest.load(projectDir)
-  const stats = computeDiff(previousManifest, result.filesWritten, projectDir)
+  log.success(`Done: ${result.added} added, ${result.updated} updated, ${result.skipped} skipped`)
 
-  log.success(`Done: ${stats.added} added, ${stats.updated} updated, ${stats.skipped} skipped`)
-
-  if (stats.skipped > 0 && !opts.force) {
-    log.dim(`  ${stats.skipped} user-modified file(s) preserved — use --force to overwrite`)
+  if (result.skipped > 0 && !opts.force) {
+    log.dim(`  ${result.skipped} user-modified file(s) preserved — use --force to overwrite`)
   }
-
-  void newManifest // avoid unused warning — already saved by generate()
 }
 
 function detectUserModifiedFiles(projectDir: string, manifest: Manifest): string[] {

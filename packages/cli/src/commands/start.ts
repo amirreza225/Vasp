@@ -1,12 +1,18 @@
 import { join, resolve } from 'node:path'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, watch } from 'node:fs'
 import { log } from '../utils/logger.js'
+import { runRegenerate } from './generate.js'
 import pc from 'picocolors'
 
 /**
  * `vasp start` — concurrent dev server orchestrator
+ *
  * Runs backend (Elysia/Bun) + frontend (Vite or Nuxt) in parallel,
  * prefixing each process's stdout/stderr with a colored label.
+ *
+ * Also watches main.vasp for changes and re-generates the project on save,
+ * preserving user-modified files. The running dev servers pick up the
+ * regenerated files automatically via their own hot-reload (Bun HMR / Vite HMR).
  */
 export async function startCommand(): Promise<void> {
   const projectDir = resolve(process.cwd())
@@ -67,6 +73,13 @@ export async function startCommand(): Promise<void> {
     spawnPrefixed('server', pc.cyan, 'dev:server', projectDir),
     spawnPrefixed('client', pc.magenta, 'dev:client', projectDir),
   ])
+
+  // Watch main.vasp and re-generate on change (debounced 300ms)
+  const vaspFile = join(projectDir, 'main.vasp')
+  if (existsSync(vaspFile)) {
+    log.dim('  Watching main.vasp for changes...')
+    watchVaspFile(vaspFile, projectDir)
+  }
 
   // Handle Ctrl+C — kill both children
   process.on('SIGINT', () => {
@@ -132,4 +145,55 @@ async function streamWithPrefix(
       dest.write(`${prefix} ${line}\n`)
     }
   }
+}
+
+/**
+ * Watch main.vasp for changes. On each save:
+ *  1. Debounce 300ms to ignore rapid successive writes (e.g. editor save storms)
+ *  2. Run `runRegenerate()` — preserves user-modified files, only overwrites
+ *     framework-owned generated files that differ from the manifest
+ *  3. Print a concise summary so the developer knows what changed
+ *
+ * The dev servers (Bun + Vite) pick up the regenerated files automatically via
+ * their own HMR — no restart is required.
+ */
+function watchVaspFile(vaspFile: string, projectDir: string): void {
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null
+  let generating = false
+
+  watch(vaspFile, { persistent: false }, (_event) => {
+    if (debounceTimer) clearTimeout(debounceTimer)
+    debounceTimer = setTimeout(async () => {
+      if (generating) return
+      generating = true
+
+      const label = pc.yellow('[vasp]')
+      process.stdout.write(`${label} main.vasp changed — regenerating...\n`)
+
+      try {
+        const result = await runRegenerate(projectDir)
+        if (result.success) {
+          const parts: string[] = []
+          if (result.added > 0) parts.push(pc.green(`+${result.added} added`))
+          if (result.updated > 0) parts.push(pc.cyan(`~${result.updated} updated`))
+          if (result.skipped > 0) parts.push(pc.dim(`${result.skipped} preserved`))
+          const summary = parts.length > 0 ? parts.join(', ') : 'no changes'
+          process.stdout.write(`${label} ${pc.bold('Done')} — ${summary}\n`)
+          if (result.skipped > 0) {
+            process.stdout.write(`${label} ${pc.dim('User-modified files preserved. Use `vasp generate --force` to overwrite.')}\n`)
+          }
+        } else {
+          process.stdout.write(`${label} ${pc.red('Generation failed:')}\n`)
+          for (const err of result.errors) {
+            process.stdout.write(`${label}   ${pc.red(err)}\n`)
+          }
+          process.stdout.write(`${label} ${pc.dim('Fix the error in main.vasp and save again.')}\n`)
+        }
+      } catch (err) {
+        process.stdout.write(`${label} ${pc.red(`Unexpected error: ${String(err)}`)}\n`)
+      } finally {
+        generating = false
+      }
+    }, 300)
+  })
 }
