@@ -9,7 +9,7 @@ import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 import { requireAuth } from '../../auth/middleware.{{ext}}'
 {{/if}}
 {{#if hasRealtime}}
-import { publish{{pascalCase entity}} } from '../realtime/{{camelCase realtimeName}}.{{ext}}'
+import { publish{{pascalCase realtimeName}} } from '../realtime/{{camelCase realtimeName}}.{{ext}}'
 {{/if}}
 
 export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{camelCase entity}}' })
@@ -81,7 +81,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 
     const [created] = await db.insert({{camelCase entity}}s).values(parsed.output).returning()
 {{#if hasRealtime}}
-    publish{{pascalCase entity}}('created', created)
+    publish{{pascalCase realtimeName}}('created', created)
 {{/if}}
     set.status = 201
     return created
@@ -118,7 +118,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     const [updated] = await db.update({{camelCase entity}}s).set(parsed.output).where(eq({{camelCase entity}}s.id, Number(id))).returning()
     if (!updated) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
 {{#if hasRealtime}}
-    publish{{pascalCase entity}}('updated', updated)
+    publish{{pascalCase realtimeName}}('updated', updated)
 {{/if}}
     return updated
   })
@@ -128,7 +128,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     const [deleted] = await db.delete({{camelCase entity}}s).where(eq({{camelCase entity}}s.id, Number(id))).returning()
     if (!deleted) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
 {{#if hasRealtime}}
-    publish{{pascalCase entity}}('deleted', deleted)
+    publish{{pascalCase realtimeName}}('deleted', deleted)
 {{/if}}
     return { ok: true }
   })

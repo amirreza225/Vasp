@@ -560,6 +560,11 @@ describe('generate()', () => {
     const channel = readFileSync(join(outputDir, 'server/routes/realtime/todoChannel.js'), 'utf8')
     expect(channel).toContain('publishTodoChannel')
     expect(channel).toContain('/ws/todoChannel')
+
+    // CRUD file must import using the realtime block name (publishTodoChannel),
+    // not the entity name (publishTodo)
+    const crudFile = readFileSync(join(outputDir, 'server/routes/crud/todo.js'), 'utf8')
+    expect(crudFile).toContain("publishTodoChannel")
   })
 
   it('generates job worker and schedule endpoint', () => {
