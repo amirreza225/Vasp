@@ -142,6 +142,12 @@ export class TemplateEngine {
       return isOptional ? `v.optional(${base})` : base
     })
 
+    /** lookup: returns obj[key] — mirrors Handlebars built-in for sandboxed create() instances */
+    this.hbs.registerHelper('lookup', (obj: Record<string, unknown>, key: unknown) => {
+      if (obj == null || typeof key !== 'string') return undefined
+      return obj[key]
+    })
+
     /** drizzleColumn: maps a FieldType + modifiers to a Drizzle column call string */
     this.hbs.registerHelper('drizzleColumn', (
       fieldName: string,

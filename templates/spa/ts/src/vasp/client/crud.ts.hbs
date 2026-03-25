@@ -14,7 +14,7 @@ import {
   Create{{pascalCase entity}}Schema,
   Update{{pascalCase entity}}Schema,
 {{/each}}
-} from '@shared/validation.js'
+} from '{{importPath "@shared/validation.js" ext}}'
 import { notifyError } from '../useVaspNotifications.js'
 
 const API = import.meta.env.VITE_API_URL || '/api'
