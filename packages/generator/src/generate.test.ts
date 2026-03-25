@@ -2,11 +2,20 @@ import { parse } from '@vasp-framework/parser'
 import { mkdirSync, rmSync, existsSync } from 'node:fs'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { generate } from './generate.js'
+import { TemplateEngine } from './template/TemplateEngine.js'
 
 const TEMPLATES_DIR = join(import.meta.dirname, '..', '..', '..', 'templates')
 const TMP_DIR = join(import.meta.dirname, '__test_output__')
+
+// Shared engine instance — avoids creating 47 separate Handlebars environments
+// and compiling ~97 templates per test (the main cause of OOM in CI).
+let sharedEngine: TemplateEngine
+beforeAll(() => {
+  sharedEngine = new TemplateEngine()
+  sharedEngine.loadDirectory(TEMPLATES_DIR)
+})
 
 const MINIMAL_VASP = `
 app MinimalApp {
@@ -263,7 +272,7 @@ describe('generate()', () => {
   it('generates files for a minimal SPA+JS app', () => {
     const ast = parse(MINIMAL_VASP)
     const outputDir = join(TMP_DIR, 'minimal')
-    const result = generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    const result = generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(result.success).toBe(true)
     expect(result.errors).toHaveLength(0)
@@ -287,7 +296,7 @@ describe('generate()', () => {
   it('package.json contains correct app name', () => {
     const ast = parse(MINIMAL_VASP)
     const outputDir = join(TMP_DIR, 'pkg-test')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const pkg = JSON.parse(readFileSync(join(outputDir, 'package.json'), 'utf8'))
     expect(pkg.name).toBe('minimal-app')
@@ -299,7 +308,7 @@ describe('generate()', () => {
   it('generates query and action route files', () => {
     const ast = parse(WITH_QUERY_VASP)
     const outputDir = join(TMP_DIR, 'with-query')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'server/routes/queries/getTodos.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'server/routes/actions/createTodo.js'))).toBe(true)
@@ -310,7 +319,7 @@ describe('generate()', () => {
   it('server/index.js imports generated routes', () => {
     const ast = parse(WITH_QUERY_VASP)
     const outputDir = join(TMP_DIR, 'server-imports')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
     expect(serverIndex).toContain('getTodosRoute')
@@ -320,7 +329,7 @@ describe('generate()', () => {
   it('generates custom api route files and wires them in server index', () => {
     const ast = parse(WITH_API_VASP)
     const outputDir = join(TMP_DIR, 'with-api')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'server/routes/api/uploadRecipeImage.js'))).toBe(true)
 
@@ -336,7 +345,7 @@ describe('generate()', () => {
   it('emits requireRole guards for role-protected query/action/api routes', () => {
     const ast = parse(WITH_RBAC_VASP)
     const outputDir = join(TMP_DIR, 'with-rbac')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const queryRoute = readFileSync(join(outputDir, 'server/routes/queries/getTodos.js'), 'utf8')
     expect(queryRoute).toContain('requireRole')
@@ -355,7 +364,7 @@ describe('generate()', () => {
   it('wires global middleware in server index and creates src middleware stubs', () => {
     const ast = parse(WITH_MIDDLEWARE_VASP)
     const outputDir = join(TMP_DIR, 'with-middleware')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
     expect(serverIndex).toContain("import loggerMiddleware from '../src/middleware/logger.js'")
@@ -371,7 +380,7 @@ describe('generate()', () => {
   it('generates startup env validation for required app.env keys', () => {
     const ast = parse(WITH_ENV_SCHEMA_VASP)
     const outputDir = join(TMP_DIR, 'with-env-schema')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
     expect(serverIndex).toContain('const REQUIRED_ENV_VARS = [\'DATABASE_URL\']')
@@ -383,7 +392,7 @@ describe('generate()', () => {
   it('generates seed runner, script, and source seed stub', () => {
     const ast = parse(WITH_SEED_VASP)
     const outputDir = join(TMP_DIR, 'with-seed')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'server/db/seed.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'src/seed.js'))).toBe(true)
@@ -399,7 +408,7 @@ describe('generate()', () => {
   it('router/index.js includes generated routes', () => {
     const ast = parse(MINIMAL_VASP)
     const outputDir = join(TMP_DIR, 'router-test')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const router = readFileSync(join(outputDir, 'src/router/index.js'), 'utf8')
     expect(router).toContain('path: \'/\'')
@@ -409,7 +418,7 @@ describe('generate()', () => {
   it('scaffolds empty page Vue files', () => {
     const ast = parse(MINIMAL_VASP)
     const outputDir = join(TMP_DIR, 'page-scaffold')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'src/pages/Home.vue'))).toBe(true)
   })
@@ -417,7 +426,7 @@ describe('generate()', () => {
   it('TypeScript mode: generates .ts files and tsconfig.json', () => {
     const ast = parse(TS_VASP)
     const outputDir = join(TMP_DIR, 'ts-mode')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     // Key TypeScript files
     expect(existsSync(join(outputDir, 'tsconfig.json'))).toBe(true)
@@ -437,7 +446,7 @@ describe('generate()', () => {
   it('TypeScript mode: generates typed client SDK', () => {
     const ast = parse(TS_VASP)
     const outputDir = join(TMP_DIR, 'ts-sdk')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'src/vasp/client/queries.ts'))).toBe(true)
     expect(existsSync(join(outputDir, 'src/vasp/client/actions.ts'))).toBe(true)
@@ -454,7 +463,7 @@ describe('generate()', () => {
   it('TypeScript mode: drizzle schema includes InferSelectModel', () => {
     const ast = parse(TS_VASP)
     const outputDir = join(TMP_DIR, 'ts-schema')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const schema = readFileSync(join(outputDir, 'drizzle/schema.ts'), 'utf8')
     expect(schema).toContain('InferSelectModel')
@@ -478,7 +487,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'auth-test')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'server/auth/index.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'server/auth/middleware.js'))).toBe(true)
@@ -499,7 +508,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'auth-schema')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const schema = readFileSync(join(outputDir, 'drizzle/schema.js'), 'utf8')
     expect(schema).toContain('users')
@@ -509,7 +518,7 @@ describe('generate()', () => {
   it('drizzle schema has correct entity tables', () => {
     const ast = parse(WITH_QUERY_VASP)
     const outputDir = join(TMP_DIR, 'schema-test')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const schema = readFileSync(join(outputDir, 'drizzle/schema.js'), 'utf8')
     expect(schema).toContain('todos')
@@ -518,7 +527,7 @@ describe('generate()', () => {
   it('generates CRUD route files and client helpers', () => {
     const ast = parse(WITH_QUERY_VASP)
     const outputDir = join(TMP_DIR, 'crud-test')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'server/routes/crud/todo.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'src/vasp/client/crud.js'))).toBe(true)
@@ -542,7 +551,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'realtime-test')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'server/routes/realtime/todoChannel.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'server/routes/realtime/index.js'))).toBe(true)
@@ -567,7 +576,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'jobs-test')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'server/jobs/boss.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'server/jobs/sendWelcomeEmail.js'))).toBe(true)
@@ -585,7 +594,7 @@ describe('generate()', () => {
   it('TypeScript CRUD: generates typed crud.ts with entity types', () => {
     const ast = parse(TS_VASP)
     const outputDir = join(TMP_DIR, 'ts-crud')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'server/routes/crud/todo.ts'))).toBe(true)
     expect(existsSync(join(outputDir, 'src/vasp/client/crud.ts'))).toBe(true)
@@ -627,7 +636,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'ssr-js')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'nuxt.config.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'app.vue'))).toBe(true)
@@ -663,7 +672,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'ssr-pages')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'pages/index.vue'))).toBe(true)
     expect(existsSync(join(outputDir, 'pages/about.vue'))).toBe(true)
@@ -697,7 +706,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'ssr-ts')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'nuxt.config.ts'))).toBe(true)
     expect(existsSync(join(outputDir, 'plugins/vasp.server.ts'))).toBe(true)
@@ -731,7 +740,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'ssr-auth')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'composables/useAuth.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'middleware/auth.js'))).toBe(true)
@@ -758,7 +767,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'schema-relations')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const schema = readFileSync(join(outputDir, 'drizzle/schema.js'), 'utf8')
     // FK column for many-to-one
@@ -785,7 +794,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'schema-types')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const schema = readFileSync(join(outputDir, 'drizzle/schema.js'), 'utf8')
     expect(schema).toContain("text('body')")
@@ -806,7 +815,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'schema-updatedat')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const schema = readFileSync(join(outputDir, 'drizzle/schema.js'), 'utf8')
     expect(schema).toContain('$onUpdate(() => new Date())')
@@ -825,7 +834,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'crud-with-relations')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const route = readFileSync(join(outputDir, 'server/routes/crud/todo.js'), 'utf8')
     // Should use db.query relational API
@@ -850,7 +859,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'shared-types')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'shared/types.ts'))).toBe(true)
     const types = readFileSync(join(outputDir, 'shared/types.ts'), 'utf8')
@@ -898,7 +907,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'shared-types-stubs')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const types = readFileSync(join(outputDir, 'shared/types.ts'), 'utf8')
     expect(types).toContain('export type GetTodosArgs')
@@ -923,7 +932,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'client-types-reexport')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const types = readFileSync(join(outputDir, 'src/vasp/client/types.ts'), 'utf8')
     expect(types).toContain("@shared/types.js")
@@ -945,7 +954,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'typed-crud')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const crud = readFileSync(join(outputDir, 'src/vasp/client/crud.ts'), 'utf8')
     expect(crud).toContain('CreateRecipeInput')
@@ -963,7 +972,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'tsconfig-shared')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const tsconfig = readFileSync(join(outputDir, 'tsconfig.json'), 'utf8')
     expect(tsconfig).toContain('"@shared/*"')
@@ -979,7 +988,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'vite-shared')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const viteConfig = readFileSync(join(outputDir, 'vite.config.ts'), 'utf8')
     expect(viteConfig).toContain("'@shared'")
@@ -994,7 +1003,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'vite-js-shared')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const viteConfig = readFileSync(join(outputDir, 'vite.config.js'), 'utf8')
     expect(viteConfig).toContain("'@shared'")
@@ -1008,7 +1017,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'nuxt-shared')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const nuxtConfig = readFileSync(join(outputDir, 'nuxt.config.ts'), 'utf8')
     expect(nuxtConfig).toContain("'@shared'")
@@ -1033,7 +1042,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'types-mapping')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const types = readFileSync(join(outputDir, 'shared/types.ts'), 'utf8')
     // String → string
@@ -1058,7 +1067,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'no-entities')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'shared/types.ts'))).toBe(false)
   })
@@ -1073,7 +1082,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'js-no-types')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'shared/types.ts'))).toBe(false)
   })
@@ -1091,7 +1100,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'phase4-validation-shared')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'shared/validation.ts'))).toBe(true)
     const validation = readFileSync(join(outputDir, 'shared/validation.ts'), 'utf8')
@@ -1112,7 +1121,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'phase4-crud-validation')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const route = readFileSync(join(outputDir, 'server/routes/crud/todo.js'), 'utf8')
     expect(route).toContain('safeParse')
@@ -1124,7 +1133,7 @@ describe('generate()', () => {
   it('package.json includes Valibot and vitest setup', () => {
     const ast = parse(MINIMAL_VASP)
     const outputDir = join(TMP_DIR, 'phase4-package')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const pkg = JSON.parse(readFileSync(join(outputDir, 'package.json'), 'utf8'))
     expect(pkg.scripts.test).toBe('vitest run')
@@ -1136,7 +1145,7 @@ describe('generate()', () => {
   it('SPA generates error boundary and notifications components', () => {
     const ast = parse(MINIMAL_VASP)
     const outputDir = join(TMP_DIR, 'phase4-spa-ux')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'src/components/VaspErrorBoundary.vue'))).toBe(true)
     expect(existsSync(join(outputDir, 'src/components/VaspNotifications.vue'))).toBe(true)
@@ -1155,7 +1164,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'phase4-ssr-error')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'error.vue'))).toBe(true)
     const errorPage = readFileSync(join(outputDir, 'error.vue'), 'utf8')
@@ -1177,7 +1186,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'phase4-spa-client')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     const crud = readFileSync(join(outputDir, 'src/vasp/client/crud.ts'), 'utf8')
     expect(crud).toContain('loading = ref(false)')
@@ -1205,7 +1214,7 @@ describe('generate()', () => {
     `
     const ast = parse(source)
     const outputDir = join(TMP_DIR, 'phase4-test-scaffold')
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
 
     expect(existsSync(join(outputDir, 'vitest.config.js'))).toBe(true)
     expect(existsSync(join(outputDir, 'tests/setup.js'))).toBe(true)

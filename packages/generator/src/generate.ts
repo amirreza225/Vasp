@@ -32,8 +32,13 @@ export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult 
     logger,
   })
 
-  const engine = new TemplateEngine()
-  engine.loadDirectory(ctx.templateDir)
+  let engine: TemplateEngine
+  if (opts.engine instanceof TemplateEngine) {
+    engine = opts.engine
+  } else {
+    engine = new TemplateEngine()
+    engine.loadDirectory(ctx.templateDir)
+  }
 
   const filesWritten: string[] = []
   const warnings: string[] = []
