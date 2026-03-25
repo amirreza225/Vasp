@@ -355,4 +355,121 @@ describe('SemanticValidator', () => {
       }
     `)).toThrow('E122_INVALID_ENV_KEY')
   })
+
+  // ── Bug 4: Validation ordering ──────────────────────────────────────────
+
+  it('catches duplicate entity name before running crud entity check', () => {
+    // With wrong ordering, the crud check would silently pass (Set deduplicates)
+    // while the duplicate entity error is never reached.
+    expect(() => validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      entity Todo { id: Int @id name: String }
+      crud Todo { entity: Todo operations: [list] }
+    `)).toThrow('E112_DUPLICATE_ENTITY')
+  })
+
+  // ── Bug 6: Duplicate block names ─────────────────────────────────────────
+
+  it('fails on duplicate query names (E124)', () => {
+    expect(() => validate(`
+      ${APP}
+      crud Todo { entity: Todo operations: [list] }
+      query getTodos { fn: import { getTodos } from "@src/q.js" entities: [Todo] }
+      query getTodos { fn: import { getTodos } from "@src/q.js" entities: [Todo] }
+    `)).toThrow('E124_DUPLICATE_QUERY')
+  })
+
+  it('fails on duplicate action names (E125)', () => {
+    expect(() => validate(`
+      ${APP}
+      crud Todo { entity: Todo operations: [create] }
+      action createTodo { fn: import { createTodo } from "@src/a.js" entities: [Todo] }
+      action createTodo { fn: import { createTodo } from "@src/a.js" entities: [Todo] }
+    `)).toThrow('E125_DUPLICATE_ACTION')
+  })
+
+  it('fails on duplicate page names (E126)', () => {
+    expect(() => validate(`
+      ${APP}
+      route Home { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `)).toThrow('E126_DUPLICATE_PAGE')
+  })
+
+  it('fails on duplicate crud names (E127)', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list] }
+      crud Todo { entity: Todo operations: [create] }
+    `)).toThrow('E127_DUPLICATE_CRUD')
+  })
+
+  it('fails on duplicate realtime names (E128)', () => {
+    expect(() => validate(`
+      ${APP}
+      crud Todo { entity: Todo operations: [list] }
+      realtime TodoChannel { entity: Todo events: [created] }
+      realtime TodoChannel { entity: Todo events: [updated] }
+    `)).toThrow('E128_DUPLICATE_REALTIME')
+  })
+
+  it('fails on duplicate job names (E129)', () => {
+    expect(() => validate(`
+      ${APP}
+      job sendEmail { executor: PgBoss perform: { fn: import { sendEmail } from "@src/jobs.js" } }
+      job sendEmail { executor: PgBoss perform: { fn: import { sendEmail } from "@src/jobs.js" } }
+    `)).toThrow('E129_DUPLICATE_JOB')
+  })
+
+  it('fails on duplicate middleware names (E130)', () => {
+    expect(() => validate(`
+      ${APP}
+      middleware Logger { fn: import logger from "@src/middleware/logger.js" scope: global }
+      middleware Logger { fn: import logger from "@src/middleware/logger.js" scope: global }
+    `)).toThrow('E130_DUPLICATE_MIDDLEWARE')
+  })
+
+  // ── Bug 7: Warnings must not be treated as errors ────────────────────────
+
+  it('W200 does not prevent successful parse (warning only)', () => {
+    // `todos: Todo` looks plural — only a warning, not an error
+    expect(() => validate(`
+      ${APP}
+      entity User { id: Int @id }
+      entity Todo { id: Int @id todos: User }
+    `)).not.toThrow()
+  })
+
+  it('W201 does not prevent successful parse (warning only)', () => {
+    // Non-nullable relation without @onDelete — only a warning, not an error
+    expect(() => validate(`
+      ${APP}
+      entity User { id: Int @id }
+      entity Todo { id: Int @id author: User }
+    `)).not.toThrow()
+  })
+
+  // ── Bug 8: W200 false positive fix ───────────────────────────────────────
+
+  it('W200 does not fire for address: Address (false positive)', () => {
+    // `address` ends with 's' but is NOT the plural of `Address`
+    expect(() => validate(`
+      ${APP}
+      entity Address { id: Int @id street: String }
+      entity User { id: Int @id address: Address @onDelete(cascade) }
+    `)).not.toThrow()
+  })
+
+  it('W200 correctly identified for todos: Todo (true positive)', () => {
+    // `todos` IS the camelCase plural of `Todo` — warning is appropriate
+    // The file still parses successfully (warnings do not throw)
+    expect(() => validate(`
+      ${APP}
+      entity User { id: Int @id }
+      entity Todo { id: Int @id todos: User }
+    `)).not.toThrow()
+  })
 })

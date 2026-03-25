@@ -452,6 +452,70 @@ describe('Parser — error cases', () => {
     `)).toThrow('E040_DUPLICATE_SEED_BLOCK')
   })
 
+  it('throws on duplicate app blocks (E043)', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      app B { title: "T2" db: Drizzle ssr: false typescript: false }
+    `)).toThrow('E043_DUPLICATE_APP_BLOCK')
+  })
+
+  it('throws on duplicate auth blocks (E044)', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      auth UserAuth { userEntity: User methods: [usernameAndPassword] }
+      auth AdminAuth { userEntity: User methods: [usernameAndPassword] }
+    `)).toThrow('E044_DUPLICATE_AUTH_BLOCK')
+  })
+
+  it('throws on empty Enum variants (E141, not E116)', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Todo { id: Int @id status: Enum() }
+    `)).toThrow('E141_EMPTY_ENUM')
+  })
+
+  it('throws on duplicate elements in an identifier array (E045)', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Todo { entity: Todo operations: [list, create, list] }
+    `)).toThrow('E045_DUPLICATE_ARRAY_ELEMENT')
+  })
+
+  it('throws on duplicate auth methods (E045)', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      auth UserAuth { userEntity: User methods: [usernameAndPassword, usernameAndPassword] }
+    `)).toThrow('E045_DUPLICATE_ARRAY_ELEMENT')
+  })
+
+  it('throws on empty app title (E046)', () => {
+    expect(() => parse(`
+      app A { title: "" db: Drizzle ssr: false typescript: false }
+    `)).toThrow('E046_EMPTY_APP_TITLE')
+  })
+
+  it('throws when api path does not start with slash (E047)', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      api Upload {
+        method: POST
+        path: "api/upload"
+        fn: import { upload } from "@src/api.js"
+      }
+    `)).toThrow('E047_INVALID_API_PATH')
+  })
+
+  it('passes when api path starts with slash', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      api Upload {
+        method: POST
+        path: "/api/upload"
+        fn: import { upload } from "@src/api.js"
+      }
+    `)).not.toThrow()
+  })
+
   it('throws on missing component in page', () => {
     expect(() => parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }

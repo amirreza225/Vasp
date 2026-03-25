@@ -72,9 +72,27 @@ class Parser {
       try {
         switch (kw.type) {
           case TokenType.KW_APP:
+            if (ast.app) {
+              this.consume(TokenType.KW_APP)
+              throw this.error(
+                'E043_DUPLICATE_APP_BLOCK',
+                'Duplicate app block found',
+                'Only one app block is allowed in main.vasp',
+                kw.loc,
+              )
+            }
             ast.app = this.parseApp()
             break
           case TokenType.KW_AUTH:
+            if (ast.auth) {
+              this.consume(TokenType.KW_AUTH)
+              throw this.error(
+                'E044_DUPLICATE_AUTH_BLOCK',
+                'Duplicate auth block found',
+                'Only one auth block is allowed in main.vasp',
+                kw.loc,
+              )
+            }
             ast.auth = this.parseAuth()
             break
           case TokenType.KW_ENTITY:
@@ -188,6 +206,14 @@ class Parser {
       switch (key.value) {
         case 'title':
           title = this.consumeString()
+          if (!title.trim()) {
+            throw this.error(
+              'E046_EMPTY_APP_TITLE',
+              'App title cannot be empty',
+              'Provide a non-empty title: title: "MyApp"',
+              this.tokens[this.pos - 1]!.loc,
+            )
+          }
           break
         case 'db':
           db = this.consumeIdentifier().value as 'Drizzle'
@@ -331,7 +357,7 @@ class Parser {
         }
         this.consume(TokenType.RPAREN)
         if (enumValues.length === 0) {
-          throw this.error('E116_EMPTY_ENUM', `Enum field '${fieldName.value}' must have at least one variant`, 'Example: status: Enum(active, inactive, archived)', fieldTypeToken.loc)
+          throw this.error('E141_EMPTY_ENUM', `Enum field '${fieldName.value}' must have at least one variant`, 'Example: status: Enum(active, inactive, archived)', fieldTypeToken.loc)
         }
       }
 
@@ -613,6 +639,10 @@ class Parser {
       throw this.error('E035_MISSING_PATH', `Api '${name.value}' is missing path`, 'Add: path: "/api/my-endpoint"', loc)
     }
 
+    if (!path.startsWith('/')) {
+      throw this.error('E047_INVALID_API_PATH', `Api '${name.value}' path must start with '/'`, 'Example: path: "/api/my-endpoint"', loc)
+    }
+
     return { type: 'Api', name: name.value, loc, method, path, fn, auth, ...(roles.length > 0 ? { roles } : {}) }
   }
 
@@ -792,9 +822,20 @@ class Parser {
   private parseIdentifierArray(): string[] {
     this.consume(TokenType.LBRACKET)
     const items: string[] = []
+    const seen = new Set<string>()
 
     while (!this.check(TokenType.RBRACKET)) {
-      items.push(this.consumeIdentifier().value)
+      const tok = this.consumeIdentifier()
+      if (seen.has(tok.value)) {
+        throw this.error(
+          'E045_DUPLICATE_ARRAY_ELEMENT',
+          `Duplicate element '${tok.value}' in list`,
+          'Each element in a list must be unique',
+          tok.loc,
+        )
+      }
+      seen.add(tok.value)
+      items.push(tok.value)
       if (this.check(TokenType.COMMA)) {
         this.consume(TokenType.COMMA)
       }

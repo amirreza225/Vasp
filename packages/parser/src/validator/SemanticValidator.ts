@@ -1,4 +1,4 @@
-import type { ParseDiagnostic, VaspAST } from '@vasp-framework/core'
+import type { ParseDiagnostic, SourceLocation, VaspAST } from '@vasp-framework/core'
 import { ParseError, SUPPORTED_API_METHODS, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_MIDDLEWARE_SCOPES, SUPPORTED_REALTIME_EVENTS, SUPPORTED_FIELD_TYPES } from '@vasp-framework/core'
 
 export class SemanticValidator {
@@ -6,6 +6,9 @@ export class SemanticValidator {
 
   validate(ast: VaspAST): void {
     this.checkAppExists(ast)
+    this.checkDuplicateEntities(ast)
+    this.checkDuplicateRoutes(ast)
+    this.checkDuplicateBlocks(ast)
     this.checkRouteTargets(ast)
     this.checkCrudEntities(ast)
     this.checkCrudOperations(ast)
@@ -17,13 +20,12 @@ export class SemanticValidator {
     this.checkMiddlewareScopes(ast)
     this.checkEnvSchema(ast)
     this.checkJobExecutors(ast)
-    this.checkDuplicateEntities(ast)
-    this.checkDuplicateRoutes(ast)
     this.checkFieldTypes(ast)
     this.checkRelationModifiers(ast)
     this.checkModifierTypeConstraints(ast)
 
-    if (this.diagnostics.length > 0) {
+    const hasErrors = this.diagnostics.some((d) => d.code.startsWith('E'))
+    if (hasErrors) {
       throw new ParseError(this.diagnostics)
     }
   }
@@ -399,8 +401,10 @@ export class SemanticValidator {
       for (const field of entity.fields) {
         if (!field.isRelation) continue
 
-        // 2.2: Warn if field name ends in 's' but missing [] (likely should be a collection)
-        if (!field.isArray && field.name.endsWith('s') && field.name.length > 1) {
+        // 2.2: Warn only when the field name is exactly the lowercased entity name + 's'
+        // (e.g. `todos: Todo` looks plural, but `address: Address` does not)
+        const entityLower = field.relatedEntity!.charAt(0).toLowerCase() + field.relatedEntity!.slice(1)
+        if (!field.isArray && field.name === entityLower + 's') {
           this.diagnostics.push({
             code: 'W200_SINGULAR_RELATION_LOOKS_PLURAL',
             message: `Relation field '${field.name}' in entity '${entity.name}' looks plural but is not an array`,
@@ -462,6 +466,36 @@ export class SemanticValidator {
           loc: entity.loc,
         })
       }
+    }
+  }
+
+  /** Detect duplicate names across all block types */
+  private checkDuplicateBlocks(ast: VaspAST): void {
+    this.checkDuplicateNames('query', 'E124_DUPLICATE_QUERY', ast.queries)
+    this.checkDuplicateNames('action', 'E125_DUPLICATE_ACTION', ast.actions)
+    this.checkDuplicateNames('page', 'E126_DUPLICATE_PAGE', ast.pages)
+    this.checkDuplicateNames('crud', 'E127_DUPLICATE_CRUD', ast.cruds)
+    this.checkDuplicateNames('realtime', 'E128_DUPLICATE_REALTIME', ast.realtimes)
+    this.checkDuplicateNames('job', 'E129_DUPLICATE_JOB', ast.jobs)
+    this.checkDuplicateNames('middleware', 'E130_DUPLICATE_MIDDLEWARE', ast.middlewares ?? [])
+  }
+
+  private checkDuplicateNames(
+    kind: string,
+    code: string,
+    nodes: Array<{ name: string; loc: SourceLocation }>,
+  ): void {
+    const seen = new Set<string>()
+    for (const node of nodes) {
+      if (seen.has(node.name)) {
+        this.diagnostics.push({
+          code,
+          message: `Duplicate ${kind} '${node.name}'`,
+          hint: `Each ${kind} name must be unique`,
+          loc: node.loc,
+        })
+      }
+      seen.add(node.name)
     }
   }
 }
