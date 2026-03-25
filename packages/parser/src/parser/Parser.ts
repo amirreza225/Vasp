@@ -109,6 +109,7 @@ class Parser {
             break
           case TokenType.KW_SEED:
             if (ast.seed) {
+              this.consume(TokenType.KW_SEED)
               throw this.error(
                 'E040_DUPLICATE_SEED_BLOCK',
                 'Duplicate seed block found',
