@@ -15,11 +15,18 @@ import { ScaffoldGenerator } from './generators/ScaffoldGenerator.js'
 import { SeedGenerator } from './generators/SeedGenerator.js'
 import { Manifest } from './manifest/Manifest.js'
 import { TemplateEngine } from './template/TemplateEngine.js'
-import { join } from 'node:path'
+import { cleanupDir, commitStagedFiles } from './utils/fs.js'
+import { dirname, join } from 'node:path'
+import { mkdirSync } from 'node:fs'
 
 export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult {
   const logger = createConsoleLogger(opts.logLevel ?? 'info')
-  const ctx = createContext(ast, opts.outputDir, {
+  const realOutputDir = opts.outputDir
+  const stagingDir = join(dirname(realOutputDir), `.vasp-staging-${Date.now()}`)
+
+  mkdirSync(stagingDir, { recursive: true })
+
+  const ctx = createContext(ast, stagingDir, {
     ...(opts.templateDir !== undefined ? { templateDir: opts.templateDir } : {}),
     logger,
   })
@@ -32,7 +39,7 @@ export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult 
   const manifest = new Manifest(VASP_VERSION)
 
   try {
-    // Execute generators in dependency order
+    // Execute generators in dependency order (all writes go to staging dir)
     new ScaffoldGenerator(ctx, engine, filesWritten, manifest).run()
     new DrizzleSchemaGenerator(ctx, engine, filesWritten, manifest).run()
     new BackendGenerator(ctx, engine, filesWritten, manifest).run()
@@ -46,13 +53,22 @@ export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult 
     new SeedGenerator(ctx, engine, filesWritten, manifest).run()
     new FrontendGenerator(ctx, engine, filesWritten, manifest).run()
 
-    // Persist manifest
-    manifest.save(ctx.outputDir)
+    // All generators succeeded — commit staged files to real output dir.
+    // .env is preserved if the existing one has non-placeholder values.
+    commitStagedFiles(stagingDir, realOutputDir, { preserveEnv: true })
+
+    // Persist manifest to real output dir
+    manifest.save(realOutputDir)
+
+    // Clean up staging dir
+    cleanupDir(stagingDir)
 
     logger.info(`✓ Generated ${filesWritten.length} files`)
 
     return { success: true, filesWritten, errors: [], warnings }
   } catch (err) {
+    // Clean up staging dir on failure — real output dir is untouched
+    cleanupDir(stagingDir)
     const message = err instanceof Error ? err.message : String(err)
     logger.error(message)
     return { success: false, filesWritten, errors: [message], warnings }

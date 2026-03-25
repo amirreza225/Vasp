@@ -165,6 +165,7 @@ export class Lexer {
     // Handle modifiers with parenthetical args: @default(now), @default("val"), @onDelete(cascade)
     let modifier = name
     if ((name === 'default' || name === 'onDelete') && this.peek() === '(') {
+      const parenLoc = this.loc() // capture opening '(' location for error reporting
       this.advance() // (
       let arg = ''
       while (this.pos < this.source.length && this.peek() !== ')') {
@@ -180,7 +181,15 @@ export class Lexer {
           arg += this.advance()
         }
       }
-      if (this.peek() === ')') this.advance() // )
+      if (this.peek() !== ')') {
+        throw new ParseError([{
+          code: 'E004_UNCLOSED_MODIFIER_ARG',
+          message: `Unclosed '(' in @${name} modifier — expected ')'`,
+          hint: `Add a closing ')' to complete the @${name}(...) modifier`,
+          loc: parenLoc,
+        }])
+      }
+      this.advance() // )
       const argTrimmed = arg.trim()
       if (name === 'default') {
         modifier = argTrimmed === 'now' ? 'default_now' : `default_${argTrimmed}`

@@ -2,6 +2,7 @@ import { join, resolve } from 'node:path'
 import { existsSync, readFileSync, watch } from 'node:fs'
 import { log } from '../utils/logger.js'
 import { runRegenerate } from './generate.js'
+import { isPlaceholderValue, parseEnvFile } from '@vasp-framework/generator'
 import pc from 'picocolors'
 
 /**
@@ -46,6 +47,18 @@ export async function startCommand(): Promise<void> {
       log.info('Created .env from .env.example — edit it to configure your database.')
     } else {
       log.warn('No .env.example found either. Database connection may fail.')
+    }
+  }
+
+  // Warn about placeholder values in .env
+  if (existsSync(envFile)) {
+    const envContent = readFileSync(envFile, 'utf8')
+    const envVars = parseEnvFile(envContent)
+    if (envVars['DATABASE_URL'] && isPlaceholderValue(envVars['DATABASE_URL'])) {
+      log.warn(pc.bold('DATABASE_URL looks like a placeholder — edit .env before running the app'))
+    }
+    if (envVars['JWT_SECRET'] && isPlaceholderValue(envVars['JWT_SECRET'])) {
+      log.warn(pc.bold('JWT_SECRET is still a placeholder — set a real secret in .env'))
     }
   }
 

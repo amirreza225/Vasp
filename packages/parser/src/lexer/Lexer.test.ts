@@ -162,6 +162,23 @@ describe('Lexer', () => {
     expect(tokens[2]).toMatchObject({ type: TokenType.AT_MODIFIER, value: 'default_now' })
   })
 
+  it('throws on unclosed modifier argument', () => {
+    expect(() => lex('@default(now')).toThrow("Unclosed '(' in @default modifier")
+  })
+
+  it('throws on unclosed modifier argument with correct location', () => {
+    const src = 'entity Foo {\n  id: Int @id\n  name: String @default(now\n}'
+    try {
+      lex(src)
+      expect.unreachable('should have thrown')
+    } catch (e: any) {
+      const diag = e.diagnostics?.[0]
+      expect(diag.code).toBe('E004_UNCLOSED_MODIFIER_ARG')
+      // Location should point at the opening '(' on line 3, not EOF
+      expect(diag.loc.line).toBe(3)
+    }
+  })
+
   it('tokenizes an entity block', () => {
     const src = `entity Todo {
   id: Int @id

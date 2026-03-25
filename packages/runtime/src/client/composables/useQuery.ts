@@ -1,4 +1,4 @@
-import { ref, shallowRef, type Ref } from 'vue'
+import { getCurrentInstance, onUnmounted, ref, shallowRef, type Ref } from 'vue'
 import { useVasp } from './useVasp.js'
 
 export interface UseQueryResult<T> {
@@ -60,6 +60,11 @@ export function useQuery<T = unknown>(
 
   // Register for invalidation
   registerQuery(queryName, refresh)
+
+  // Clean up registry on component unmount to prevent memory leaks
+  if (getCurrentInstance()) {
+    onUnmounted(() => unregisterQuery(queryName, refresh))
+  }
 
   // Auto-fetch on creation
   refresh()
