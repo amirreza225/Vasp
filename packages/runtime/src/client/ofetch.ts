@@ -43,7 +43,7 @@ export function createVaspClient(options: VaspClientOptions = {}): VaspClient {
     async query(name: string, args?: unknown) {
       return fetcher(`/queries/${name}`, {
         method: 'GET',
-        query: args as Record<string, unknown>,
+        params: args as Record<string, unknown>,
       })
     },
     async action(name: string, args?: unknown) {

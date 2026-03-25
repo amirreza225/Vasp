@@ -34,8 +34,14 @@ export async function dbCommand(args: string[]): Promise<void> {
 
   log.step(`Running ${scriptName}...`)
 
-  const [cmd, ...cmdArgs] = script.split(' ')
-  const proc = Bun.spawn([cmd!, ...cmdArgs], {
+  // Split the script string into tokens, respecting quoted arguments
+  // e.g. `bunx drizzle-kit push --config "my config.ts"` → 4 tokens
+  const cmdTokens = splitShellArgs(script)
+  if (cmdTokens.length === 0) {
+    log.error(`Script '${scriptName}' is empty.`)
+    process.exit(1)
+  }
+  const proc = Bun.spawn(cmdTokens as [string, ...string[]], {
     cwd: projectDir,
     stdout: 'inherit',
     stderr: 'inherit',
@@ -43,9 +49,40 @@ export async function dbCommand(args: string[]): Promise<void> {
 
   const exitCode = await proc.exited
   if (exitCode !== 0) {
-    log.error(`${scriptName} failed with exit code ${exitCode}`)
-    process.exit(exitCode)
+    const code = typeof exitCode === 'number' ? exitCode : 1
+    log.error(`${scriptName} failed with exit code ${code}`)
+    process.exit(code)
   }
 
   log.success(`${scriptName} completed`)
+}
+
+/**
+ * Split a shell command string into tokens, respecting single- and double-quoted
+ * arguments so that e.g. `bunx drizzle-kit push --config "my config.ts"` is
+ * correctly split into 4 tokens instead of 5.
+ */
+function splitShellArgs(input: string): string[] {
+  const tokens: string[] = []
+  let current = ''
+  let inSingle = false
+  let inDouble = false
+
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i]!
+    if (ch === "'" && !inDouble) {
+      inSingle = !inSingle
+    } else if (ch === '"' && !inSingle) {
+      inDouble = !inDouble
+    } else if (ch === ' ' && !inSingle && !inDouble) {
+      if (current.length > 0) {
+        tokens.push(current)
+        current = ''
+      }
+    } else {
+      current += ch
+    }
+  }
+  if (current.length > 0) tokens.push(current)
+  return tokens
 }

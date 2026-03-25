@@ -1,5 +1,6 @@
 import { ref, shallowRef, type Ref } from 'vue'
 import { useVasp } from './useVasp.js'
+import { invalidateQueries, queryRegistry } from './useQuery.js'
 
 export interface UseAuthResult<T = unknown> {
   user: Ref<T | null>
@@ -47,6 +48,8 @@ export function useAuth<T = unknown>(): UseAuthResult<T> {
       const result = await $vasp.action('auth/login', credentials)
       user.value = result as T
       isAuthenticated.value = true
+      // Notify all registered queries so stale user-scoped data is refreshed
+      await invalidateQueries([...queryRegistry.keys()])
     } catch (err) {
       error.value = err instanceof Error ? err : new Error(String(err))
       throw error.value
@@ -62,6 +65,8 @@ export function useAuth<T = unknown>(): UseAuthResult<T> {
       const result = await $vasp.action('auth/register', credentials)
       user.value = result as T
       isAuthenticated.value = true
+      // Notify all registered queries so stale user-scoped data is refreshed
+      await invalidateQueries([...queryRegistry.keys()])
     } catch (err) {
       error.value = err instanceof Error ? err : new Error(String(err))
       throw error.value
@@ -77,6 +82,8 @@ export function useAuth<T = unknown>(): UseAuthResult<T> {
       await $vasp.action('auth/logout')
       user.value = null
       isAuthenticated.value = false
+      // Notify all registered queries so stale user-scoped data is refreshed
+      await invalidateQueries([...queryRegistry.keys()])
     } catch (err) {
       error.value = err instanceof Error ? err : new Error(String(err))
       throw error.value

@@ -9,7 +9,7 @@ export interface UseQueryResult<T> {
 }
 
 // Global registry of active queries for invalidation by useAction
-const queryRegistry = new Map<string, Set<() => Promise<void>>>()
+export const queryRegistry = new Map<string, Set<() => Promise<void>>>()
 
 export function registerQuery(name: string, refreshFn: () => Promise<void>): void {
   if (!queryRegistry.has(name)) queryRegistry.set(name, new Set())
@@ -58,16 +58,19 @@ export function useQuery<T = unknown>(
     }
   }
 
-  // Register for invalidation
-  registerQuery(queryName, refresh)
-
-  // Clean up registry on component unmount to prevent memory leaks
+  // Register for invalidation and clean up on component unmount.
+  // Only register (and auto-fetch) when called inside a component setup context;
+  // when called outside (e.g. in a Pinia store) the caller controls the lifecycle.
   if (getCurrentInstance()) {
+    registerQuery(queryName, refresh)
     onUnmounted(() => unregisterQuery(queryName, refresh))
+    // Auto-fetch after mount so SSR hydration is not disrupted
+    refresh()
+  } else {
+    // Outside a component — register globally (never auto-unregistered)
+    registerQuery(queryName, refresh)
+    refresh()
   }
-
-  // Auto-fetch on creation
-  refresh()
 
   return { data, loading, error, refresh }
 }

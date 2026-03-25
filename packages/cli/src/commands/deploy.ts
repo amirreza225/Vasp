@@ -139,6 +139,7 @@ function generateDockerCompose(info: ProjectInfo): string {
       - "${info.frontendPort}:3000"
     environment:
       - NODE_ENV=production
+      - NUXT_PUBLIC_API_BASE=http://app:${info.backendPort}/api
     depends_on:
       - app`
     : `  app:

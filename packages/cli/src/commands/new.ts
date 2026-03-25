@@ -91,8 +91,8 @@ export async function newCommand(args: string[]): Promise<void> {
       stdout: 'inherit',
       stderr: 'inherit',
     })
-    await proc.exited
-    if (proc.exitCode !== 0) {
+    const installCode = await proc.exited
+    if (installCode !== 0) {
       log.warn("bun install failed — run it manually inside your project")
     } else {
       log.success('Dependencies installed')

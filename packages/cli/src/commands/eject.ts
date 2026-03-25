@@ -43,7 +43,7 @@ function rewriteRuntimeImport(content: string, fileDir: string, runtimeDir: stri
 
   // Match both: import ... from '@vasp-framework/runtime'  (with single or double quotes)
   const importRegex = /(['"])@vasp-framework\/runtime\1/g
-  if (!importRegex.test(content)) return null
+  if (!/@vasp-framework\/runtime/.test(content)) return null
 
   return content.replace(/(['"])@vasp-framework\/runtime\1/g, `$1${normalized}$1`)
 }

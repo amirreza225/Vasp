@@ -22,13 +22,15 @@ export async function buildCommand(): Promise<void> {
 
   const isSsr = !!(pkg.dependencies?.['nuxt'])
 
+  // Determine if TypeScript is enabled by reading main.vasp.
+  // Falling back to checking for server/index.ts if main.vasp is absent.
+  const isTypeScript = detectTypeScript(projectDir)
+
   log.step('Building Vasp app for production...')
 
   // Step 1: build backend with bun
   log.info('Building backend...')
-  const backendEntry = existsSync(join(projectDir, 'server/index.ts'))
-    ? 'server/index.ts'
-    : 'server/index.js'
+  const backendEntry = isTypeScript ? 'server/index.ts' : 'server/index.js'
 
   const backendProc = Bun.spawn(
     ['bun', 'build', backendEntry, '--target', 'bun', '--outdir', 'dist/server'],
@@ -64,4 +66,19 @@ export async function buildCommand(): Promise<void> {
   if (isSsr) {
     log.dim('  Run: node .output/server/index.mjs  (Nuxt SSR)')
   }
+}
+
+/**
+ * Detect whether the project uses TypeScript by reading the `typescript:` field
+ * in main.vasp. Falls back to checking for server/index.ts if main.vasp is absent.
+ */
+function detectTypeScript(projectDir: string): boolean {
+  const vaspFile = join(projectDir, 'main.vasp')
+  if (existsSync(vaspFile)) {
+    const source = readFileSync(vaspFile, 'utf8')
+    const match = source.match(/typescript\s*:\s*(true|false)/)
+    if (match) return match[1] === 'true'
+  }
+  // Fallback: presence of server/index.ts
+  return existsSync(join(projectDir, 'server/index.ts'))
 }
