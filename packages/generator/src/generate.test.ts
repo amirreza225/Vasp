@@ -623,6 +623,56 @@ describe('generate()', () => {
 
     const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
     expect(serverIndex).toContain('sendWelcomeEmailScheduleRoute')
+
+    // Stub src/jobs.js must be generated so the server import resolves immediately
+    expect(existsSync(join(outputDir, 'src/jobs.js'))).toBe(true)
+    const stub = readFileSync(join(outputDir, 'src/jobs.js'), 'utf8')
+    expect(stub).toContain('export async function sendWelcomeEmail')
+    expect(stub).toContain('// TODO: implement')
+  })
+
+  it('job stub: multiple jobs sharing one source file emit all exports in a single stub', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      job sendTaskNotification {
+        executor: PgBoss
+        perform: { fn: import { sendTaskNotification } from "@src/jobs.js" }
+      }
+      job cleanupActivityLogs {
+        executor: PgBoss
+        perform: { fn: import { cleanupActivityLogs } from "@src/jobs.js" }
+        schedule: "0 2 * * *"
+      }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'jobs-stub-multi')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+    expect(existsSync(join(outputDir, 'src/jobs.js'))).toBe(true)
+    const stub = readFileSync(join(outputDir, 'src/jobs.js'), 'utf8')
+    expect(stub).toContain('export async function sendTaskNotification')
+    expect(stub).toContain('export async function cleanupActivityLogs')
+  })
+
+  it('job stub: TypeScript stub uses typed (data: any) parameter', () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      job sendTaskNotification {
+        executor: PgBoss
+        perform: { fn: import { sendTaskNotification } from "@src/jobs.ts" }
+      }
+    `
+    const ast = parse(source)
+    const outputDir = join(TMP_DIR, 'jobs-stub-ts')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+
+    expect(existsSync(join(outputDir, 'src/jobs.ts'))).toBe(true)
+    const stub = readFileSync(join(outputDir, 'src/jobs.ts'), 'utf8')
+    expect(stub).toContain('export async function sendTaskNotification(data: any)')
   })
 
   it('TypeScript CRUD: generates typed crud.ts with entity types', () => {
