@@ -1,0 +1,65 @@
+app TodoAuthSsrApp {
+  title: "Todo App"
+  db: Drizzle
+  ssr: true
+  typescript: false
+}
+
+auth TodoAuth {
+  userEntity: User
+  methods: [usernameAndPassword]
+}
+
+entity User {
+  id: Int @id
+  username: String @unique
+  email: String @unique
+}
+
+entity Todo {
+  id: Int @id
+  title: String
+  done: Boolean
+  createdAt: DateTime @default(now)
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+route TodoRoute {
+  path: "/todos"
+  to: TodoPage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+page TodoPage {
+  component: import TodoList from "@src/pages/TodoList.vue"
+}
+
+query getTodos {
+  fn: import { getTodos } from "@src/queries.js"
+  entities: [Todo]
+  auth: true
+}
+
+action createTodo {
+  fn: import { createTodo } from "@src/actions.js"
+  entities: [Todo]
+  auth: true
+}
+
+action deleteTodo {
+  fn: import { deleteTodo } from "@src/actions.js"
+  entities: [Todo]
+  auth: true
+}
+
+crud Todo {
+  entity: Todo
+  operations: [list, create, update, delete]
+}
