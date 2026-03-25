@@ -18,7 +18,11 @@ export const users = pgTable('users', {
   googleId: text('google_id').unique(),
   githubId: text('github_id').unique(),
 {{#each authUserExtraFields}}
+{{#if isEnum}}
+  {{camelCase name}}: {{enumFnName}}('{{camelCase name}}'){{#unless nullable}}.notNull(){{/unless}}{{#if defaultValue}}.default('{{defaultValue}}'){{/if}},
+{{else}}
   {{camelCase name}}: {{{drizzleColumn name type modifiers nullable defaultValue isUpdatedAt}}},
+{{/if}}
 {{/each}}
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -34,7 +38,7 @@ export type NewUser = InferInsertModel<typeof users>
 export const {{camelCase name}}s = pgTable('{{camelCase name}}s', {
 {{#each scalarFields}}
 {{#if isForeignKey}}
-  {{camelCase name}}: integer('{{camelCase name}}').notNull().references(() => {{referencedTable}}.id, { onDelete: '{{onDelete}}' }),
+  {{camelCase name}}: integer('{{camelCase name}}'){{#unless nullable}}.notNull(){{/unless}}.references(() => {{referencedTable}}.id, { onDelete: '{{onDelete}}' }),
 {{else}}
 {{#if isEnum}}
   {{camelCase name}}: {{enumFnName}}('{{camelCase name}}'){{#unless nullable}}.notNull(){{/unless}},

@@ -4,6 +4,8 @@
 {{#each entities}}
 export interface {{pascalCase name}} {
 {{#each fields}}
+{{#unless (eq name "createdAt")}}
+{{#unless (eq name "updatedAt")}}
 {{#if isRelation}}
 {{#if isArray}}
   {{name}}: {{pascalCase relatedEntity}}[]
@@ -12,8 +14,10 @@ export interface {{pascalCase name}} {
   {{name}}Id: number{{#if nullable}} | null{{/if}}
 {{/if}}
 {{else}}
-  {{name}}: {{tsFieldType type enumValues}}{{#if nullable}} | null{{/if}}
+  {{name}}: {{{tsFieldType type enumValues}}}{{#if nullable}} | null{{/if}}
 {{/if}}
+{{/unless}}
+{{/unless}}
 {{/each}}
   createdAt: Date
   updatedAt: Date
@@ -21,29 +25,37 @@ export interface {{pascalCase name}} {
 
 export interface Create{{pascalCase name}}Input {
 {{#each fields}}
+{{#unless (eq name "createdAt")}}
+{{#unless (eq name "updatedAt")}}
 {{#if isRelation}}
 {{#unless isArray}}
   {{name}}Id{{#if nullable}}?{{/if}}: number
 {{/unless}}
 {{else}}
 {{#unless (includes modifiers "id")}}
-  {{name}}{{#if nullable}}?{{/if}}: {{tsFieldType type enumValues}}{{#if nullable}} | null{{/if}}
+  {{name}}{{#if nullable}}?{{/if}}: {{{tsFieldType type enumValues}}}{{#if nullable}} | null{{/if}}
 {{/unless}}
 {{/if}}
+{{/unless}}
+{{/unless}}
 {{/each}}
 }
 
 export interface Update{{pascalCase name}}Input {
 {{#each fields}}
+{{#unless (eq name "createdAt")}}
+{{#unless (eq name "updatedAt")}}
 {{#if isRelation}}
 {{#unless isArray}}
   {{name}}Id?: number{{#if nullable}} | null{{/if}}
 {{/unless}}
 {{else}}
 {{#unless (includes modifiers "id")}}
-  {{name}}?: {{tsFieldType type enumValues}}{{#if nullable}} | null{{/if}}
+  {{name}}?: {{{tsFieldType type enumValues}}}{{#if nullable}} | null{{/if}}
 {{/unless}}
 {{/if}}
+{{/unless}}
+{{/unless}}
 {{/each}}
 }
 
