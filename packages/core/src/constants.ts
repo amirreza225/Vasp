@@ -5,6 +5,8 @@ export const VASP_ENTRY_FILE = 'main.vasp'
 export const VASP_GEN_DIR = '.vasp-gen'
 
 export const SUPPORTED_AUTH_METHODS = ['usernameAndPassword', 'google', 'github'] as const
+export const SUPPORTED_API_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
+export const SUPPORTED_MIDDLEWARE_SCOPES = ['global', 'route'] as const
 export const SUPPORTED_CRUD_OPERATIONS = ['list', 'create', 'update', 'delete'] as const
 export const SUPPORTED_REALTIME_EVENTS = ['created', 'updated', 'deleted'] as const
 export const SUPPORTED_JOB_EXECUTORS = ['PgBoss'] as const

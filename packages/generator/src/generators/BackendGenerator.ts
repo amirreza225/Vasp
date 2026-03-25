@@ -5,10 +5,17 @@ export class BackendGenerator extends BaseGenerator {
   run(): void {
     this.ctx.logger.info('Generating Elysia backend...')
 
+    const middlewares = (this.ctx.ast.middlewares ?? []).map((middleware) => ({
+      ...middleware,
+      fnSource: this.resolveServerImport(middleware.fn.source, 'server/'),
+      importAlias: `${this.camel(middleware.name)}Middleware`,
+    }))
+
     const data = {
       backendPort: DEFAULT_BACKEND_PORT,
       frontendPort: DEFAULT_SPA_PORT,
       vaspVersion: VASP_VERSION,
+      middlewares,
     }
 
     this.write(`server/index.${this.ctx.ext}`, this.render('shared/server/index.hbs', data))
@@ -21,5 +28,10 @@ export class BackendGenerator extends BaseGenerator {
     if (this.ctx.isSsr || this.ctx.isSsg) {
       this.write(`server/middleware/csrf.${this.ctx.ext}`, this.render('shared/server/middleware/csrf.hbs', data))
     }
+  }
+
+  private camel(str: string): string {
+    return str.replace(/[-_\s]+(.)/g, (_, c: string) => (c as string).toUpperCase())
+      .replace(/^./, (c) => c.toLowerCase())
   }
 }

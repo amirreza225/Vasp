@@ -92,6 +92,121 @@ action createTodo {
 }
 `
 
+const WITH_API_VASP = `
+app ApiApp {
+  title: "API App"
+  db: Drizzle
+  ssr: false
+  typescript: false
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+api uploadRecipeImage {
+  method: POST
+  path: "/api/recipes/:id/image"
+  fn: import { uploadRecipeImage } from "@src/api.js"
+  auth: true
+}
+`
+
+const WITH_RBAC_VASP = `
+app RbacApp {
+  title: "RBAC App"
+  db: Drizzle
+  ssr: false
+  typescript: false
+}
+
+auth UserAuth {
+  userEntity: User
+  methods: [usernameAndPassword]
+  roles: [admin, editor]
+}
+
+entity User {
+  id: Int @id
+  username: String
+  role: String
+}
+
+entity Todo {
+  id: Int @id
+  title: String
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+crud Todo {
+  entity: Todo
+  operations: [list, create]
+}
+
+query getTodos {
+  fn: import { getTodos } from "@src/queries.js"
+  entities: [Todo]
+  auth: true
+  roles: [editor]
+}
+
+action createTodo {
+  fn: import { createTodo } from "@src/actions.js"
+  entities: [Todo]
+  auth: true
+  roles: [admin]
+}
+
+api uploadRecipeImage {
+  method: POST
+  path: "/api/recipes/:id/image"
+  fn: import { uploadRecipeImage } from "@src/api.js"
+  auth: true
+  roles: [admin]
+}
+`
+
+const WITH_MIDDLEWARE_VASP = `
+app MiddlewareApp {
+  title: "Middleware App"
+  db: Drizzle
+  ssr: false
+  typescript: false
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+middleware Logger {
+  fn: import logger from "@src/middleware/logger.js"
+  scope: global
+}
+
+middleware RouteOnly {
+  fn: import routeOnly from "@src/middleware/routeOnly.js"
+  scope: route
+}
+`
+
 describe('generate()', () => {
   beforeEach(() => {
     mkdirSync(TMP_DIR, { recursive: true })
@@ -156,6 +271,57 @@ describe('generate()', () => {
     const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
     expect(serverIndex).toContain('getTodosRoute')
     expect(serverIndex).toContain('createTodoRoute')
+  })
+
+  it('generates custom api route files and wires them in server index', () => {
+    const ast = parse(WITH_API_VASP)
+    const outputDir = join(TMP_DIR, 'with-api')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    expect(existsSync(join(outputDir, 'server/routes/api/uploadRecipeImage.js'))).toBe(true)
+
+    const apiRoute = readFileSync(join(outputDir, 'server/routes/api/uploadRecipeImage.js'), 'utf8')
+    expect(apiRoute).toContain('.post(')
+    expect(apiRoute).toContain('/api/recipes/:id/image')
+    expect(apiRoute).toContain('requireAuth')
+
+    const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
+    expect(serverIndex).toContain('uploadRecipeImageApiRoute')
+  })
+
+  it('emits requireRole guards for role-protected query/action/api routes', () => {
+    const ast = parse(WITH_RBAC_VASP)
+    const outputDir = join(TMP_DIR, 'with-rbac')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const queryRoute = readFileSync(join(outputDir, 'server/routes/queries/getTodos.js'), 'utf8')
+    expect(queryRoute).toContain('requireRole')
+    expect(queryRoute).toContain(".use(requireRole(['editor']))")
+
+    const actionRoute = readFileSync(join(outputDir, 'server/routes/actions/createTodo.js'), 'utf8')
+    expect(actionRoute).toContain(".use(requireRole(['admin']))")
+
+    const apiRoute = readFileSync(join(outputDir, 'server/routes/api/uploadRecipeImage.js'), 'utf8')
+    expect(apiRoute).toContain(".use(requireRole(['admin']))")
+
+    const authMiddleware = readFileSync(join(outputDir, 'server/auth/middleware.js'), 'utf8')
+    expect(authMiddleware).toContain('export function requireRole')
+  })
+
+  it('wires global middleware in server index and creates src middleware stubs', () => {
+    const ast = parse(WITH_MIDDLEWARE_VASP)
+    const outputDir = join(TMP_DIR, 'with-middleware')
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent' })
+
+    const serverIndex = readFileSync(join(outputDir, 'server/index.js'), 'utf8')
+    expect(serverIndex).toContain("import loggerMiddleware from '../src/middleware/logger.js'")
+    expect(serverIndex).toContain('.use(loggerMiddleware)')
+
+    expect(serverIndex).not.toContain("import routeOnly from '../src/middleware/routeOnly.js'")
+    expect(serverIndex).not.toContain('.use(routeOnly)')
+
+    expect(existsSync(join(outputDir, 'src/middleware/logger.js'))).toBe(true)
+    expect(existsSync(join(outputDir, 'src/middleware/routeOnly.js'))).toBe(true)
   })
 
   it('router/index.js includes generated routes', () => {

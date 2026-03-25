@@ -2,11 +2,13 @@ import type { GeneratorOptions, GeneratorResult, VaspAST } from '@vasp-framework
 import { VASP_VERSION } from '@vasp-framework/core'
 import { createConsoleLogger, createContext } from './GeneratorContext.js'
 import { AuthGenerator } from './generators/AuthGenerator.js'
+import { ApiGenerator } from './generators/ApiGenerator.js'
 import { BackendGenerator } from './generators/BackendGenerator.js'
 import { CrudGenerator } from './generators/CrudGenerator.js'
 import { DrizzleSchemaGenerator } from './generators/DrizzleSchemaGenerator.js'
 import { FrontendGenerator } from './generators/FrontendGenerator.js'
 import { JobGenerator } from './generators/JobGenerator.js'
+import { MiddlewareGenerator } from './generators/MiddlewareGenerator.js'
 import { QueryActionGenerator } from './generators/QueryActionGenerator.js'
 import { RealtimeGenerator } from './generators/RealtimeGenerator.js'
 import { ScaffoldGenerator } from './generators/ScaffoldGenerator.js'
@@ -34,7 +36,9 @@ export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult 
     new DrizzleSchemaGenerator(ctx, engine, filesWritten, manifest).run()
     new BackendGenerator(ctx, engine, filesWritten, manifest).run()
     new AuthGenerator(ctx, engine, filesWritten, manifest).run()
+    new MiddlewareGenerator(ctx, engine, filesWritten, manifest).run()
     new QueryActionGenerator(ctx, engine, filesWritten, manifest).run()
+    new ApiGenerator(ctx, engine, filesWritten, manifest).run()
     new CrudGenerator(ctx, engine, filesWritten, manifest).run()
     new RealtimeGenerator(ctx, engine, filesWritten, manifest).run()
     new JobGenerator(ctx, engine, filesWritten, manifest).run()

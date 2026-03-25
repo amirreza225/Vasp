@@ -23,6 +23,8 @@ export class QueryActionGenerator extends BaseGenerator {
           namedExport,
           fnSource,
           requiresAuth: query.auth,
+          hasRoles: (query.roles ?? []).length > 0,
+          roles: query.roles ?? [],
         }),
       )
     }
@@ -39,6 +41,8 @@ export class QueryActionGenerator extends BaseGenerator {
           namedExport,
           fnSource,
           requiresAuth: action.auth,
+          hasRoles: (action.roles ?? []).length > 0,
+          roles: action.roles ?? [],
         }),
       )
     }

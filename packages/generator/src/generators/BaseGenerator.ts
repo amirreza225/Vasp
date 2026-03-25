@@ -44,6 +44,8 @@ export abstract class BaseGenerator {
       pages: ast.pages,
       queries: ast.queries,
       actions: ast.actions,
+      apis: ast.apis ?? [],
+      middlewares: ast.middlewares ?? [],
       cruds: ast.cruds,
       realtimes: ast.realtimes,
       jobs: ast.jobs,

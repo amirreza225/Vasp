@@ -1,13 +1,17 @@
 import { Elysia } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
 {{#if requiresAuth}}
-import { requireAuth } from '../../auth/middleware.{{ext}}'
+import { requireAuth{{#if hasRoles}}, requireRole{{/if}} } from '../../auth/middleware.{{ext}}'
 {{/if}}
 import { {{namedExport}} } from '{{importPath fnSource ext}}'
 
 export const {{camelCase name}}Route = new Elysia()
 {{#if requiresAuth}}
+{{#if hasRoles}}
+  .use(requireRole([{{#each roles}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]))
+{{else}}
   .use(requireAuth)
+{{/if}}
   .post('/api/actions/{{camelCase name}}', async ({ body, user }) => {
     const result = await {{namedExport}}({ db, user, args: body })
     return result

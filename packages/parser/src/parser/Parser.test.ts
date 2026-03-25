@@ -57,6 +57,20 @@ describe('Parser — auth block', () => {
       methods: ['usernameAndPassword', 'google', 'github'],
     })
   })
+
+  it('parses auth roles', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      auth User {
+        userEntity: User
+        methods: [ usernameAndPassword ]
+        roles: [ admin, editor, viewer ]
+      }
+    `)
+    expect(ast.auth).toMatchObject({
+      roles: ['admin', 'editor', 'viewer'],
+    })
+  })
 })
 
 describe('Parser — entity block', () => {
@@ -180,6 +194,97 @@ describe('Parser — query and action', () => {
       fn: { kind: 'named', namedExport: 'createTodo', source: '@src/actions.js' },
     })
   })
+
+  it('parses roles on query/action', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Todo { entity: Todo operations: [list, create] }
+
+      query getTodos {
+        fn: import { getTodos } from "@src/queries.js"
+        entities: [Todo]
+        auth: true
+        roles: [admin, editor]
+      }
+
+      action createTodo {
+        fn: import { createTodo } from "@src/actions.js"
+        entities: [Todo]
+        auth: true
+        roles: [admin]
+      }
+    `)
+
+    expect(ast.queries[0]?.roles).toEqual(['admin', 'editor'])
+    expect(ast.actions[0]?.roles).toEqual(['admin'])
+  })
+})
+
+describe('Parser — api', () => {
+  it('parses api with method/path/fn/auth', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      api uploadRecipeImage {
+        method: POST
+        path: "/api/recipes/:id/image"
+        fn: import { uploadRecipeImage } from "@src/api.js"
+        auth: true
+      }
+    `)
+
+    expect(ast.apis).toHaveLength(1)
+    expect(ast.apis?.[0]).toMatchObject({
+      type: 'Api',
+      name: 'uploadRecipeImage',
+      method: 'POST',
+      path: '/api/recipes/:id/image',
+      auth: true,
+      fn: {
+        kind: 'named',
+        namedExport: 'uploadRecipeImage',
+        source: '@src/api.js',
+      },
+    })
+  })
+
+  it('parses api roles', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      api uploadRecipeImage {
+        method: POST
+        path: "/api/recipes/:id/image"
+        fn: import { uploadRecipeImage } from "@src/api.js"
+        auth: true
+        roles: [admin]
+      }
+    `)
+
+    expect(ast.apis?.[0]?.roles).toEqual(['admin'])
+  })
+})
+
+describe('Parser — middleware', () => {
+  it('parses middleware with fn and scope', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      middleware Logger {
+        fn: import logger from "@src/middleware/logger.js"
+        scope: global
+      }
+    `)
+
+    expect(ast.middlewares).toHaveLength(1)
+    expect(ast.middlewares?.[0]).toMatchObject({
+      type: 'Middleware',
+      name: 'Logger',
+      scope: 'global',
+      fn: {
+        kind: 'default',
+        defaultExport: 'logger',
+        source: '@src/middleware/logger.js',
+      },
+    })
+  })
 })
 
 describe('Parser — crud', () => {
@@ -244,6 +349,23 @@ describe('Parser — job', () => {
 describe('Parser — error cases', () => {
   it('throws on unknown top-level token', () => {
     expect(() => parse('unknown Foo {}')).toThrow('E010_UNEXPECTED_TOKEN')
+  })
+
+  it('throws when api fn is missing', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      api Upload {
+        method: POST
+        path: "/api/upload"
+      }
+    `)).toThrow('E034_MISSING_FN')
+  })
+
+  it('throws when middleware fn is missing', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      middleware Logger { scope: global }
+    `)).toThrow('E037_MISSING_FN')
   })
 
   it('throws on missing component in page', () => {

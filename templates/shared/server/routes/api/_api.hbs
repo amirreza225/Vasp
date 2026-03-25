@@ -5,20 +5,20 @@ import { requireAuth{{#if hasRoles}}, requireRole{{/if}} } from '../../auth/midd
 {{/if}}
 import { {{namedExport}} } from '{{importPath fnSource ext}}'
 
-export const {{camelCase name}}Route = new Elysia()
+export const {{camelCase name}}ApiRoute = new Elysia()
 {{#if requiresAuth}}
 {{#if hasRoles}}
   .use(requireRole([{{#each roles}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]))
 {{else}}
   .use(requireAuth)
 {{/if}}
-  .get('/api/queries/{{camelCase name}}', async ({ query, user }) => {
-    const result = await {{namedExport}}({ db, user, args: query })
+  .{{lowerCase method}}('{{path}}', async ({ params, query, body, request, user, set }) => {
+    const result = await {{namedExport}}({ db, user, args: { params, query, body, request, set } })
     return result
   })
 {{else}}
-  .get('/api/queries/{{camelCase name}}', async ({ query }) => {
-    const result = await {{namedExport}}({ db, args: query })
+  .{{lowerCase method}}('{{path}}', async ({ params, query, body, request, set }) => {
+    const result = await {{namedExport}}({ db, args: { params, query, body, request, set } })
     return result
   })
 {{/if}}

@@ -38,3 +38,14 @@ export const requireAuth = new Elysia({ name: 'require-auth' })
       throw new VaspError('AUTH_REQUIRED', 'Authentication required', 401)
     }
   })
+
+export function requireRole(roles: string[]) {
+  return new Elysia({ name: 'require-role' })
+    .use(requireAuth)
+    .onBeforeHandle({ as: 'scoped' }, ({ user }) => {
+      const userRole = typeof user?.role === 'string' ? user.role : ''
+      if (!roles.includes(userRole)) {
+        throw new VaspError('AUTH_FORBIDDEN', 'Insufficient permissions', 403)
+      }
+    })
+}

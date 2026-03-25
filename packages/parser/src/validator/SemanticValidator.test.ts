@@ -208,4 +208,137 @@ describe('SemanticValidator', () => {
       entity Todo { id: Int @id author: User }
     `)).not.toThrow()
   })
+
+  it('passes with valid api method', () => {
+    expect(() => validate(`
+      ${APP}
+      api UploadRecipeImage {
+        method: POST
+        path: "/api/recipes/:id/image"
+        fn: import { uploadRecipeImage } from "@src/api.js"
+      }
+    `)).not.toThrow()
+  })
+
+  it('fails with unknown api method', () => {
+    expect(() => validate(`
+      ${APP}
+      api UploadRecipeImage {
+        method: TRACE
+        path: "/api/recipes/:id/image"
+        fn: import { uploadRecipeImage } from "@src/api.js"
+      }
+    `)).toThrow('E116_UNKNOWN_API_METHOD')
+  })
+
+  it('fails on duplicate method+path api endpoints', () => {
+    expect(() => validate(`
+      ${APP}
+      api UploadImageA {
+        method: POST
+        path: "/api/recipes/:id/image"
+        fn: import { uploadA } from "@src/api.js"
+      }
+
+      api UploadImageB {
+        method: POST
+        path: "/api/recipes/:id/image"
+        fn: import { uploadB } from "@src/api.js"
+      }
+    `)).toThrow('E117_DUPLICATE_API_ENDPOINT')
+  })
+
+  it('fails when roles are used without auth.roles configuration', () => {
+    expect(() => validate(`
+      ${APP}
+      auth UserAuth { userEntity: User methods: [usernameAndPassword] }
+      entity User { id: Int @id username: String }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list] }
+
+      query getTodos {
+        fn: import { getTodos } from "@src/queries.js"
+        entities: [Todo]
+        auth: true
+        roles: [admin]
+      }
+    `)).toThrow('E118_ROLES_WITHOUT_AUTH_CONFIG')
+  })
+
+  it('fails when roles are set but auth is false', () => {
+    expect(() => validate(`
+      ${APP}
+      auth UserAuth { userEntity: User methods: [usernameAndPassword] roles: [admin] }
+      entity User { id: Int @id username: String }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [create] }
+
+      action createTodo {
+        fn: import { createTodo } from "@src/actions.js"
+        entities: [Todo]
+        roles: [admin]
+      }
+    `)).toThrow('E119_ROLES_REQUIRE_AUTH')
+  })
+
+  it('fails when operation references unknown role', () => {
+    expect(() => validate(`
+      ${APP}
+      auth UserAuth { userEntity: User methods: [usernameAndPassword] roles: [admin, editor] }
+      entity User { id: Int @id username: String }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list] }
+
+      query getTodos {
+        fn: import { getTodos } from "@src/queries.js"
+        entities: [Todo]
+        auth: true
+        roles: [viewer]
+      }
+    `)).toThrow('E120_UNKNOWN_ROLE_REF')
+  })
+
+  it('passes when role references are valid and auth=true', () => {
+    expect(() => validate(`
+      ${APP}
+      auth UserAuth { userEntity: User methods: [usernameAndPassword] roles: [admin, editor] }
+      entity User { id: Int @id username: String role: String }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list, create] }
+
+      query getTodos {
+        fn: import { getTodos } from "@src/queries.js"
+        entities: [Todo]
+        auth: true
+        roles: [editor]
+      }
+
+      action createTodo {
+        fn: import { createTodo } from "@src/actions.js"
+        entities: [Todo]
+        auth: true
+        roles: [admin]
+      }
+    `)).not.toThrow()
+  })
+
+  it('passes with valid middleware scope', () => {
+    expect(() => validate(`
+      ${APP}
+      middleware Logger {
+        fn: import logger from "@src/middleware/logger.js"
+        scope: global
+      }
+    `)).not.toThrow()
+  })
+
+  it('fails with unknown middleware scope', () => {
+    expect(() => validate(`
+      ${APP}
+      middleware Logger {
+        fn: import logger from "@src/middleware/logger.js"
+        scope: project
+      }
+    `)).toThrow('E121_UNKNOWN_MIDDLEWARE_SCOPE')
+  })
 })

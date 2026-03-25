@@ -1,5 +1,5 @@
 import type { ParseDiagnostic, VaspAST } from '@vasp-framework/core'
-import { ParseError, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_REALTIME_EVENTS, SUPPORTED_FIELD_TYPES } from '@vasp-framework/core'
+import { ParseError, SUPPORTED_API_METHODS, SUPPORTED_AUTH_METHODS, SUPPORTED_CRUD_OPERATIONS, SUPPORTED_MIDDLEWARE_SCOPES, SUPPORTED_REALTIME_EVENTS, SUPPORTED_FIELD_TYPES } from '@vasp-framework/core'
 
 export class SemanticValidator {
   private readonly diagnostics: ParseDiagnostic[] = []
@@ -11,7 +11,10 @@ export class SemanticValidator {
     this.checkCrudOperations(ast)
     this.checkRealtimeEntities(ast)
     this.checkAuthMethods(ast)
+    this.checkRoleConfiguration(ast)
     this.checkQueryActionEntities(ast)
+    this.checkApiMethods(ast)
+    this.checkMiddlewareScopes(ast)
     this.checkJobExecutors(ast)
     this.checkDuplicateEntities(ast)
     this.checkDuplicateRoutes(ast)
@@ -130,6 +133,106 @@ export class SemanticValidator {
     }
   }
 
+  private checkRoleConfiguration(ast: VaspAST): void {
+    const configuredRoles = new Set(ast.auth?.roles ?? [])
+
+    if ((ast.auth?.roles ?? []).length === 0) {
+      for (const query of ast.queries) {
+        if ((query.roles ?? []).length > 0) {
+          this.diagnostics.push({
+            code: 'E118_ROLES_WITHOUT_AUTH_CONFIG',
+            message: `Query '${query.name}' declares roles but auth.roles is not configured`,
+            hint: 'Define roles in auth block: roles: [admin, ...]',
+            loc: query.loc,
+          })
+        }
+      }
+      for (const action of ast.actions) {
+        if ((action.roles ?? []).length > 0) {
+          this.diagnostics.push({
+            code: 'E118_ROLES_WITHOUT_AUTH_CONFIG',
+            message: `Action '${action.name}' declares roles but auth.roles is not configured`,
+            hint: 'Define roles in auth block: roles: [admin, ...]',
+            loc: action.loc,
+          })
+        }
+      }
+      for (const api of ast.apis ?? []) {
+        if ((api.roles ?? []).length > 0) {
+          this.diagnostics.push({
+            code: 'E118_ROLES_WITHOUT_AUTH_CONFIG',
+            message: `Api '${api.name}' declares roles but auth.roles is not configured`,
+            hint: 'Define roles in auth block: roles: [admin, ...]',
+            loc: api.loc,
+          })
+        }
+      }
+    }
+
+    for (const query of ast.queries) {
+      if ((query.roles ?? []).length > 0 && !query.auth) {
+        this.diagnostics.push({
+          code: 'E119_ROLES_REQUIRE_AUTH',
+          message: `Query '${query.name}' declares roles but auth is false`,
+          hint: 'Set auth: true when using roles',
+          loc: query.loc,
+        })
+      }
+      for (const role of query.roles ?? []) {
+        if (!configuredRoles.has(role)) {
+          this.diagnostics.push({
+            code: 'E120_UNKNOWN_ROLE_REF',
+            message: `Query '${query.name}' references unknown role '${role}'`,
+            hint: `Define '${role}' in auth.roles`,
+            loc: query.loc,
+          })
+        }
+      }
+    }
+
+    for (const action of ast.actions) {
+      if ((action.roles ?? []).length > 0 && !action.auth) {
+        this.diagnostics.push({
+          code: 'E119_ROLES_REQUIRE_AUTH',
+          message: `Action '${action.name}' declares roles but auth is false`,
+          hint: 'Set auth: true when using roles',
+          loc: action.loc,
+        })
+      }
+      for (const role of action.roles ?? []) {
+        if (!configuredRoles.has(role)) {
+          this.diagnostics.push({
+            code: 'E120_UNKNOWN_ROLE_REF',
+            message: `Action '${action.name}' references unknown role '${role}'`,
+            hint: `Define '${role}' in auth.roles`,
+            loc: action.loc,
+          })
+        }
+      }
+    }
+
+    for (const api of ast.apis ?? []) {
+      if ((api.roles ?? []).length > 0 && !api.auth) {
+        this.diagnostics.push({
+          code: 'E119_ROLES_REQUIRE_AUTH',
+          message: `Api '${api.name}' declares roles but auth is false`,
+          hint: 'Set auth: true when using roles',
+          loc: api.loc,
+        })
+      }
+      for (const role of api.roles ?? []) {
+        if (!configuredRoles.has(role)) {
+          this.diagnostics.push({
+            code: 'E120_UNKNOWN_ROLE_REF',
+            message: `Api '${api.name}' references unknown role '${role}'`,
+            hint: `Define '${role}' in auth.roles`,
+            loc: api.loc,
+          })
+        }
+      }
+    }
+  }
+
   private checkQueryActionEntities(ast: VaspAST): void {
     const knownEntities = new Set([
       ...ast.cruds.map((c) => c.entity),
@@ -169,6 +272,44 @@ export class SemanticValidator {
           message: `Unknown job executor '${job.executor}' in '${job.name}'`,
           hint: 'Supported executors: PgBoss',
           loc: job.loc,
+        })
+      }
+    }
+  }
+
+  private checkApiMethods(ast: VaspAST): void {
+    const seen = new Set<string>()
+    for (const api of ast.apis ?? []) {
+      if (!(SUPPORTED_API_METHODS as readonly string[]).includes(api.method)) {
+        this.diagnostics.push({
+          code: 'E116_UNKNOWN_API_METHOD',
+          message: `Unknown API method '${api.method}' in '${api.name}'`,
+          hint: `Supported methods: ${SUPPORTED_API_METHODS.join(', ')}`,
+          loc: api.loc,
+        })
+      }
+
+      const endpointKey = `${api.method} ${api.path}`
+      if (seen.has(endpointKey)) {
+        this.diagnostics.push({
+          code: 'E117_DUPLICATE_API_ENDPOINT',
+          message: `Duplicate api endpoint '${endpointKey}' in '${api.name}'`,
+          hint: 'Each API endpoint must have a unique method + path combination',
+          loc: api.loc,
+        })
+      }
+      seen.add(endpointKey)
+    }
+  }
+
+  private checkMiddlewareScopes(ast: VaspAST): void {
+    for (const middleware of ast.middlewares ?? []) {
+      if (!(SUPPORTED_MIDDLEWARE_SCOPES as readonly string[]).includes(middleware.scope)) {
+        this.diagnostics.push({
+          code: 'E121_UNKNOWN_MIDDLEWARE_SCOPE',
+          message: `Unknown middleware scope '${middleware.scope}' in '${middleware.name}'`,
+          hint: `Supported scopes: ${SUPPORTED_MIDDLEWARE_SCOPES.join(', ')}`,
+          loc: middleware.loc,
         })
       }
     }

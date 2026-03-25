@@ -12,11 +12,23 @@ import { csrfProtection } from './middleware/csrf.{{ext}}'
 {{#if hasAuth}}
 import { authRoutes } from './auth/index.{{ext}}'
 {{/if}}
+{{#each middlewares}}
+{{#if (eq scope "global")}}
+{{#if (eq fn.kind "default")}}
+import {{importAlias}} from '{{importPath fnSource ../ext}}'
+{{else}}
+import { {{importName fn}} as {{importAlias}} } from '{{importPath fnSource ../ext}}'
+{{/if}}
+{{/if}}
+{{/each}}
 {{#each queries}}
 import { {{camelCase name}}Route } from './routes/queries/{{camelCase name}}.{{../ext}}'
 {{/each}}
 {{#each actions}}
 import { {{camelCase name}}Route } from './routes/actions/{{camelCase name}}.{{../ext}}'
+{{/each}}
+{{#each apis}}
+import { {{camelCase name}}ApiRoute } from './routes/api/{{camelCase name}}.{{../ext}}'
 {{/each}}
 {{#each cruds}}
 import { {{camelCase entity}}CrudRoutes } from './routes/crud/{{camelCase entity}}.{{../ext}}'
@@ -46,11 +58,19 @@ const app = new Elysia()
 {{#if hasAuth}}
   .use(authRoutes)
 {{/if}}
+{{#each middlewares}}
+{{#if (eq scope "global")}}
+  .use({{importAlias}})
+{{/if}}
+{{/each}}
 {{#each queries}}
   .use({{camelCase name}}Route)
 {{/each}}
 {{#each actions}}
   .use({{camelCase name}}Route)
+{{/each}}
+{{#each apis}}
+  .use({{camelCase name}}ApiRoute)
 {{/each}}
 {{#each cruds}}
   .use({{camelCase entity}}CrudRoutes)

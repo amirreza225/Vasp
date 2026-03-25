@@ -77,6 +77,14 @@ export interface FieldNode {
 
 export type JobExecutor = 'PgBoss'
 
+// ------ API ------
+
+export type ApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+
+// ------ Middleware ------
+
+export type MiddlewareScope = 'global' | 'route'
+
 // ------ Base Node ------
 
 export interface BaseNode {
@@ -98,6 +106,7 @@ export interface AuthNode extends BaseNode {
   type: 'Auth'
   userEntity: string     // name of the entity used for users (e.g. "User")
   methods: AuthMethod[]
+  roles?: string[]
 }
 
 export interface RouteNode extends BaseNode {
@@ -117,6 +126,7 @@ export interface QueryNode extends BaseNode {
   fn: ImportExpression
   entities: string[]     // entity names this query accesses
   auth: boolean          // true = requires authentication
+  roles?: string[]
 }
 
 export interface ActionNode extends BaseNode {
@@ -124,6 +134,7 @@ export interface ActionNode extends BaseNode {
   fn: ImportExpression
   entities: string[]
   auth: boolean
+  roles?: string[]
 }
 
 export interface CrudNode extends BaseNode {
@@ -149,6 +160,21 @@ export interface JobNode extends BaseNode {
   schedule?: string      // optional cron expression
 }
 
+export interface ApiNode extends BaseNode {
+  type: 'Api'
+  method: ApiMethod
+  path: string
+  fn: ImportExpression
+  auth: boolean
+  roles?: string[]
+}
+
+export interface MiddlewareNode extends BaseNode {
+  type: 'Middleware'
+  fn: ImportExpression
+  scope: MiddlewareScope
+}
+
 export interface EntityNode extends BaseNode {
   type: 'Entity'
   fields: FieldNode[]
@@ -164,6 +190,8 @@ export interface VaspAST {
   pages: PageNode[]
   queries: QueryNode[]
   actions: ActionNode[]
+  apis?: ApiNode[]
+  middlewares?: MiddlewareNode[]
   cruds: CrudNode[]
   realtimes: RealtimeNode[]
   jobs: JobNode[]
@@ -179,6 +207,8 @@ export type VaspNode =
   | PageNode
   | QueryNode
   | ActionNode
+  | ApiNode
+  | MiddlewareNode
   | CrudNode
   | RealtimeNode
   | JobNode

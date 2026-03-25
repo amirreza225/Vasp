@@ -1,4 +1,6 @@
 import type {
+  ApiMethod,
+  ApiNode,
   ActionNode,
   AppNode,
   AuthMethod,
@@ -10,6 +12,8 @@ import type {
   FieldNode,
   ImportExpression,
   JobNode,
+  MiddlewareNode,
+  MiddlewareScope,
   OnDeleteBehavior,
   PageNode,
   QueryNode,
@@ -83,6 +87,12 @@ class Parser {
         case TokenType.KW_ACTION:
           ast.actions.push(this.parseAction())
           break
+        case TokenType.KW_MIDDLEWARE:
+          ;(ast.middlewares ??= []).push(this.parseMiddleware())
+          break
+        case TokenType.KW_API:
+          ;(ast.apis ??= []).push(this.parseApi())
+          break
         case TokenType.KW_CRUD:
           ast.cruds.push(this.parseCrud())
           break
@@ -96,7 +106,7 @@ class Parser {
           throw this.error(
             'E010_UNEXPECTED_TOKEN',
             `Unexpected token '${kw.value}' at top level`,
-            'Expected a declaration keyword: app, auth, entity, route, page, query, action, crud, realtime, or job',
+            'Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, or job',
             kw.loc,
           )
       }
@@ -162,6 +172,7 @@ class Parser {
 
     let userEntity = ''
     let methods: AuthMethod[] = []
+    let roles: string[] = []
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier()
@@ -174,13 +185,23 @@ class Parser {
         case 'methods':
           methods = this.parseIdentifierArray() as AuthMethod[]
           break
+        case 'roles':
+          roles = this.parseIdentifierArray()
+          break
         default:
-          throw this.error('E013_UNKNOWN_PROP', `Unknown auth property '${key.value}'`, 'Valid properties: userEntity, methods', key.loc)
+          throw this.error('E013_UNKNOWN_PROP', `Unknown auth property '${key.value}'`, 'Valid properties: userEntity, methods, roles', key.loc)
       }
     }
 
     this.consume(TokenType.RBRACE)
-    return { type: 'Auth', name: name.value, loc, userEntity, methods }
+    return {
+      type: 'Auth',
+      name: name.value,
+      loc,
+      userEntity,
+      methods,
+      ...(roles.length > 0 ? { roles } : {}),
+    }
   }
 
   private parseEntity(): EntityNode {
@@ -327,6 +348,7 @@ class Parser {
     let fn: ImportExpression | null = null
     let entities: string[] = []
     let auth = false
+    let roles: string[] = []
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier()
@@ -342,8 +364,11 @@ class Parser {
         case 'auth':
           auth = this.consume(TokenType.BOOLEAN).value === 'true'
           break
+        case 'roles':
+          roles = this.parseIdentifierArray()
+          break
         default:
-          throw this.error('E017_UNKNOWN_PROP', `Unknown query property '${key.value}'`, 'Valid properties: fn, entities, auth', key.loc)
+          throw this.error('E017_UNKNOWN_PROP', `Unknown query property '${key.value}'`, 'Valid properties: fn, entities, auth, roles', key.loc)
       }
     }
 
@@ -353,7 +378,7 @@ class Parser {
       throw this.error('E018_MISSING_FN', `Query '${name.value}' is missing fn`, 'Add: fn: import { myFn } from "@src/queries.js"', loc)
     }
 
-    return { type: 'Query', name: name.value, loc, fn, entities, auth }
+    return { type: 'Query', name: name.value, loc, fn, entities, auth, ...(roles.length > 0 ? { roles } : {}) }
   }
 
   private parseAction(): ActionNode {
@@ -364,6 +389,7 @@ class Parser {
     let fn: ImportExpression | null = null
     let entities: string[] = []
     let auth = false
+    let roles: string[] = []
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier()
@@ -379,8 +405,11 @@ class Parser {
         case 'auth':
           auth = this.consume(TokenType.BOOLEAN).value === 'true'
           break
+        case 'roles':
+          roles = this.parseIdentifierArray()
+          break
         default:
-          throw this.error('E019_UNKNOWN_PROP', `Unknown action property '${key.value}'`, 'Valid properties: fn, entities, auth', key.loc)
+          throw this.error('E019_UNKNOWN_PROP', `Unknown action property '${key.value}'`, 'Valid properties: fn, entities, auth, roles', key.loc)
       }
     }
 
@@ -390,7 +419,7 @@ class Parser {
       throw this.error('E020_MISSING_FN', `Action '${name.value}' is missing fn`, 'Add: fn: import { myFn } from "@src/actions.js"', loc)
     }
 
-    return { type: 'Action', name: name.value, loc, fn, entities, auth }
+    return { type: 'Action', name: name.value, loc, fn, entities, auth, ...(roles.length > 0 ? { roles } : {}) }
   }
 
   private parseCrud(): CrudNode {
@@ -419,6 +448,88 @@ class Parser {
 
     this.consume(TokenType.RBRACE)
     return { type: 'Crud', name: name.value, loc, entity, operations }
+  }
+
+  private parseApi(): ApiNode {
+    const loc = this.consume(TokenType.KW_API).loc
+    const name = this.consumeIdentifier()
+    this.consume(TokenType.LBRACE)
+
+    let method = 'GET' as ApiMethod
+    let path = ''
+    let fn: ImportExpression | null = null
+    let auth = false
+    let roles: string[] = []
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier()
+      this.consume(TokenType.COLON)
+
+      switch (key.value) {
+        case 'method':
+          method = this.consumeIdentifier().value.toUpperCase() as ApiMethod
+          break
+        case 'path':
+          path = this.consumeString()
+          break
+        case 'fn':
+          fn = this.parseImportExpression()
+          break
+        case 'auth':
+          auth = this.consume(TokenType.BOOLEAN).value === 'true'
+          break
+        case 'roles':
+          roles = this.parseIdentifierArray()
+          break
+        default:
+          throw this.error('E033_UNKNOWN_PROP', `Unknown api property '${key.value}'`, 'Valid properties: method, path, fn, auth, roles', key.loc)
+      }
+    }
+
+    this.consume(TokenType.RBRACE)
+
+    if (!fn) {
+      throw this.error('E034_MISSING_FN', `Api '${name.value}' is missing fn`, 'Add: fn: import { myHandler } from "@src/api.js"', loc)
+    }
+
+    if (!path) {
+      throw this.error('E035_MISSING_PATH', `Api '${name.value}' is missing path`, 'Add: path: "/api/my-endpoint"', loc)
+    }
+
+    return { type: 'Api', name: name.value, loc, method, path, fn, auth, ...(roles.length > 0 ? { roles } : {}) }
+  }
+
+  private parseMiddleware(): MiddlewareNode {
+    const loc = this.consume(TokenType.KW_MIDDLEWARE).loc
+    const name = this.consumeIdentifier()
+    this.consume(TokenType.LBRACE)
+
+    let fn: ImportExpression | null = null
+    let scope = 'global' as MiddlewareScope
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier()
+      this.consume(TokenType.COLON)
+
+      switch (key.value) {
+        case 'fn':
+          fn = this.parseImportExpression()
+          break
+        case 'scope':
+          scope = this.consumeIdentifier().value as MiddlewareScope
+          break
+        default:
+          throw this.error('E036_UNKNOWN_PROP', `Unknown middleware property '${key.value}'`, 'Valid properties: fn, scope', key.loc)
+      }
+    }
+
+    this.consume(TokenType.RBRACE)
+
+    if (!fn) {
+      throw this.error('E037_MISSING_FN', `Middleware '${name.value}' is missing fn`, 'Add: fn: import logger from "@src/middleware/logger.js"', loc)
+    }
+
+    return { type: 'Middleware', name: name.value, loc, fn, scope }
   }
 
   private parseRealtime(): RealtimeNode {
