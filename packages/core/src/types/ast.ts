@@ -52,7 +52,7 @@ export type FieldType = PrimitiveFieldType
 
 export type FieldModifier = 'id' | 'unique' | 'default_now' | 'nullable' | 'updatedAt'
 
-export type OnDeleteBehavior = 'cascade' | 'restrict' | 'setNull'
+export type OnDeleteBehavior = 'cascade' | 'restrict' | 'set null'
 
 export interface FieldNode {
   name: string

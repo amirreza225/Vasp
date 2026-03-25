@@ -1,4 +1,7 @@
-import { pgTable, text, integer, boolean, timestamp, doublePrecision, jsonb{{#if hasAnyRelations}}, relations{{/if}}{{#if hasEnums}}, pgEnum{{/if}} } from 'drizzle-orm/pg-core'
+import { pgTable, text, integer, boolean, timestamp, doublePrecision, jsonb{{#if hasEnums}}, pgEnum{{/if}} } from 'drizzle-orm/pg-core'
+{{#if hasAnyRelations}}
+import { relations } from 'drizzle-orm'
+{{/if}}
 {{#if isTypeScript}}
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
 {{/if}}

@@ -61,6 +61,9 @@ export class FrontendGenerator extends BaseGenerator {
     }
 
     // TS-only: generate types.ts from entity schema + query/action signatures
+    if (this.ctx.isTypeScript) {
+      this.write(`src/vite-env.d.ts`, this.render(`spa/ts/src/vite-env.d.ts.hbs`))
+    }
     if (this.ctx.isTypeScript && (ast.queries.length > 0 || ast.actions.length > 0 || ast.cruds.length > 0 || ast.entities.length > 0)) {
       this.write(`src/vasp/client/types.ts`, this.render(`spa/ts/src/vasp/client/types.ts.hbs`, {
         entities: ast.entities,

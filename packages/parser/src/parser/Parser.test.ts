@@ -529,7 +529,7 @@ describe('Parser — relation fields (Phase 2)', () => {
       entity User { id: Int @id }
       entity Todo { id: Int @id author: User @onDelete(setNull) }
     `)
-    expect(ast.entities[1]?.fields[1]?.onDelete).toBe('setNull')
+    expect(ast.entities[1]?.fields[1]?.onDelete).toBe('set null')
   })
 })
 

@@ -372,7 +372,8 @@ class Parser {
         } else if (modVal.startsWith('default_')) {
           defaultValue = modVal.slice('default_'.length)
         } else if (modVal.startsWith('onDelete_')) {
-          onDelete = modVal.slice('onDelete_'.length) as OnDeleteBehavior
+          const raw = modVal.slice('onDelete_'.length)
+          onDelete = (raw === 'setNull' ? 'set null' : raw) as OnDeleteBehavior
         }
         // Unknown modifiers are silently ignored (forward-compat)
       }

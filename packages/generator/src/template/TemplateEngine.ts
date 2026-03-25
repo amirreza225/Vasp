@@ -125,7 +125,7 @@ export class TemplateEngine {
           Int: 'v.number()',
           Float: 'v.number()',
           Boolean: 'v.boolean()',
-          DateTime: 'v.string()',
+          DateTime: 'v.pipe(v.string(), v.transform(s => new Date(s)))',
           Json: 'v.unknown()',
         }
         base = baseMap[fieldType] ?? 'v.unknown()'
