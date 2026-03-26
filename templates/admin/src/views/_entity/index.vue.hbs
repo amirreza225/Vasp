@@ -28,8 +28,8 @@ async function fetchData() {
       limit: pagination.value.pageSize,
       offset: (pagination.value.current - 1) * pagination.value.pageSize,
     })
-    data.value = res.items
-    total.value = res.total
+    data.value = res.data?.items ?? []
+    total.value = res.data?.total ?? 0
   } catch (err) {
     message.error(err instanceof Error ? err.message : 'Failed to load data')
   } finally {
@@ -94,7 +94,7 @@ onMounted(fetchData)
       :loading="loading"
       :pagination="{ current: pagination.current, pageSize: pagination.pageSize, total, showSizeChanger: true, showTotal: (t) => `${t} records` }"
       row-key="id"
-      scroll="{ x: true }"
+      :scroll="{ x: true }"
       @change="onTableChange"
     >
       <template #bodyCell="{ column, record }">
