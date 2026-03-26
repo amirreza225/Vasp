@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { h, ref, onMounted } from 'vue'
 import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{ext}}'
-import { message } from 'ant-design-vue'
+import { message, notification } from 'ant-design-vue'
 import FormModal from './FormModal.vue'
 
 const data = ref([])
@@ -22,6 +22,21 @@ const columns = [
 {{/each}}  { title: 'Actions', key: 'actions', width: 160, fixed: 'right' },
 ]
 
+function showApiError(err, fallbackMsg) {
+  const errCode = err?.errorCode ?? 'ERROR'
+  const errMsg = err instanceof Error ? err.message : fallbackMsg
+  const errStack = import.meta.env.DEV ? (err?.serverStack ?? null) : null
+  notification.error({
+    message: `[${errCode}] ${errMsg}`,
+    ...(errStack
+      ? {
+          description: h('pre', { style: 'font-size:11px;max-height:200px;overflow:auto;white-space:pre-wrap;margin:0' }, errStack),
+          duration: 0,
+        }
+      : {}),
+  })
+}
+
 async function fetchData() {
   loading.value = true
   try {
@@ -32,7 +47,7 @@ async function fetchData() {
     data.value = res.data?.items ?? []
     total.value = res.data?.total ?? 0
   } catch (err) {
-    message.error(err instanceof Error ? err.message : 'Failed to load data')
+    showApiError(err, 'Failed to load data')
   } finally {
     loading.value = false
   }
@@ -54,7 +69,7 @@ async function handleDelete(id) {
     message.success('Deleted successfully')
     fetchData()
   } catch (err) {
-    message.error(err instanceof Error ? err.message : 'Delete failed')
+    showApiError(err, 'Delete failed')
   }
 }
 
