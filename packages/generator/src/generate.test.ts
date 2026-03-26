@@ -1727,8 +1727,8 @@ admin {
     const ast = parse(ADMIN_RELATIONS_VASP)
     generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
     const modal = readFileSync(join(outputDir, 'admin/src/views/project/FormModal.vue'), 'utf8')
-    // Imports the related entity API
-    expect(modal).toContain("import { UserApi } from '@/api/user")
+    // Imports the related entity API with the correct extension
+    expect(modal).toContain("import { UserApi } from '@/api/user.js'")
     // Only one import for User (deduped — both owner and assignee relate to User)
     expect(modal.match(/import \{ UserApi \}/g)?.length).toBe(1)
     // onMounted is added for loading options

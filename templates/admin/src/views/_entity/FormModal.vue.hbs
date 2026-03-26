@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch{{#if hasManyToOneRelations}}, onMounted{{/if}} } from 'vue'
 import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{ext}}'
-{{#each uniqueRelatedEntities}}import { {{pascalCase this}}Api } from '@/api/{{kebabCase this}}.{{ext}}'
+{{#each uniqueRelatedEntities}}import { {{pascalCase this}}Api } from '@/api/{{kebabCase this}}.{{../ext}}'
 {{/each}}import { message } from 'ant-design-vue'
 
 const props = defineProps({
