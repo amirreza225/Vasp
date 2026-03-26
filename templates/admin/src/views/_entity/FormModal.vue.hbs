@@ -18,7 +18,11 @@ function emptyForm() {
 {{#each fields}}
 {{#unless isRelation}}
 {{#unless (includes modifiers "id")}}
+{{#unless isUpdatedAt}}
+{{#unless (includes modifiers "default_now")}}
     {{name}}: {{#if (eq type "Boolean")}}false{{else if (eq type "Int")}}0{{else if (eq type "Float")}}0{{else if (eq type "Enum")}}{{#if enumValues}}'{{enumValues.[0]}}'{{else}}''{{/if}}{{else if (eq type "Json")}}'{}'{{else}}''{{/if}},
+{{/unless}}
+{{/unless}}
 {{/unless}}
 {{/unless}}
 {{/each}}
@@ -80,6 +84,8 @@ async function handleSubmit() {
 {{#each fields}}
 {{#unless isRelation}}
 {{#unless (includes modifiers "id")}}
+{{#unless isUpdatedAt}}
+{{#unless (includes modifiers "default_now")}}
       <a-form-item label="{{pascalCase name}}"{{#if nullable}} extra="Optional"{{/if}} name="{{name}}">
 {{#if (eq type "Boolean")}}
         <a-switch v-model:checked="form.{{name}}" />
@@ -103,6 +109,8 @@ async function handleSubmit() {
         <a-input v-model:value="form.{{name}}" />
 {{/if}}
       </a-form-item>
+{{/unless}}
+{{/unless}}
 {{/unless}}
 {{/unless}}
 {{/each}}

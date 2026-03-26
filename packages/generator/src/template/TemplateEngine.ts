@@ -119,9 +119,12 @@ export class TemplateEngine {
         const items = enumValues.map((v: string) => `'${v}'`).join(', ')
         base = `v.picklist([${items}])`
       } else {
+        // Nullable String/Text fields accept empty strings — no minLength(1) required.
+        // Non-nullable String/Text fields still enforce minLength(1) to prevent blank values.
+        const isNullable = nullable === true
         const baseMap: Record<string, string> = {
-          String: 'v.pipe(v.string(), v.minLength(1))',
-          Text: 'v.pipe(v.string(), v.minLength(1))',
+          String: isNullable ? 'v.string()' : 'v.pipe(v.string(), v.minLength(1))',
+          Text: isNullable ? 'v.string()' : 'v.pipe(v.string(), v.minLength(1))',
           Int: 'v.number()',
           Float: 'v.number()',
           Boolean: 'v.boolean()',
