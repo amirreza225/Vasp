@@ -496,7 +496,10 @@ class Parser {
             }
           }
           this.consume(TokenType.RPAREN);
-          indexes.push({ fields: indexFields, ...(indexType ? { type: indexType } : {}) });
+          indexes.push({
+            fields: indexFields,
+            ...(indexType ? { type: indexType } : {}),
+          });
           continue;
         } else if (directive.value === "unique") {
           this.consume(TokenType.LPAREN);
