@@ -1,0 +1,59 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly scan every Monday at 06:00 UTC — catches new CVEs in dependencies
+    # even when the codebase hasn't changed.
+    - cron: "0 6 * * 1"
+
+jobs:
+  analyze:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+
+    permissions:
+      # Required to read the repository
+      contents: read
+      # Required to upload SARIF results to GitHub Security tab
+      security-events: write
+      # Required for private repos using GitHub Advanced Security
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install bun so CodeQL's extractor can resolve node_modules for type info.
+      # The extractor does not compile the code — it reads .ts files directly —
+      # but it needs node_modules present for import resolution.
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      # Initialize CodeQL with our custom config.
+      # The config loads the default security-extended suite PLUS our two
+      # project-specific exhaustiveness queries.
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          config-file: .github/codeql/codeql-config.yml
+
+      # CodeQL's JS/TS extractor does not require a build step — it reads
+      # TypeScript source files directly. We skip autobuild to avoid confusion
+      # with bun vs npm tooling.
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:javascript-typescript"
+          # Upload SARIF to the GitHub Security tab.
+          # Results appear under Security → Code scanning alerts.
+          upload: true

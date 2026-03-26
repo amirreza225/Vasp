@@ -2826,7 +2826,10 @@ describe("EmailGenerator", () => {
     });
 
     expect(existsSync(join(outputDir, "server/email/mailer.js"))).toBe(true);
-    const mailer = readFileSync(join(outputDir, "server/email/mailer.js"), "utf8");
+    const mailer = readFileSync(
+      join(outputDir, "server/email/mailer.js"),
+      "utf8",
+    );
     expect(mailer).toContain("from 'resend'");
     expect(mailer).toContain("new Resend(process.env.RESEND_API_KEY)");
     expect(mailer).toContain("FROM_ADDRESS = 'noreply@myapp.com'");
@@ -2855,7 +2858,10 @@ describe("EmailGenerator", () => {
     });
 
     expect(existsSync(join(outputDir, "server/email/sgMailer.js"))).toBe(true);
-    const mailer = readFileSync(join(outputDir, "server/email/sgMailer.js"), "utf8");
+    const mailer = readFileSync(
+      join(outputDir, "server/email/sgMailer.js"),
+      "utf8",
+    );
     expect(mailer).toContain("from '@sendgrid/mail'");
     expect(mailer).toContain("sgMail.setApiKey");
     expect(mailer).toContain("sgMail.send");
@@ -2881,8 +2887,13 @@ describe("EmailGenerator", () => {
       engine: sharedEngine,
     });
 
-    expect(existsSync(join(outputDir, "server/email/smtpMailer.js"))).toBe(true);
-    const mailer = readFileSync(join(outputDir, "server/email/smtpMailer.js"), "utf8");
+    expect(existsSync(join(outputDir, "server/email/smtpMailer.js"))).toBe(
+      true,
+    );
+    const mailer = readFileSync(
+      join(outputDir, "server/email/smtpMailer.js"),
+      "utf8",
+    );
     expect(mailer).toContain("from 'nodemailer'");
     expect(mailer).toContain("nodemailer.createTransport");
     expect(mailer).toContain("SMTP_HOST");
@@ -2905,7 +2916,9 @@ describe("EmailGenerator", () => {
       engine: sharedEngine,
     });
 
-    const pkg = JSON.parse(readFileSync(join(outputDir, "package.json"), "utf8"));
+    const pkg = JSON.parse(
+      readFileSync(join(outputDir, "package.json"), "utf8"),
+    );
     expect(pkg.dependencies).toHaveProperty("resend");
     expect(pkg.dependencies).not.toHaveProperty("@sendgrid/mail");
     expect(pkg.dependencies).not.toHaveProperty("nodemailer");
@@ -2927,7 +2940,9 @@ describe("EmailGenerator", () => {
       engine: sharedEngine,
     });
 
-    const pkg = JSON.parse(readFileSync(join(outputDir, "package.json"), "utf8"));
+    const pkg = JSON.parse(
+      readFileSync(join(outputDir, "package.json"), "utf8"),
+    );
     expect(pkg.dependencies).toHaveProperty("@sendgrid/mail");
     expect(pkg.dependencies).not.toHaveProperty("resend");
   });

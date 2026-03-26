@@ -1,0 +1,14 @@
+name: "Vasp CodeQL Config"
+
+queries:
+  # Default GitHub security suite (XSS, injection, path traversal, etc.)
+  - uses: security-extended
+  # Vasp-specific exhaustiveness checks
+  - uses: ./.github/codeql/queries
+
+paths-ignore:
+  - "**/node_modules"
+  - "**/dist"
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "templates/**"

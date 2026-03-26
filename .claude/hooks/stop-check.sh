@@ -98,5 +98,5 @@ if [[ -n "$ERRORS" ]]; then
   printf '%s' "$FULL" | jq -Rs '{decision:"block",reason:.}'
 elif [[ -n "$WARNINGS" ]]; then
   printf '%s' "Stop hook info:${NL}${NL}${WARNINGS}" \
-    | jq -Rs '{hookSpecificOutput:{hookEventName:"Stop",additionalContext:.}}'
+    | jq -Rs '{stopReason:.}'
 fi
