@@ -692,3 +692,116 @@ describe("SemanticValidator — @validate rules (E154)", () => {
     ).toThrow("E154_VALIDATE_RANGE_ORDER");
   });
 });
+
+describe("SemanticValidator — email blocks", () => {
+  const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`;
+
+  it("passes a valid email block with a known provider", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      email Mailer {
+        provider: resend
+        from: "noreply@myapp.com"
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes all three supported providers without error", () => {
+    for (const provider of ["resend", "sendgrid", "smtp"]) {
+      expect(() =>
+        validate(`
+        ${APP}
+        email Mailer {
+          provider: ${provider}
+          from: "noreply@myapp.com"
+        }
+      `),
+      ).not.toThrow();
+    }
+  });
+
+  it("fails when email provider is unknown (E115)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      email Mailer {
+        provider: mailgun
+        from: "noreply@myapp.com"
+      }
+    `),
+    ).toThrow("E115_UNKNOWN_EMAIL_PROVIDER");
+  });
+
+  it("fails when action uses onSuccess.sendEmail but no email block is defined (E116)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      action registerUser {
+        fn: import { registerUser } from "@src/actions.js"
+        entities: []
+        onSuccess: {
+          sendEmail: welcome
+        }
+      }
+    `),
+    ).toThrow("E116_SEND_EMAIL_NO_EMAIL_BLOCK");
+  });
+
+  it("fails when action references an email template not declared in any email block (E117)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      email Mailer {
+        provider: resend
+        from: "noreply@myapp.com"
+        templates: {
+          welcome: import { welcomeTemplate } from "@src/emails/welcome.js"
+        }
+      }
+      action registerUser {
+        fn: import { registerUser } from "@src/actions.js"
+        entities: []
+        onSuccess: {
+          sendEmail: resetPassword
+        }
+      }
+    `),
+    ).toThrow("E117_UNKNOWN_EMAIL_TEMPLATE_REF");
+  });
+
+  it("passes when action references a template that exists in an email block", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      email Mailer {
+        provider: resend
+        from: "noreply@myapp.com"
+        templates: {
+          welcome: import { welcomeTemplate } from "@src/emails/welcome.js"
+        }
+      }
+      action registerUser {
+        fn: import { registerUser } from "@src/actions.js"
+        entities: []
+        onSuccess: {
+          sendEmail: welcome
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes when action has no onSuccess (email block present or absent)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      action createTodo {
+        fn: import { createTodo } from "@src/actions.js"
+        entities: []
+      }
+    `),
+    ).not.toThrow();
+  });
+});

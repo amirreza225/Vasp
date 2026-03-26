@@ -1153,3 +1153,181 @@ describe("SemanticValidator — storage blocks", () => {
     ).not.toThrow();
   });
 });
+
+describe("Parser — email block", () => {
+  const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`;
+
+  it("parses a minimal email block with provider and from", () => {
+    const ast = parse(`
+      ${APP}
+      email Mailer {
+        provider: resend
+        from: "noreply@myapp.com"
+      }
+    `);
+    expect(ast.emails).toHaveLength(1);
+    expect(ast.emails![0]).toMatchObject({
+      type: "Email",
+      name: "Mailer",
+      provider: "resend",
+      from: "noreply@myapp.com",
+      templates: [],
+    });
+  });
+
+  it("parses email block with named-import templates", () => {
+    const ast = parse(`
+      ${APP}
+      email Mailer {
+        provider: sendgrid
+        from: "hello@example.com"
+        templates: {
+          welcome: import { welcomeTemplate } from "@src/emails/welcome.js"
+          resetPassword: import { resetTemplate } from "@src/emails/reset.js"
+        }
+      }
+    `);
+    expect(ast.emails![0]?.templates).toHaveLength(2);
+    expect(ast.emails![0]?.templates[0]).toMatchObject({
+      name: "welcome",
+      fn: { kind: "named", namedExport: "welcomeTemplate", source: "@src/emails/welcome.js" },
+    });
+    expect(ast.emails![0]?.templates[1]).toMatchObject({
+      name: "resetPassword",
+      fn: { kind: "named", namedExport: "resetTemplate", source: "@src/emails/reset.js" },
+    });
+  });
+
+  it("parses email block with default-import template", () => {
+    const ast = parse(`
+      ${APP}
+      email Mailer {
+        provider: smtp
+        from: "no-reply@myapp.com"
+        templates: {
+          welcome: import WelcomeTpl from "@src/emails/welcome.js"
+        }
+      }
+    `);
+    expect(ast.emails![0]?.templates[0]).toMatchObject({
+      name: "welcome",
+      fn: { kind: "default", defaultExport: "WelcomeTpl", source: "@src/emails/welcome.js" },
+    });
+  });
+
+  it("parses multiple email blocks", () => {
+    const ast = parse(`
+      ${APP}
+      email TransactionalMailer {
+        provider: resend
+        from: "tx@myapp.com"
+      }
+      email MarketingMailer {
+        provider: sendgrid
+        from: "marketing@myapp.com"
+      }
+    `);
+    expect(ast.emails).toHaveLength(2);
+    expect(ast.emails![0]?.name).toBe("TransactionalMailer");
+    expect(ast.emails![1]?.name).toBe("MarketingMailer");
+  });
+
+  it("emails is undefined when no email block is present", () => {
+    const ast = parse(`${APP}`);
+    expect(ast.emails).toBeUndefined();
+  });
+
+  it("throws on missing provider (E059)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      email Mailer {
+        from: "noreply@myapp.com"
+      }
+    `),
+    ).toThrow("E059_MISSING_EMAIL_PROVIDER");
+  });
+
+  it("throws on missing from address (E060)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      email Mailer {
+        provider: resend
+      }
+    `),
+    ).toThrow("E060_MISSING_EMAIL_FROM");
+  });
+
+  it("throws on unknown email property (E058)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      email Mailer {
+        provider: resend
+        from: "noreply@myapp.com"
+        unknown: foo
+      }
+    `),
+    ).toThrow("E058_UNKNOWN_PROP");
+  });
+});
+
+describe("Parser — action onSuccess", () => {
+  const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`;
+
+  it("parses action with onSuccess.sendEmail", () => {
+    const ast = parse(`
+      ${APP}
+      action registerUser {
+        fn: import { registerUser } from "@src/actions.js"
+        entities: []
+        onSuccess: {
+          sendEmail: welcome
+        }
+      }
+    `);
+    expect(ast.actions[0]?.onSuccess).toEqual({ sendEmail: "welcome" });
+  });
+
+  it("parses action without onSuccess (field is absent)", () => {
+    const ast = parse(`
+      ${APP}
+      action createTodo {
+        fn: import { createTodo } from "@src/actions.js"
+        entities: []
+      }
+    `);
+    expect(ast.actions[0]?.onSuccess).toBeUndefined();
+  });
+
+  it("throws on unknown onSuccess property (E057)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      action registerUser {
+        fn: import { registerUser } from "@src/actions.js"
+        entities: []
+        onSuccess: {
+          unknownProp: foo
+        }
+      }
+    `),
+    ).toThrow("E057_UNKNOWN_PROP");
+  });
+
+  it("throws on unknown action property when onSuccess is misspelled", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      action registerUser {
+        fn: import { registerUser } from "@src/actions.js"
+        entities: []
+        onSuccessTypo: {
+          sendEmail: welcome
+        }
+      }
+    `),
+    ).toThrow("E019_UNKNOWN_PROP");
+  });
+});

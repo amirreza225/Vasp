@@ -1217,7 +1217,14 @@ class Parser {
     const templates: EmailTemplateEntry[] = [];
 
     while (!this.check(TokenType.RBRACE)) {
-      const key = this.consumeIdentifier();
+      // `from` is a reserved keyword (KW_FROM) in the lexer, so we must handle
+      // it specially as a property key inside the email block.
+      let key: Token;
+      if (this.peek().type === TokenType.KW_FROM) {
+        key = this.consume(TokenType.KW_FROM);
+      } else {
+        key = this.consumeIdentifier();
+      }
       this.consume(TokenType.COLON);
 
       switch (key.value) {
