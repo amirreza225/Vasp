@@ -5,6 +5,17 @@ const http = axios.create({
   withCredentials: true,
 })
 
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const serverMessage = error?.response?.data?.error?.message
+    if (serverMessage) {
+      error.message = serverMessage
+    }
+    return Promise.reject(error)
+  },
+)
+
 export const {{pascalCase name}}Api = {
   list: (params) => http.get('/{{camelCase name}}', { params }).then(r => r.data),
   get: (id) => http.get(`/{{camelCase name}}/${id}`).then(r => r.data),
