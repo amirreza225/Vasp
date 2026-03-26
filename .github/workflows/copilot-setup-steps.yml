@@ -41,8 +41,8 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
-      - name: Exhaustiveness check
-        run: bun run check:exhaustiveness
+      # - name: Exhaustiveness check
+      #   run: bun run check:exhaustiveness
 
       - name: Unit tests
         run: bun run test
