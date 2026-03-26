@@ -107,7 +107,28 @@ export class AdminGenerator extends BaseGenerator {
 
     // Per-entity: API client + list view + form modal
     for (const entity of adminEntities) {
-      const entityData = { ...commonData, ...entity }
+      // Pre-compute many-to-one relation metadata so templates can render FK selects.
+      // Only singular (non-array) relation fields have a physical FK column on this table;
+      // one-to-many (array) relations are virtual and stored on the related entity's side.
+      const manyToOneRelations = entity.fields
+        .filter((f) => f.isRelation && !f.isArray)
+        .map((f) => ({
+          name: f.name,
+          fkName: `${f.name}Id`,
+          relatedEntity: f.relatedEntity,
+          nullable: f.nullable,
+        }))
+      // Deduplicated list of related entity names (for generating unique API imports)
+      const uniqueRelatedEntities = [
+        ...new Set(manyToOneRelations.map((r) => r.relatedEntity).filter(Boolean)),
+      ]
+      const entityData = {
+        ...commonData,
+        ...entity,
+        manyToOneRelations,
+        hasManyToOneRelations: manyToOneRelations.length > 0,
+        uniqueRelatedEntities,
+      }
       const kebabName = this.toKebabCase(entity.name)
 
       this.write(

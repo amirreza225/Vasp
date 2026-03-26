@@ -1688,4 +1688,79 @@ admin {
     expect(pkg).toContain('vue-tsc')
     expect(pkg).toContain('typescript')
   })
+
+  const ADMIN_RELATIONS_VASP = `
+app RelationsApp {
+  title: "Relations App"
+  db: Drizzle
+  ssr: false
+  typescript: false
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+entity User {
+  id: Int @id
+  username: String @unique
+}
+
+entity Project {
+  id: Int @id
+  name: String
+  owner: User @onDelete(cascade)
+  assignee: User @onDelete(setNull) @nullable
+}
+
+admin {
+  entities: [User, Project]
+}
+`
+
+  it('generates relation FK selects in FormModal for entities with many-to-one relations', () => {
+    const ast = parse(ADMIN_RELATIONS_VASP)
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+    const modal = readFileSync(join(outputDir, 'admin/src/views/project/FormModal.vue'), 'utf8')
+    // Imports the related entity API
+    expect(modal).toContain("import { UserApi } from '@/api/user")
+    // Only one import for User (deduped — both owner and assignee relate to User)
+    expect(modal.match(/import \{ UserApi \}/g)?.length).toBe(1)
+    // onMounted is added for loading options
+    expect(modal).toContain('onMounted')
+    // Options refs are declared
+    expect(modal).toContain('const ownerOptions = ref([])')
+    expect(modal).toContain('const assigneeOptions = ref([])')
+    // FK fields in emptyForm
+    expect(modal).toContain('ownerId: null')
+    expect(modal).toContain('assigneeId: null')
+    // Select form items rendered with FK binding
+    expect(modal).toContain('v-model:value="form.ownerId"')
+    expect(modal).toContain('v-model:value="form.assigneeId"')
+    // Nullable assignee has allow-clear
+    expect(modal).toContain(':allow-clear="true"')
+  })
+
+  it('generates FK columns in list table for entities with many-to-one relations', () => {
+    const ast = parse(ADMIN_RELATIONS_VASP)
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+    const view = readFileSync(join(outputDir, 'admin/src/views/project/index.vue'), 'utf8')
+    expect(view).toContain("dataIndex: 'ownerId'")
+    expect(view).toContain("dataIndex: 'assigneeId'")
+  })
+
+  it('generates no relation selects for entities without many-to-one relations', () => {
+    const ast = parse(ADMIN_RELATIONS_VASP)
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+    const modal = readFileSync(join(outputDir, 'admin/src/views/user/FormModal.vue'), 'utf8')
+    // User has no relations — no onMounted, no options refs, no select for FK
+    expect(modal).not.toContain('onMounted')
+    expect(modal).not.toContain('Options = ref([])')
+    expect(modal).not.toContain('allow-clear')
+  })
 })

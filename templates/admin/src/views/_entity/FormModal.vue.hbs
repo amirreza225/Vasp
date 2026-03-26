@@ -1,7 +1,8 @@
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch{{#if hasManyToOneRelations}}, onMounted{{/if}} } from 'vue'
 import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{ext}}'
-import { message } from 'ant-design-vue'
+{{#each uniqueRelatedEntities}}import { {{pascalCase this}}Api } from '@/api/{{kebabCase this}}.{{ext}}'
+{{/each}}import { message } from 'ant-design-vue'
 
 const props = defineProps({
   visible: Boolean,
@@ -13,6 +14,9 @@ const emit = defineEmits(['close', 'saved'])
 // JSON fields need string ↔ object conversion
 const jsonFields = [{{#each fields}}{{#unless isRelation}}{{#if (eq type "Json")}}'{{name}}', {{/if}}{{/unless}}{{/each}}]
 
+// Options for relation selects (loaded on mount)
+{{#each manyToOneRelations}}const {{name}}Options = ref([])
+{{/each}}
 function emptyForm() {
   return {
 {{#each fields}}
@@ -26,7 +30,8 @@ function emptyForm() {
 {{/unless}}
 {{/unless}}
 {{/each}}
-{{#if hasAuth}}{{#if (eq name auth.userEntity)}}{{#if (includes auth.methods "usernameAndPassword")}}
+{{#each manyToOneRelations}}    {{fkName}}: null,
+{{/each}}{{#if hasAuth}}{{#if (eq name auth.userEntity)}}{{#if (includes auth.methods "usernameAndPassword")}}
     password: '',
 {{/if}}{{/if}}{{/if}}
   }
@@ -49,6 +54,18 @@ watch(() => props.record, (val) => {
   }
 }, { immediate: true })
 
+{{#if hasManyToOneRelations}}
+onMounted(async () => {
+{{#each manyToOneRelations}}  try {
+    const res = await {{pascalCase relatedEntity}}Api.list({ limit: 100, offset: 0 })
+    // Label uses common display fields in priority order; falls back to the record's id.
+    {{name}}Options.value = (res.data?.items ?? []).map((r) => ({
+      label: String(r.name ?? r.title ?? r.username ?? r.email ?? r.id),
+      value: r.id,
+    }))
+  } catch { /* ignore — options stay empty */ }
+{{/each}}})
+{{/if}}
 async function handleSubmit() {
   loading.value = true
   try {
@@ -116,6 +133,19 @@ async function handleSubmit() {
 {{/unless}}
 {{/unless}}
 {{/unless}}
+{{/each}}
+{{#each manyToOneRelations}}
+      <a-form-item label="{{pascalCase name}}"{{#if nullable}} extra="Optional"{{/if}} name="{{fkName}}">
+        <a-select
+          v-model:value="form.{{fkName}}"
+          :options="{{name}}Options"
+          placeholder="Select {{pascalCase relatedEntity}}"
+          show-search
+          :filter-option="(input, opt) => (opt?.label?.toString().toLowerCase() ?? '').includes(input.toLowerCase())"
+          {{#if nullable}}:allow-clear="true"{{/if}}
+          style="width: 100%"
+        />
+      </a-form-item>
 {{/each}}
 {{#if hasAuth}}{{#if (eq name auth.userEntity)}}{{#if (includes auth.methods "usernameAndPassword")}}
       <a-form-item

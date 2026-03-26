@@ -18,7 +18,8 @@ const columns = [
   { title: '{{pascalCase name}}', dataIndex: '{{name}}', key: '{{name}}', ellipsis: true },
 {{/unless}}
 {{/each}}
-  { title: 'Actions', key: 'actions', width: 160, fixed: 'right' },
+{{#each manyToOneRelations}}  { title: '{{pascalCase relatedEntity}}', dataIndex: '{{fkName}}', key: '{{fkName}}', width: 100 },
+{{/each}}  { title: 'Actions', key: 'actions', width: 160, fixed: 'right' },
 ]
 
 async function fetchData() {
