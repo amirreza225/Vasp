@@ -178,9 +178,20 @@ describe('TemplateEngine — valibotSchema helper (Phase 4)', () => {
     expect(render('Float')).toBe('v.number()')
   })
 
-  it('maps DateTime to pipe+transform and Json to unknown', () => {
-    expect(render('DateTime')).toBe('v.pipe(v.string(), v.transform(s => new Date(s)))')
+  it('maps DateTime to validated pipe+transform and Json to unknown', () => {
+    const validDate = `v.pipe(v.string(), v.minLength(1), v.transform(s => new Date(s)), v.check(d => !isNaN(d.getTime()), 'Invalid date'))`
+    expect(render('DateTime')).toBe(validDate)
     expect(render('Json')).toBe('v.unknown()')
+  })
+
+  it('wraps nullable DateTime in v.union([v.null(), ...])', () => {
+    const validDate = `v.pipe(v.string(), v.minLength(1), v.transform(s => new Date(s)), v.check(d => !isNaN(d.getTime()), 'Invalid date'))`
+    expect(render('DateTime', true)).toBe(`v.union([v.null(), ${validDate}])`)
+  })
+
+  it('wraps nullable + optional DateTime with v.optional(v.union(...))', () => {
+    const validDate = `v.pipe(v.string(), v.minLength(1), v.transform(s => new Date(s)), v.check(d => !isNaN(d.getTime()), 'Invalid date'))`
+    expect(render('DateTime', true, true)).toBe(`v.optional(v.union([v.null(), ${validDate}]))`)
   })
 
   it('wraps nullable fields with v.nullable', () => {

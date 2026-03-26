@@ -13,6 +13,8 @@ const emit = defineEmits(['close', 'saved'])
 
 // JSON fields need string ↔ object conversion
 const jsonFields = [{{#each fields}}{{#unless isRelation}}{{#if (eq type "Json")}}'{{name}}', {{/if}}{{/unless}}{{/each}}]
+// Nullable DateTime fields — convert empty string to null before submitting
+const nullableDateTimeFields = [{{#each fields}}{{#unless isRelation}}{{#unless (includes modifiers "id")}}{{#unless isUpdatedAt}}{{#unless (includes modifiers "default_now")}}{{#if (eq type "DateTime")}}{{#if nullable}}'{{name}}', {{/if}}{{/if}}{{/unless}}{{/unless}}{{/unless}}{{/unless}}{{/each}}]
 
 // Options for relation selects (loaded on mount)
 {{#each manyToOneRelations}}const {{name}}Options = ref([])
@@ -24,7 +26,7 @@ function emptyForm() {
 {{#unless (includes modifiers "id")}}
 {{#unless isUpdatedAt}}
 {{#unless (includes modifiers "default_now")}}
-    {{name}}: {{#if (eq type "Boolean")}}false{{else if (eq type "Int")}}0{{else if (eq type "Float")}}0{{else if (eq type "Enum")}}{{#if enumValues}}'{{enumValues.[0]}}'{{else}}''{{/if}}{{else if (eq type "Json")}}'{}'{{else}}''{{/if}},
+    {{name}}: {{#if (eq type "Boolean")}}false{{else if (eq type "Int")}}0{{else if (eq type "Float")}}0{{else if (eq type "Enum")}}{{#if enumValues}}'{{enumValues.[0]}}'{{else}}''{{/if}}{{else if (eq type "DateTime")}}{{#if nullable}}null{{else}}''{{/if}}{{else if (eq type "Json")}}'{}'{{else}}''{{/if}},
 {{/unless}}
 {{/unless}}
 {{/unless}}
@@ -78,6 +80,9 @@ async function handleSubmit() {
           return
         }
       }
+    }
+    for (const k of nullableDateTimeFields) {
+      if (payload[k] === '') payload[k] = null
     }
     if (props.record?.id) {
       await {{pascalCase name}}Api.update(props.record.id, payload)

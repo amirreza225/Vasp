@@ -1763,4 +1763,51 @@ admin {
     expect(modal).not.toContain('Options = ref([])')
     expect(modal).not.toContain('allow-clear')
   })
+
+  const ADMIN_DATETIME_VASP = `
+app DateApp {
+  title: "Date App"
+  db: Drizzle
+  ssr: false
+  typescript: false
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+entity Task {
+  id: Int @id
+  title: String
+  dueAt: DateTime @nullable
+  startedAt: DateTime
+}
+
+admin {
+  entities: [Task]
+}
+`
+
+  it('initializes nullable DateTime as null and required DateTime as empty string in emptyForm', () => {
+    const ast = parse(ADMIN_DATETIME_VASP)
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: 'silent', engine: sharedEngine })
+    const modal = readFileSync(join(outputDir, 'admin/src/views/task/FormModal.vue'), 'utf8')
+    // Nullable DateTime initializes to null, not ''
+    expect(modal).toContain("dueAt: null")
+    // Non-nullable DateTime initializes to ''
+    expect(modal).toContain("startedAt: ''")
+    // nullableDateTimeFields list declared for submit coercion
+    expect(modal).toContain("nullableDateTimeFields")
+    expect(modal).toContain("'dueAt'")
+    // startedAt should NOT appear in nullableDateTimeFields
+    expect(modal).not.toMatch(/'startedAt'.*nullableDateTime|nullableDateTime.*'startedAt'/)
+    // Payload coercion: empty string → null for nullable DateTime
+    expect(modal).toContain("for (const k of nullableDateTimeFields)")
+    expect(modal).toContain("payload[k] === ''")
+  })
 })
