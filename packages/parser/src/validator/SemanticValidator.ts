@@ -34,6 +34,7 @@ export class SemanticValidator {
     this.checkRealtimeEntities(ast);
     this.checkAuthMethods(ast);
     this.checkRoleConfiguration(ast);
+    this.checkPermissionConfiguration(ast);
     this.checkQueryActionEntities(ast);
     this.checkApiMethods(ast);
     this.checkMiddlewareScopes(ast);
@@ -257,6 +258,70 @@ export class SemanticValidator {
             message: `Api '${api.name}' references unknown role '${role}'`,
             hint: `Define '${role}' in auth.roles`,
             loc: api.loc,
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * E123 – E125: Validate auth.permissions and crud.permissions.
+   *
+   * Rules:
+   *  E123_PERMISSIONS_REQUIRE_ROLES   – auth.permissions defined but auth.roles is empty
+   *  E124_UNKNOWN_PERMISSION_ROLE_REF – a role listed in auth.permissions is not in auth.roles
+   *  E125_UNKNOWN_PERMISSION_REF      – a crud.permissions value is not declared in auth.permissions
+   *  E126_CRUD_PERMISSION_UNKNOWN_OP  – a crud.permissions key is not in crud.operations
+   */
+  private checkPermissionConfiguration(ast: VaspAST): void {
+    const authPermissions = ast.auth?.permissions ?? {};
+    const configuredRoles = new Set(ast.auth?.roles ?? []);
+    const declaredPermissions = new Set(Object.keys(authPermissions));
+
+    // Validate auth.permissions entries
+    if (Object.keys(authPermissions).length > 0) {
+      if (configuredRoles.size === 0) {
+        this.diagnostics.push({
+          code: "E123_PERMISSIONS_REQUIRE_ROLES",
+          message: `auth '${ast.auth!.name}' defines permissions but has no roles configured`,
+          hint: "Add roles to the auth block: roles: [admin, ...]",
+          loc: ast.auth!.loc,
+        });
+      }
+      for (const [permName, roles] of Object.entries(authPermissions)) {
+        for (const role of roles) {
+          if (!configuredRoles.has(role)) {
+            this.diagnostics.push({
+              code: "E124_UNKNOWN_PERMISSION_ROLE_REF",
+              message: `Permission '${permName}' references unknown role '${role}'`,
+              hint: `Define '${role}' in auth.roles`,
+              loc: ast.auth!.loc,
+            });
+          }
+        }
+      }
+    }
+
+    // Validate crud.permissions entries
+    for (const crud of ast.cruds) {
+      if (!crud.permissions) continue;
+      for (const [op, permName] of Object.entries(crud.permissions)) {
+        // The operation key must be one of the declared operations for this crud block
+        if (!crud.operations.includes(op as never)) {
+          this.diagnostics.push({
+            code: "E126_CRUD_PERMISSION_UNKNOWN_OP",
+            message: `crud '${crud.name}' permissions map references operation '${op}' which is not in its operations list`,
+            hint: `Add '${op}' to crud operations, or remove it from permissions`,
+            loc: crud.loc,
+          });
+        }
+        // The permission value must be declared in auth.permissions
+        if (declaredPermissions.size > 0 && !declaredPermissions.has(permName)) {
+          this.diagnostics.push({
+            code: "E125_UNKNOWN_PERMISSION_REF",
+            message: `crud '${crud.name}' references undeclared permission '${permName}'`,
+            hint: `Declare '${permName}' in auth.permissions`,
+            loc: crud.loc,
           });
         }
       }
