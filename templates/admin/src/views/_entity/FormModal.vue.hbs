@@ -26,6 +26,9 @@ function emptyForm() {
 {{/unless}}
 {{/unless}}
 {{/each}}
+{{#if hasAuth}}{{#if (eq name auth.userEntity)}}{{#if (includes auth.methods "usernameAndPassword")}}
+    password: '',
+{{/if}}{{/if}}{{/if}}
   }
 }
 
@@ -114,6 +117,15 @@ async function handleSubmit() {
 {{/unless}}
 {{/unless}}
 {{/each}}
+{{#if hasAuth}}{{#if (eq name auth.userEntity)}}{{#if (includes auth.methods "usernameAndPassword")}}
+      <a-form-item
+        name="password"
+        :label="record?.id ? 'New Password' : 'Password'"
+        :extra="record?.id ? 'Optional — leave blank to keep current password' : 'Required, min. 8 characters'"
+      >
+        <a-input-password v-model:value="form.password" placeholder="Min. 8 characters" />
+      </a-form-item>
+{{/if}}{{/if}}{{/if}}
     </a-form>
   </a-modal>
 </template>
