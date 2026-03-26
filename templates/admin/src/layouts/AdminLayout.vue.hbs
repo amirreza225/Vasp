@@ -7,6 +7,7 @@ const route = useRoute()
 const collapsed = ref(false)
 
 const selectedKeys = computed(() => [route.path === '/' ? '/dashboard' : '/' + route.path.split('/')[1]])
+const pageTitle = computed(() => route.meta?.title ?? '{{appTitle}} Admin')
 
 const menuItems = [
   { key: '/dashboard', label: 'Dashboard' },
@@ -37,14 +38,14 @@ function navigate(key) {
           :key="item.key"
           @click="navigate(item.key)"
         >
-          {{ item.label }}
+          \{{ item.label }}
         </a-menu-item>
       </a-menu>
     </a-layout-sider>
     <a-layout>
       <a-layout-header style="background: #fff; padding: 0 24px; display: flex; align-items: center; border-bottom: 1px solid #f0f0f0">
         <span style="font-size: 16px; font-weight: 600">
-          {{ route.meta?.title ?? '{{appTitle}} Admin' }}
+          \{{ pageTitle }}
         </span>
       </a-layout-header>
       <a-layout-content style="margin: 24px; min-height: 280px">
