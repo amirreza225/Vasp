@@ -91,11 +91,12 @@ $knip_out
 fi
 
 # --- Output ---
+NL=$'\n'
 if [[ -n "$ERRORS" ]]; then
-  FULL="Project health checks found errors — please fix before finishing:\n\n${ERRORS}"
-  [[ -n "$WARNINGS" ]] && FULL+="Additional info:\n${WARNINGS}"
+  FULL="Project health checks found errors — please fix before finishing:${NL}${NL}${ERRORS}"
+  [[ -n "$WARNINGS" ]] && FULL+="Additional info:${NL}${WARNINGS}"
   printf '%s' "$FULL" | jq -Rs '{decision:"block",reason:.}'
 elif [[ -n "$WARNINGS" ]]; then
-  printf '%s' "Stop hook info:\n\n${WARNINGS}" \
+  printf '%s' "Stop hook info:${NL}${NL}${WARNINGS}" \
     | jq -Rs '{hookSpecificOutput:{hookEventName:"Stop",additionalContext:.}}'
 fi
