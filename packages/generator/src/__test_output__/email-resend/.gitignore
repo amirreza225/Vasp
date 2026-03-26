@@ -1,9 +1,0 @@
-node_modules
-dist
-.output
-.nuxt
-.vasp
-.vasp-gen
-.env
-.env.local
-*.log

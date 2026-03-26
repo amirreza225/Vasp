@@ -1190,11 +1190,19 @@ describe("Parser — email block", () => {
     expect(ast.emails![0]?.templates).toHaveLength(2);
     expect(ast.emails![0]?.templates[0]).toMatchObject({
       name: "welcome",
-      fn: { kind: "named", namedExport: "welcomeTemplate", source: "@src/emails/welcome.js" },
+      fn: {
+        kind: "named",
+        namedExport: "welcomeTemplate",
+        source: "@src/emails/welcome.js",
+      },
     });
     expect(ast.emails![0]?.templates[1]).toMatchObject({
       name: "resetPassword",
-      fn: { kind: "named", namedExport: "resetTemplate", source: "@src/emails/reset.js" },
+      fn: {
+        kind: "named",
+        namedExport: "resetTemplate",
+        source: "@src/emails/reset.js",
+      },
     });
   });
 
@@ -1211,7 +1219,11 @@ describe("Parser — email block", () => {
     `);
     expect(ast.emails![0]?.templates[0]).toMatchObject({
       name: "welcome",
-      fn: { kind: "default", defaultExport: "WelcomeTpl", source: "@src/emails/welcome.js" },
+      fn: {
+        kind: "default",
+        defaultExport: "WelcomeTpl",
+        source: "@src/emails/welcome.js",
+      },
     });
   });
 

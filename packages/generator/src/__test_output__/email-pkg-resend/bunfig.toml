@@ -1,5 +1,0 @@
-[install]
-exact = false
-
-[resolve]
-"@src" = "./src"
