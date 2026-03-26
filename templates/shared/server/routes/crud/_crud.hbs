@@ -1,7 +1,7 @@
 import { Elysia, t } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
 import { safeParse } from 'valibot'
-import { eq, sql, asc, desc, and } from 'drizzle-orm'
+import { eq, sql, asc, desc, and, ilike, or } from 'drizzle-orm'
 import { {{camelCase entity}}s } from '../../../drizzle/schema.{{ext}}'
 import { Create{{pascalCase entity}}Schema, Update{{pascalCase entity}}Schema } from '../../../shared/validation.{{ext}}'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'

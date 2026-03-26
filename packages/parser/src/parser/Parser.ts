@@ -7,6 +7,7 @@ import type {
   AuthMethod,
   AuthNode,
   CrudNode,
+  CrudListConfig,
   CrudOperation,
   EntityNode,
   EnvRequirement,
@@ -585,6 +586,7 @@ class Parser {
 
     let entity = ''
     let operations: CrudOperation[] = []
+    let listConfig: CrudListConfig | undefined
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier()
@@ -597,13 +599,50 @@ class Parser {
         case 'operations':
           operations = this.parseIdentifierArray() as CrudOperation[]
           break
+        case 'list':
+          listConfig = this.parseCrudListConfig()
+          break
         default:
-          throw this.error('E021_UNKNOWN_PROP', `Unknown crud property '${key.value}'`, 'Valid properties: entity, operations', key.loc)
+          throw this.error('E021_UNKNOWN_PROP', `Unknown crud property '${key.value}'`, 'Valid properties: entity, operations, list', key.loc)
       }
     }
 
     this.consume(TokenType.RBRACE)
-    return { type: 'Crud', name: name.value, loc, entity, operations }
+    return { type: 'Crud', name: name.value, loc, entity, operations, listConfig }
+  }
+
+  private parseCrudListConfig(): CrudListConfig {
+    this.consume(TokenType.LBRACE)
+
+    let paginate = false
+    let sortable: string[] = []
+    let filterable: string[] = []
+    let search: string[] = []
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier()
+      this.consume(TokenType.COLON)
+
+      switch (key.value) {
+        case 'paginate':
+          paginate = this.consume(TokenType.BOOLEAN).value === 'true'
+          break
+        case 'sortable':
+          sortable = this.parseIdentifierArray()
+          break
+        case 'filterable':
+          filterable = this.parseIdentifierArray()
+          break
+        case 'search':
+          search = this.parseIdentifierArray()
+          break
+        default:
+          throw this.error('E021_UNKNOWN_PROP', `Unknown list property '${key.value}'`, 'Valid properties: paginate, sortable, filterable, search', key.loc)
+      }
+    }
+
+    this.consume(TokenType.RBRACE)
+    return { paginate, sortable, filterable, search }
   }
 
   private parseApi(): ApiNode {
