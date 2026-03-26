@@ -16,8 +16,10 @@ jobs:
 
     permissions:
       contents: read
-      # Not required when upload: false, but kept so enabling Code Scanning
-      # later in repo settings requires no workflow change.
+      # actions: read is required for CodeQL telemetry and status reporting.
+      actions: read
+      # Kept so enabling Code Scanning later requires no workflow change.
+      # With upload: false this is not actively used.
       security-events: write
 
     steps:
@@ -33,7 +35,7 @@ jobs:
         run: bun install
 
       - name: Initialize CodeQL
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: javascript-typescript
           config-file: .github/codeql/codeql-config.yml
@@ -43,7 +45,7 @@ jobs:
       # turned on in the repository settings. Results are written to a local
       # SARIF file and checked in the next step instead.
       - name: Perform CodeQL Analysis
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:javascript-typescript"
           upload: false
