@@ -473,3 +473,39 @@ describe('SemanticValidator', () => {
     `)).not.toThrow()
   })
 })
+
+describe('SemanticValidator — admin block', () => {
+  it('passes a valid admin block with declared entities', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      entity User { id: Int @id username: String }
+      admin { entities: [Todo, User] }
+    `)).not.toThrow()
+  })
+
+  it('fails when admin entities list is empty (E131)', () => {
+    // Parse succeeds; validator catches empty list
+    const ast = parse(`${APP}`)
+    // Inject a broken admin node directly
+    const broken = { ...ast, admin: { type: 'Admin' as const, entities: [], loc: ast.app.loc } }
+    expect(() => new SemanticValidator().validate(broken)).toThrow('E131_EMPTY_ADMIN_ENTITIES')
+  })
+
+  it('fails when admin references undeclared entity (E132)', () => {
+    const ast = parse(`${APP}`)
+    const broken = {
+      ...ast,
+      admin: { type: 'Admin' as const, entities: ['Ghost'], loc: ast.app.loc },
+    }
+    expect(() => new SemanticValidator().validate(broken)).toThrow('E132_ADMIN_ENTITY_NOT_DECLARED')
+  })
+
+  it('passes with a single declared entity', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Post { id: Int @id title: String }
+      admin { entities: [Post] }
+    `)).not.toThrow()
+  })
+})
