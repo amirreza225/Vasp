@@ -102,6 +102,8 @@ export interface FieldNode {
   enumValues?: string[]
   /** DSL-declared validation constraints from @validate(...) */
   validation?: FieldValidation
+  /** True when @manyToMany modifier is present — Vasp generates an implicit junction table */
+  isManyToMany?: boolean
 }
 
 // ------ Job Executors ------

@@ -403,10 +403,21 @@ export class SemanticValidator {
       for (const field of entity.fields) {
         if (!field.isRelation) continue
 
+        // E116: @manyToMany must be used on an array relation field (Type[])
+        if (field.isManyToMany && !field.isArray) {
+          this.diagnostics.push({
+            code: 'E116_MANY_TO_MANY_REQUIRES_ARRAY',
+            message: `Field '${field.name}' in entity '${entity.name}' has @manyToMany but is not an array type`,
+            hint: `Change the field type to an array: ${field.name}: ${field.type}[] @manyToMany`,
+            loc: entity.loc,
+          })
+        }
+
         // 2.2: Warn only when the field name is exactly the lowercased entity name + 's'
         // (e.g. `todos: Todo` looks plural, but `address: Address` does not)
+        // Skip this check for @manyToMany fields — they are always arrays by definition
         const entityLower = field.relatedEntity!.charAt(0).toLowerCase() + field.relatedEntity!.slice(1)
-        if (!field.isArray && field.name === entityLower + 's') {
+        if (!field.isArray && !field.isManyToMany && field.name === entityLower + 's') {
           this.diagnostics.push({
             code: 'W200_SINGULAR_RELATION_LOOKS_PLURAL',
             message: `Relation field '${field.name}' in entity '${entity.name}' looks plural but is not an array`,
@@ -416,7 +427,8 @@ export class SemanticValidator {
         }
 
         // 2.3: Warn if non-nullable, non-array relation has no @onDelete
-        if (!field.isArray && !field.nullable && !field.onDelete) {
+        // @manyToMany fields never carry a FK column, so skip this warning for them
+        if (!field.isArray && !field.nullable && !field.onDelete && !field.isManyToMany) {
           this.diagnostics.push({
             code: 'W201_MISSING_ON_DELETE',
             message: `Relation field '${field.name}' in entity '${entity.name}' has no @onDelete modifier`,
