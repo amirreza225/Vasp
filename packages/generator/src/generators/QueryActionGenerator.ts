@@ -1,6 +1,9 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { EmailTemplateEntry, ImportExpression } from "@vasp-framework/core";
+import type {
+  EmailTemplateEntry,
+  ImportExpression,
+} from "@vasp-framework/core";
 import { BaseGenerator } from "./BaseGenerator.js";
 import { toCamelCase } from "../template/TemplateEngine.js";
 
