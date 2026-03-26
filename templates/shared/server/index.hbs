@@ -40,6 +40,9 @@ import { realtimeRoutes } from './routes/realtime/index.{{ext}}'
 {{#each jobs}}
 import { {{camelCase name}}ScheduleRoute } from './routes/jobs/{{camelCase name}}Schedule.{{../ext}}'
 {{/each}}
+{{#if hasAdmin}}
+import { adminRoutes } from './routes/admin/index.{{ext}}'
+{{/if}}
 
 const PORT = Number(process.env.PORT) || {{backendPort}}
 
@@ -67,7 +70,9 @@ const app = new Elysia()
   .use(logger())
   .use(errorHandler())
   .use(cors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:{{frontendPort}}',
+    origin: process.env.CORS_ORIGIN
+      ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+      : ['http://localhost:{{frontendPort}}'{{#if hasAdmin}}, 'http://localhost:5174'{{/if}}],
     credentials: true,
   }))
   .use(rateLimit())
@@ -102,6 +107,9 @@ const app = new Elysia()
 {{#each jobs}}
   .use({{camelCase name}}ScheduleRoute)
 {{/each}}
+{{#if hasAdmin}}
+  .use(adminRoutes)
+{{/if}}
   .listen(PORT)
 
 console.log(`🚀 Vasp backend running at http://localhost:${PORT}`)

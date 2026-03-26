@@ -38,6 +38,13 @@ export abstract class BaseGenerator {
       ext,
       mode,
       hasAuth: !!ast.auth,
+      hasAdmin: !!ast.admin,
+      adminEntities: ast.admin
+        ? ast.admin.entities.map((name) => {
+            const entity = ast.entities.find((e) => e.name === name)
+            return entity ?? { name, fields: [], type: 'Entity' as const, loc: ast.admin!.loc }
+          })
+        : [],
       hasAnyRelations: ast.entities.some(e => e.fields.some(f => f.isRelation)),
       hasRealtime: ast.realtimes.length > 0,
       hasJobs: ast.jobs.length > 0,

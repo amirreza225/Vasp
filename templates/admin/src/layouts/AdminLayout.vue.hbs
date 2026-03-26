@@ -1,6 +1,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+{{#if hasAuth}}
+import { useAdminAuth } from '@/composables/useAdminAuth.{{ext}}'
+
+const { currentAdminUser, logout } = useAdminAuth()
+{{/if}}
 
 const router = useRouter()
 const route = useRoute()
@@ -43,10 +48,16 @@ function navigate(key) {
       </a-menu>
     </a-layout-sider>
     <a-layout>
-      <a-layout-header style="background: #fff; padding: 0 24px; display: flex; align-items: center; border-bottom: 1px solid #f0f0f0">
-        <span style="font-size: 16px; font-weight: 600">
-          \{{ pageTitle }}
-        </span>
+      <a-layout-header class="admin-header">
+        <span class="page-title">\{{ pageTitle }}</span>
+        {{#if hasAuth}}
+        <div class="header-right">
+          <span v-if="currentAdminUser" class="user-info">
+            <a-tag>\{{ currentAdminUser.username ?? currentAdminUser.email ?? 'Admin' }}</a-tag>
+          </span>
+          <a-button type="text" size="small" @click="logout">Logout</a-button>
+        </div>
+        {{/if}}
       </a-layout-header>
       <a-layout-content style="margin: 24px; min-height: 280px">
         <RouterView />
@@ -71,5 +82,30 @@ function navigate(key) {
   white-space: nowrap;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0 16px;
+}
+
+.admin-header {
+  background: #fff;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.page-title {
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
 }
 </style>

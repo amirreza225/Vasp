@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{ext}}'
+import { message } from 'ant-design-vue'
 
 const props = defineProps({
   visible: Boolean,
@@ -9,12 +10,15 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'saved'])
 
+// JSON fields need string ↔ object conversion
+const jsonFields = [{{#each fields}}{{#unless isRelation}}{{#if (eq type "Json")}}'{{name}}', {{/if}}{{/unless}}{{/each}}]
+
 function emptyForm() {
   return {
 {{#each fields}}
 {{#unless isRelation}}
 {{#unless (includes modifiers "id")}}
-    {{name}}: {{#if (eq type "Boolean")}}false{{else if (eq type "Int")}}0{{else if (eq type "Float")}}0{{else}}''{{/if}},
+    {{name}}: {{#if (eq type "Boolean")}}false{{else if (eq type "Int")}}0{{else if (eq type "Float")}}0{{else if (eq type "Enum")}}{{#if enumValues}}'{{enumValues.[0]}}'{{else}}''{{/if}}{{else if (eq type "Json")}}'{}'{{else}}''{{/if}},
 {{/unless}}
 {{/unless}}
 {{/each}}
@@ -25,18 +29,39 @@ const form = ref(emptyForm())
 const loading = ref(false)
 
 watch(() => props.record, (val) => {
-  form.value = val ? { ...val } : emptyForm()
+  if (val) {
+    const copy = { ...val }
+    for (const k of jsonFields) {
+      if (copy[k] != null) {
+        copy[k] = typeof copy[k] === 'string' ? copy[k] : JSON.stringify(copy[k], null, 2)
+      }
+    }
+    form.value = copy
+  } else {
+    form.value = emptyForm()
+  }
 }, { immediate: true })
 
 async function handleSubmit() {
   loading.value = true
   try {
+    const payload = { ...form.value }
+    for (const k of jsonFields) {
+      if (payload[k] && typeof payload[k] === 'string') {
+        try { payload[k] = JSON.parse(payload[k]) } catch {
+          message.error(`Field "${k}" must be valid JSON`)
+          return
+        }
+      }
+    }
     if (props.record?.id) {
-      await {{pascalCase name}}Api.update(props.record.id, form.value)
+      await {{pascalCase name}}Api.update(props.record.id, payload)
     } else {
-      await {{pascalCase name}}Api.create(form.value)
+      await {{pascalCase name}}Api.create(payload)
     }
     emit('saved')
+  } catch (err) {
+    message.error(err instanceof Error ? err.message : 'Save failed')
   } finally {
     loading.value = false
   }
@@ -55,7 +80,7 @@ async function handleSubmit() {
 {{#each fields}}
 {{#unless isRelation}}
 {{#unless (includes modifiers "id")}}
-      <a-form-item label="{{pascalCase name}}" name="{{name}}">
+      <a-form-item label="{{pascalCase name}}"{{#if nullable}} extra="Optional"{{/if}} name="{{name}}">
 {{#if (eq type "Boolean")}}
         <a-switch v-model:checked="form.{{name}}" />
 {{else if (eq type "Int")}}
@@ -63,9 +88,17 @@ async function handleSubmit() {
 {{else if (eq type "Float")}}
         <a-input-number v-model:value="form.{{name}}" :step="0.01" style="width: 100%" />
 {{else if (eq type "DateTime")}}
-        <a-input v-model:value="form.{{name}}" placeholder="YYYY-MM-DD" />
+        <a-input v-model:value="form.{{name}}" placeholder="YYYY-MM-DD HH:MM:SS" />
 {{else if (eq type "Text")}}
         <a-textarea v-model:value="form.{{name}}" :rows="4" />
+{{else if (eq type "Json")}}
+        <a-textarea v-model:value="form.{{name}}" :rows="4" placeholder="{}" style="font-family: monospace" />
+{{else if (eq type "Enum")}}
+        <a-select v-model:value="form.{{name}}" style="width: 100%">
+{{#each enumValues}}
+          <a-select-option value="{{this}}">{{this}}</a-select-option>
+{{/each}}
+        </a-select>
 {{else}}
         <a-input v-model:value="form.{{name}}" />
 {{/if}}

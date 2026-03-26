@@ -1,0 +1,9 @@
+import { Elysia } from 'elysia'
+{{#each adminEntities}}
+import { admin{{pascalCase name}}Routes } from './{{camelCase name}}.{{../ext}}'
+{{/each}}
+
+export const adminRoutes = new Elysia()
+{{#each adminEntities}}
+  .use(admin{{pascalCase name}}Routes)
+{{/each}}

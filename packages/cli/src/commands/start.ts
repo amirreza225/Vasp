@@ -32,6 +32,7 @@ export async function startCommand(): Promise<void> {
 
   const serverScript = pkg.scripts?.['dev:server']
   const clientScript = pkg.scripts?.['dev:client']
+  const adminScript = pkg.scripts?.['dev:admin']
 
   if (!serverScript || !clientScript) {
     log.error("Missing 'dev:server' or 'dev:client' scripts in package.json.")
@@ -87,12 +88,30 @@ export async function startCommand(): Promise<void> {
   log.step('Starting Vasp dev servers...')
   log.dim(`  server: ${serverScript}`)
   log.dim(`  client: ${clientScript}`)
+  if (adminScript) log.dim(`  admin:  ${adminScript}`)
   console.log()
 
-  const [serverProc, clientProc] = await Promise.all([
+  // Install admin dependencies if admin panel exists but node_modules is missing
+  const adminDir = join(projectDir, 'admin')
+  if (adminScript && existsSync(adminDir) && !existsSync(join(adminDir, 'node_modules'))) {
+    log.warn('admin/node_modules not found. Running bun install in admin/...')
+    const adminInstall = Bun.spawn(['bun', 'install'], {
+      cwd: adminDir,
+      stdout: 'inherit',
+      stderr: 'inherit',
+    })
+    await adminInstall.exited
+    if (adminInstall.exitCode !== 0) {
+      log.warn('bun install in admin/ failed. Admin panel may not start correctly.')
+    }
+  }
+
+  const procs = await Promise.all([
     spawnPrefixed('server', pc.cyan, 'dev:server', projectDir),
     spawnPrefixed('client', pc.magenta, 'dev:client', projectDir),
+    ...(adminScript ? [spawnPrefixed('admin', pc.yellow, 'dev:admin', projectDir)] : []),
   ])
+  const [serverProc, clientProc, adminProc] = procs
 
   // Open the browser after a short delay to let the dev servers warm up
   openBrowser(projectDir)
@@ -104,15 +123,17 @@ export async function startCommand(): Promise<void> {
     watchVaspFile(vaspFile, projectDir)
   }
 
-  // Handle Ctrl+C — kill both children
+  // Handle Ctrl+C — kill all children
   process.on('SIGINT', () => {
     serverProc.kill()
     clientProc.kill()
+    adminProc?.kill()
     process.exit(0)
   })
   process.on('SIGTERM', () => {
     serverProc.kill()
     clientProc.kill()
+    adminProc?.kill()
     process.exit(0)
   })
 

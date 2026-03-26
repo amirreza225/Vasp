@@ -2,6 +2,7 @@ import { join } from 'node:path'
 import { ensureDir } from '../utils/fs.js'
 import { BaseGenerator } from './BaseGenerator.js'
 import { DEFAULT_BACKEND_PORT } from '@vasp-framework/core'
+import { toCamelCase } from '../template/TemplateEngine.js'
 
 export class AdminGenerator extends BaseGenerator {
   run(): void {
@@ -24,16 +25,25 @@ export class AdminGenerator extends BaseGenerator {
       'admin/src/layouts',
       'admin/src/views/dashboard',
       'admin/src/api',
+      'admin/src/composables',
       ...adminEntities.map((e) => `admin/src/views/${this.toKebabCase(e.name)}`),
     ]
+    if (ast.auth) {
+      adminDirs.push('admin/src/views/login')
+    }
     for (const dir of adminDirs) {
       ensureDir(join(this.ctx.outputDir, dir))
     }
+
+    // Create backend admin route directories
+    ensureDir(join(this.ctx.outputDir, 'server/routes/admin'))
 
     const commonData = {
       adminEntities,
       backendPort: DEFAULT_BACKEND_PORT,
     }
+
+    // ── Frontend files ────────────────────────────────────────────────
 
     // admin/package.json
     this.write(
@@ -83,6 +93,18 @@ export class AdminGenerator extends BaseGenerator {
       this.render('admin/src/views/dashboard/index.vue.hbs', commonData),
     )
 
+    // auth composable + login page — only when an auth block is present
+    if (ast.auth) {
+      this.write(
+        `admin/src/composables/useAdminAuth.${ext}`,
+        this.render('admin/src/composables/useAdminAuth.hbs', commonData),
+      )
+      this.write(
+        'admin/src/views/login/index.vue',
+        this.render('admin/src/views/login/index.vue.hbs', commonData),
+      )
+    }
+
     // Per-entity: API client + list view + form modal
     for (const entity of adminEntities) {
       const entityData = { ...commonData, ...entity }
@@ -103,6 +125,25 @@ export class AdminGenerator extends BaseGenerator {
         this.render('admin/src/views/_entity/FormModal.vue.hbs', entityData),
       )
     }
+
+    // ── Backend admin routes ──────────────────────────────────────────
+
+    // Per-entity server-side admin CRUD handler
+    for (const entity of adminEntities) {
+      this.write(
+        `server/routes/admin/${toCamelCase(entity.name)}.${ext}`,
+        this.render('shared/server/routes/admin/_admin.hbs', {
+          ...commonData,
+          entity: entity.name,
+        }),
+      )
+    }
+
+    // Admin routes aggregator (imported by server/index.{ext})
+    this.write(
+      `server/routes/admin/index.${ext}`,
+      this.render('shared/server/routes/admin/index.hbs', commonData),
+    )
   }
 
   private toKebabCase(str: string): string {
