@@ -292,6 +292,13 @@ export class ScaffoldGenerator extends BaseGenerator {
         ...(action.roles && action.roles.length > 0
           ? [`  roles: [${action.roles.join(", ")}]`]
           : []),
+        ...(action.onSuccess?.sendEmail
+          ? [
+              `  onSuccess: {`,
+              `    sendEmail: ${action.onSuccess.sendEmail}`,
+              `  }`,
+            ]
+          : []),
         `}`,
         "",
       );
@@ -386,6 +393,26 @@ export class ScaffoldGenerator extends BaseGenerator {
         `}`,
         "",
       );
+    }
+
+    for (const email of ast.emails ?? []) {
+      lines.push(
+        `email ${email.name} {`,
+        `  provider: ${email.provider}`,
+        `  from: "${email.from}"`,
+      );
+      if (email.templates.length > 0) {
+        lines.push(`  templates: {`);
+        for (const tpl of email.templates) {
+          const fnStr =
+            tpl.fn.kind === "named"
+              ? `import { ${tpl.fn.namedExport} } from "${tpl.fn.source}"`
+              : `import ${tpl.fn.defaultExport} from "${tpl.fn.source}"`;
+          lines.push(`    ${tpl.name}: ${fnStr}`);
+        }
+        lines.push(`  }`);
+      }
+      lines.push(`}`, "");
     }
 
     return lines.join("\n");

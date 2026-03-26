@@ -31,7 +31,10 @@
     "vue": "^3.5.0"{{#if isSpa}},
     "vue-router": "^4.4.0"{{else}},
     "nuxt": "^4.0.0"{{/if}}{{#if hasJobs}},
-    "pg-boss": "^10.0.0"{{/if}}
+    "pg-boss": "^10.0.0"{{/if}}{{#if hasEmailResend}},
+    "resend": "^4.0.0"{{/if}}{{#if hasEmailSendgrid}},
+    "@sendgrid/mail": "^8.0.0"{{/if}}{{#if hasEmailSmtp}},
+    "nodemailer": "^6.9.0"{{/if}}
   },
   "devDependencies": {
     "drizzle-kit": "^0.28.0",
@@ -40,6 +43,7 @@
     "vite": "^6.0.0"{{/if}}{{#if isTypeScript}},
     "typescript": "^5.6.0",
     "vue-tsc": "^2.0.0",
-    "@types/node": "^22.0.0"{{/if}}
+    "@types/node": "^22.0.0"{{#if hasEmailSmtp}},
+    "@types/nodemailer": "^6.4.0"{{/if}}{{/if}}
   }
 }

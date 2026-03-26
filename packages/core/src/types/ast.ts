@@ -142,6 +142,19 @@ export interface StorageNode extends BaseNode {
   publicPath?: string;
 }
 
+// ------ Email ------
+
+export type EmailProvider = "resend" | "sendgrid" | "smtp";
+
+export interface EmailTemplateEntry {
+  name: string;
+  fn: ImportExpression;
+}
+
+export interface ActionOnSuccess {
+  sendEmail?: string; // template name (e.g. "welcome")
+}
+
 // ------ Job Executors ------
 
 export type JobExecutor = "PgBoss";
@@ -205,6 +218,14 @@ export interface ActionNode extends BaseNode {
   entities: string[];
   auth: boolean;
   roles?: string[];
+  onSuccess?: ActionOnSuccess;
+}
+
+export interface EmailNode extends BaseNode {
+  type: "Email";
+  provider: EmailProvider;
+  from: string;
+  templates: EmailTemplateEntry[];
 }
 
 export interface CrudNode extends BaseNode {
@@ -282,6 +303,7 @@ export interface VaspAST {
   seed?: SeedNode;
   admin?: AdminNode;
   storages?: StorageNode[];
+  emails?: EmailNode[];
 }
 
 // ------ Union of all node types ------
@@ -301,6 +323,7 @@ export type VaspNode =
   | JobNode
   | SeedNode
   | AdminNode
-  | StorageNode;
+  | StorageNode
+  | EmailNode;
 
 export type NodeType = VaspNode["type"];

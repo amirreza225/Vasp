@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import type { ImportExpression } from "@vasp-framework/core";
+import type { EmailTemplateEntry, ImportExpression } from "@vasp-framework/core";
 import { BaseGenerator } from "./BaseGenerator.js";
+import { toCamelCase } from "../template/TemplateEngine.js";
 
 export class QueryActionGenerator extends BaseGenerator {
   run(): void {
@@ -42,6 +43,37 @@ export class QueryActionGenerator extends BaseGenerator {
         "server/routes/actions/",
       );
 
+      // Resolve onSuccess.sendEmail template details
+      let onSuccessSendEmail: string | undefined;
+      let onSuccessTemplateFn: string | undefined;
+      let onSuccessTemplateSource: string | undefined;
+      let onSuccessMailerFile: string | undefined;
+
+      if (action.onSuccess?.sendEmail) {
+        const templateName = action.onSuccess.sendEmail;
+        onSuccessSendEmail = templateName;
+
+        // Find the email block that owns this template
+        const emailBlock = (ast.emails ?? []).find((e) =>
+          e.templates.some((t) => t.name === templateName),
+        );
+
+        if (emailBlock) {
+          const tplEntry = emailBlock.templates.find(
+            (t) => t.name === templateName,
+          )!;
+          const tplFn: EmailTemplateEntry["fn"] = tplEntry.fn;
+
+          onSuccessTemplateFn =
+            tplFn.kind === "named" ? tplFn.namedExport : tplFn.defaultExport;
+          onSuccessTemplateSource = this.resolveServerImport(
+            tplFn.source,
+            "server/routes/actions/",
+          );
+          onSuccessMailerFile = `../../email/${toCamelCase(emailBlock.name)}.${ext}`;
+        }
+      }
+
       this.write(
         `server/routes/actions/${this.camel(action.name)}.${ext}`,
         this.render("shared/server/routes/actions/_action.hbs", {
@@ -51,6 +83,10 @@ export class QueryActionGenerator extends BaseGenerator {
           requiresAuth: action.auth,
           hasRoles: (action.roles ?? []).length > 0,
           roles: action.roles ?? [],
+          onSuccessSendEmail,
+          onSuccessTemplateFn,
+          onSuccessTemplateSource,
+          onSuccessMailerFile,
         }),
       );
     }

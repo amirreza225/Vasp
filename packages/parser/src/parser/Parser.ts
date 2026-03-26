@@ -3,12 +3,16 @@ import type {
   ApiMethod,
   ApiNode,
   ActionNode,
+  ActionOnSuccess,
   AppNode,
   AuthMethod,
   AuthNode,
   CrudNode,
   CrudListConfig,
   CrudOperation,
+  EmailNode,
+  EmailProvider,
+  EmailTemplateEntry,
   EntityNode,
   EnvRequirement,
   FieldModifier,
@@ -202,11 +206,14 @@ class Parser {
           case TokenType.KW_STORAGE:
             (ast.storages ??= []).push(this.parseStorage());
             break;
+          case TokenType.KW_EMAIL:
+            (ast.emails ??= []).push(this.parseEmail());
+            break;
           default:
             throw this.error(
               "E010_UNEXPECTED_TOKEN",
               `Unexpected token '${kw.value}' at top level`,
-              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, or storage",
+              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, storage, or email",
               kw.loc,
             );
         }
@@ -684,6 +691,7 @@ class Parser {
     let entities: string[] = [];
     let auth = false;
     let roles: string[] = [];
+    let onSuccess: ActionOnSuccess | undefined;
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -702,11 +710,32 @@ class Parser {
         case "roles":
           roles = this.parseIdentifierArray();
           break;
+        case "onSuccess": {
+          this.consume(TokenType.LBRACE);
+          const successConfig: ActionOnSuccess = {};
+          while (!this.check(TokenType.RBRACE)) {
+            const innerKey = this.consumeIdentifier();
+            this.consume(TokenType.COLON);
+            if (innerKey.value === "sendEmail") {
+              successConfig.sendEmail = this.consumeIdentifier().value;
+            } else {
+              throw this.error(
+                "E057_UNKNOWN_PROP",
+                `Unknown onSuccess property '${innerKey.value}'`,
+                "Valid properties: sendEmail",
+                innerKey.loc,
+              );
+            }
+          }
+          this.consume(TokenType.RBRACE);
+          onSuccess = successConfig;
+          break;
+        }
         default:
           throw this.error(
             "E019_UNKNOWN_PROP",
             `Unknown action property '${key.value}'`,
-            "Valid properties: fn, entities, auth, roles",
+            "Valid properties: fn, entities, auth, roles, onSuccess",
             key.loc,
           );
       }
@@ -731,6 +760,7 @@ class Parser {
       entities,
       auth,
       ...(roles.length > 0 ? { roles } : {}),
+      ...(onSuccess !== undefined ? { onSuccess } : {}),
     };
   }
 
@@ -1174,6 +1204,78 @@ class Parser {
       ...(maxSize !== undefined ? { maxSize } : {}),
       ...(allowedTypes !== undefined ? { allowedTypes } : {}),
       ...(publicPath !== undefined ? { publicPath } : {}),
+    };
+  }
+
+  private parseEmail(): EmailNode {
+    const loc = this.consume(TokenType.KW_EMAIL).loc;
+    const name = this.consumeIdentifier();
+    this.consume(TokenType.LBRACE);
+
+    let provider: EmailProvider | null = null;
+    let from = "";
+    const templates: EmailTemplateEntry[] = [];
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier();
+      this.consume(TokenType.COLON);
+
+      switch (key.value) {
+        case "provider":
+          provider = this.consumeIdentifier().value as EmailProvider;
+          break;
+        case "from":
+          from = this.consumeString();
+          break;
+        case "templates": {
+          this.consume(TokenType.LBRACE);
+          while (!this.check(TokenType.RBRACE)) {
+            const templateName = this.consumeIdentifier();
+            this.consume(TokenType.COLON);
+            const fn = this.parseImportExpression();
+            templates.push({ name: templateName.value, fn });
+            if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA);
+          }
+          this.consume(TokenType.RBRACE);
+          break;
+        }
+        default:
+          throw this.error(
+            "E058_UNKNOWN_PROP",
+            `Unknown email property '${key.value}'`,
+            "Valid properties: provider, from, templates",
+            key.loc,
+          );
+      }
+    }
+
+    this.consume(TokenType.RBRACE);
+
+    if (!provider) {
+      throw this.error(
+        "E059_MISSING_EMAIL_PROVIDER",
+        `Email block '${name.value}' is missing a provider`,
+        "Add: provider: resend (or sendgrid, smtp)",
+        loc,
+      );
+    }
+
+    if (!from) {
+      throw this.error(
+        "E060_MISSING_EMAIL_FROM",
+        `Email block '${name.value}' is missing from address`,
+        'Add: from: "noreply@myapp.com"',
+        loc,
+      );
+    }
+
+    return {
+      type: "Email",
+      name: name.value,
+      loc,
+      provider,
+      from,
+      templates,
     };
   }
 

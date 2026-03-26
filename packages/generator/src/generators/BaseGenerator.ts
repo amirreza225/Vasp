@@ -31,6 +31,7 @@ export abstract class BaseGenerator {
 
   protected baseData(): Record<string, unknown> {
     const { ast, isTypeScript, isSsr, isSsg, isSpa, ext, mode } = this.ctx;
+    const emails = ast.emails ?? [];
     return {
       appName: ast.app.name,
       appTitle: ast.app.title,
@@ -62,6 +63,11 @@ export abstract class BaseGenerator {
       hasJobs: ast.jobs.length > 0,
       hasStorage: (ast.storages?.length ?? 0) > 0,
       storages: ast.storages ?? [],
+      hasEmail: emails.length > 0,
+      hasEmailResend: emails.some((e) => e.provider === "resend"),
+      hasEmailSendgrid: emails.some((e) => e.provider === "sendgrid"),
+      hasEmailSmtp: emails.some((e) => e.provider === "smtp"),
+      emails,
       routes: ast.routes,
       pages: ast.pages,
       queries: ast.queries,

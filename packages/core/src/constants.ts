@@ -48,6 +48,12 @@ export const SUPPORTED_STORAGE_PROVIDERS = [
   "gcs",
 ] as const;
 
+export const SUPPORTED_EMAIL_PROVIDERS = [
+  "resend",
+  "sendgrid",
+  "smtp",
+] as const;
+
 export const DEFAULT_BACKEND_PORT = 3001;
 export const DEFAULT_SPA_PORT = 5173;
 export const DEFAULT_SSR_PORT = 3000;

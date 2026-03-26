@@ -8,6 +8,7 @@ import {
   SUPPORTED_API_METHODS,
   SUPPORTED_AUTH_METHODS,
   SUPPORTED_CRUD_OPERATIONS,
+  SUPPORTED_EMAIL_PROVIDERS,
   SUPPORTED_MIDDLEWARE_SCOPES,
   SUPPORTED_REALTIME_EVENTS,
   SUPPORTED_FIELD_TYPES,
@@ -40,6 +41,8 @@ export class SemanticValidator {
     this.checkAdminEntities(ast);
     this.checkStorageBlocks(ast);
     this.checkStorageFieldRefs(ast);
+    this.checkEmailProviders(ast);
+    this.checkEmailOnSuccess(ast);
 
     const hasErrors = this.diagnostics.some((d) => d.code.startsWith("E"));
     if (hasErrors) {
@@ -758,6 +761,57 @@ export class SemanticValidator {
             loc: entity.loc,
           });
         }
+      }
+    }
+  }
+
+  private checkEmailProviders(ast: VaspAST): void {
+    for (const email of ast.emails ?? []) {
+      if (
+        !(SUPPORTED_EMAIL_PROVIDERS as readonly string[]).includes(
+          email.provider,
+        )
+      ) {
+        this.diagnostics.push({
+          code: "E115_UNKNOWN_EMAIL_PROVIDER",
+          message: `Unknown email provider '${email.provider}' in '${email.name}'`,
+          hint: `Supported providers: ${SUPPORTED_EMAIL_PROVIDERS.join(", ")}`,
+          loc: email.loc,
+        });
+      }
+    }
+  }
+
+  private checkEmailOnSuccess(ast: VaspAST): void {
+    // Build a set of all template names across all email blocks
+    const allTemplateNames = new Set<string>();
+    for (const email of ast.emails ?? []) {
+      for (const tpl of email.templates) {
+        allTemplateNames.add(tpl.name);
+      }
+    }
+
+    for (const action of ast.actions) {
+      const templateName = action.onSuccess?.sendEmail;
+      if (!templateName) continue;
+
+      if ((ast.emails ?? []).length === 0) {
+        this.diagnostics.push({
+          code: "E116_SEND_EMAIL_NO_EMAIL_BLOCK",
+          message: `Action '${action.name}' uses onSuccess.sendEmail but no email block is defined`,
+          hint: "Add an email block with a templates section",
+          loc: action.loc,
+        });
+        continue;
+      }
+
+      if (!allTemplateNames.has(templateName)) {
+        this.diagnostics.push({
+          code: "E117_UNKNOWN_EMAIL_TEMPLATE_REF",
+          message: `Action '${action.name}' references unknown email template '${templateName}'`,
+          hint: `Define a template named '${templateName}' in an email block`,
+          loc: action.loc,
+        });
       }
     }
   }

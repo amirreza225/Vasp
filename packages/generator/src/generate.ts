@@ -11,6 +11,7 @@ import { ApiGenerator } from "./generators/ApiGenerator.js";
 import { BackendGenerator } from "./generators/BackendGenerator.js";
 import { CrudGenerator } from "./generators/CrudGenerator.js";
 import { DrizzleSchemaGenerator } from "./generators/DrizzleSchemaGenerator.js";
+import { EmailGenerator } from "./generators/EmailGenerator.js";
 import { FrontendGenerator } from "./generators/FrontendGenerator.js";
 import { JobGenerator } from "./generators/JobGenerator.js";
 import { MiddlewareGenerator } from "./generators/MiddlewareGenerator.js";
@@ -70,6 +71,7 @@ export function generate(
     new CrudGenerator(ctx, engine, filesWritten, manifest).run();
     new RealtimeGenerator(ctx, engine, filesWritten, manifest).run();
     new JobGenerator(ctx, engine, filesWritten, manifest).run();
+    new EmailGenerator(ctx, engine, filesWritten, manifest).run();
     new SeedGenerator(ctx, engine, filesWritten, manifest).run();
     new StorageGenerator(ctx, engine, filesWritten, manifest).run();
     new FrontendGenerator(ctx, engine, filesWritten, manifest).run();

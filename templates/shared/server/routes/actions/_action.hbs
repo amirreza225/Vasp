@@ -4,6 +4,10 @@ import { db } from '../../db/client.{{ext}}'
 import { requireAuth{{#if hasRoles}}, requireRole{{/if}} } from '../../auth/middleware.{{ext}}'
 {{/if}}
 import { {{namedExport}} } from '{{importPath fnSource ext}}'
+{{#if onSuccessSendEmail}}
+import { {{onSuccessTemplateFn}} } from '{{importPath onSuccessTemplateSource ext}}'
+import { sendEmail } from '{{onSuccessMailerFile}}'
+{{/if}}
 
 export const {{camelCase name}}Route = new Elysia()
 {{#if requiresAuth}}
@@ -14,11 +18,17 @@ export const {{camelCase name}}Route = new Elysia()
 {{/if}}
   .post('/api/actions/{{camelCase name}}', async ({ body, user }) => {
     const result = await {{namedExport}}({ db, user, args: body })
+{{#if onSuccessSendEmail}}
+    await sendEmail({{onSuccessTemplateFn}}, result)
+{{/if}}
     return result
   })
 {{else}}
   .post('/api/actions/{{camelCase name}}', async ({ body }) => {
     const result = await {{namedExport}}({ db, args: body })
+{{#if onSuccessSendEmail}}
+    await sendEmail({{onSuccessTemplateFn}}, result)
+{{/if}}
     return result
   })
 {{/if}}
