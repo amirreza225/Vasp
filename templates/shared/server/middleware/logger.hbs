@@ -55,11 +55,15 @@ export function logger() {
       )
     })
     .onError({ as: 'scoped' }, ({ request, requestId, requestStart, set, error }) => {
-      set.headers['x-request-id'] = requestId
+      // requestId/requestStart may be undefined when onError fires before .derive() runs
+      // (e.g. 404, parse errors, pre-routing validation failures in Elysia 1.x)
+      const rid = requestId ?? request.headers.get('x-request-id') ?? crypto.randomUUID()
+      set.headers['x-request-id'] = rid
 
       if (!isDev) return
 
-      const duration = (performance.now() - requestStart).toFixed(1)
+      const start = requestStart ?? performance.now()
+      const duration = (performance.now() - start).toFixed(1)
       const url = new URL(request.url)
       const status = typeof set.status === 'number' ? set.status : 500
       const sc = statusColor(status)
@@ -67,7 +71,7 @@ export function logger() {
         `${colors.dim}[${new Date().toISOString()}]${colors.reset} ` +
         `${colorMethod(request.method)} ${url.pathname} ` +
         `${sc}${status}${colors.reset} ${colors.dim}${duration}ms${colors.reset} ` +
-        `${colors.dim}rid:${requestId.slice(0, 8)}${colors.reset} ` +
+        `${colors.dim}rid:${rid.slice(0, 8)}${colors.reset} ` +
         `${colors.bold}\x1b[31m${error.message}${colors.reset}`,
       )
     })
