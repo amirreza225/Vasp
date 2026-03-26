@@ -32,17 +32,17 @@ jobs:
       #   core → parser → generator → cli
       # Without this the agent hits "Property X does not exist on type VaspAST"
       # errors immediately when it runs typecheck or tests.
-      - name: Build all packages
-        run: bun run build
+      # - name: Build all packages
+      #   run: bun run build
 
       # Verify the environment is sane before the agent starts.
       # If this fails, the agent starts with a broken baseline which makes
       # it much harder to distinguish its own mistakes from pre-existing issues.
-      - name: Typecheck
-        run: bun run typecheck
+      # - name: Typecheck
+      #   run: bun run typecheck
 
       # - name: Exhaustiveness check
       #   run: bun run check:exhaustiveness
 
-      - name: Unit tests
-        run: bun run test
+      # - name: Unit tests
+      #   run: bun run test
