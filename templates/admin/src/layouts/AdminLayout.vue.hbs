@@ -1,0 +1,111 @@
+<script setup>
+import { ref, computed } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+{{#if hasAuth}}
+import { useAdminAuth } from '@/composables/useAdminAuth.{{ext}}'
+
+const { currentAdminUser, logout } = useAdminAuth()
+{{/if}}
+
+const router = useRouter()
+const route = useRoute()
+const collapsed = ref(false)
+
+const selectedKeys = computed(() => [route.path === '/' ? '/dashboard' : '/' + route.path.split('/')[1]])
+const pageTitle = computed(() => route.meta?.title ?? '{{appTitle}} Admin')
+
+const menuItems = [
+  { key: '/dashboard', label: 'Dashboard' },
+{{#each adminEntities}}
+  { key: '/{{kebabCase name}}', label: '{{pascalCase name}}' },
+{{/each}}
+]
+
+function navigate(key) {
+  router.push(key)
+}
+</script>
+
+<template>
+  <a-layout style="min-height: 100vh">
+    <a-layout-sider v-model:collapsed="collapsed" collapsible>
+      <div class="admin-logo">
+        <span v-if="!collapsed">{{appTitle}}</span>
+        <span v-else>A</span>
+      </div>
+      <a-menu
+        v-model:selectedKeys="selectedKeys"
+        theme="dark"
+        mode="inline"
+      >
+        <a-menu-item
+          v-for="item in menuItems"
+          :key="item.key"
+          @click="navigate(item.key)"
+        >
+          \{{ item.label }}
+        </a-menu-item>
+      </a-menu>
+    </a-layout-sider>
+    <a-layout>
+      <a-layout-header class="admin-header">
+        <span class="page-title">\{{ pageTitle }}</span>
+        {{#if hasAuth}}
+        <div class="header-right">
+          <span v-if="currentAdminUser" class="user-info">
+            <a-tag>\{{ currentAdminUser.username ?? currentAdminUser.email ?? 'Admin' }}</a-tag>
+          </span>
+          <a-button type="text" size="small" @click="logout">Logout</a-button>
+        </div>
+        {{/if}}
+      </a-layout-header>
+      <a-layout-content style="margin: 24px; min-height: 280px">
+        <RouterView />
+      </a-layout-content>
+      <a-layout-footer style="text-align: center; color: #888">
+        {{appTitle}} Admin &middot; Powered by Vasp
+      </a-layout-footer>
+    </a-layout>
+  </a-layout>
+</template>
+
+<style scoped>
+.admin-logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  overflow: hidden;
+  white-space: nowrap;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0 16px;
+}
+
+.admin-header {
+  background: #fff;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.page-title {
+  font-size: 16px;
+  font-weight: 600;
+  flex: 1;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+}
+</style>

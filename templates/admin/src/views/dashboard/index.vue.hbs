@@ -1,0 +1,54 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+{{#each adminEntities}}
+import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{../ext}}'
+{{/each}}
+
+const counts = ref({
+{{#each adminEntities}}
+  {{camelCase name}}: 0,
+{{/each}}
+})
+const loading = ref(true)
+
+async function fetchCounts() {
+  loading.value = true
+  try {
+    const results = await Promise.allSettled([
+{{#each adminEntities}}
+      {{pascalCase name}}Api.list({ limit: 1, offset: 0 }).then((r) => ({ key: '{{camelCase name}}', total: r.total })),
+{{/each}}
+    ])
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        counts.value[result.value.key] = result.value.total
+      }
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(fetchCounts)
+</script>
+
+<template>
+  <div>
+    <a-row :gutter="[16, 16]" style="margin-bottom: 24px">
+{{#each adminEntities}}
+      <a-col :xs="24" :sm="12" :lg="6">
+        <a-card hoverable>
+          <a-statistic
+            title="{{pascalCase name}}"
+            :value="counts.{{camelCase name}}"
+            :loading="loading"
+          />
+        </a-card>
+      </a-col>
+{{/each}}
+    </a-row>
+    <a-card title="Welcome to {{appTitle}} Admin">
+      <p>Manage your application data using the sidebar navigation.</p>
+    </a-card>
+  </div>
+</template>

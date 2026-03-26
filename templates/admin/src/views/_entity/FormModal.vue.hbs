@@ -1,0 +1,167 @@
+<script setup>
+import { ref, watch{{#if hasManyToOneRelations}}, onMounted{{/if}} } from 'vue'
+import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{ext}}'
+{{#each uniqueRelatedEntities}}import { {{pascalCase this}}Api } from '@/api/{{kebabCase this}}.{{../ext}}'
+{{/each}}import { message } from 'ant-design-vue'
+
+const props = defineProps({
+  visible: Boolean,
+  record: Object,
+})
+
+const emit = defineEmits(['close', 'saved'])
+
+// JSON fields need string ↔ object conversion
+const jsonFields = [{{#each fields}}{{#unless isRelation}}{{#if (eq type "Json")}}'{{name}}', {{/if}}{{/unless}}{{/each}}]
+// Nullable DateTime fields — convert empty string to null before submitting
+const nullableDateTimeFields = [{{#each fields}}{{#unless isRelation}}{{#unless (includes modifiers "id")}}{{#unless isUpdatedAt}}{{#unless (includes modifiers "default_now")}}{{#if (eq type "DateTime")}}{{#if nullable}}'{{name}}', {{/if}}{{/if}}{{/unless}}{{/unless}}{{/unless}}{{/unless}}{{/each}}]
+
+// Options for relation selects (loaded on mount)
+{{#each manyToOneRelations}}const {{name}}Options = ref([])
+{{/each}}
+function emptyForm() {
+  return {
+{{#each fields}}
+{{#unless isRelation}}
+{{#unless (includes modifiers "id")}}
+{{#unless isUpdatedAt}}
+{{#unless (includes modifiers "default_now")}}
+    {{name}}: {{#if (eq type "Boolean")}}false{{else if (eq type "Int")}}0{{else if (eq type "Float")}}0{{else if (eq type "Enum")}}{{#if enumValues}}'{{enumValues.[0]}}'{{else}}''{{/if}}{{else if (eq type "DateTime")}}{{#if nullable}}null{{else}}''{{/if}}{{else if (eq type "Json")}}'{}'{{else}}''{{/if}},
+{{/unless}}
+{{/unless}}
+{{/unless}}
+{{/unless}}
+{{/each}}
+{{#each manyToOneRelations}}    {{fkName}}: null,
+{{/each}}{{#if hasAuth}}{{#if (eq name auth.userEntity)}}{{#if (includes auth.methods "usernameAndPassword")}}
+    password: '',
+{{/if}}{{/if}}{{/if}}
+  }
+}
+
+const form = ref(emptyForm())
+const loading = ref(false)
+
+watch(() => props.record, (val) => {
+  if (val) {
+    const copy = { ...val }
+    for (const k of jsonFields) {
+      if (copy[k] != null) {
+        copy[k] = typeof copy[k] === 'string' ? copy[k] : JSON.stringify(copy[k], null, 2)
+      }
+    }
+    form.value = copy
+  } else {
+    form.value = emptyForm()
+  }
+}, { immediate: true })
+
+{{#if hasManyToOneRelations}}
+onMounted(async () => {
+{{#each manyToOneRelations}}  try {
+    const res = await {{pascalCase relatedEntity}}Api.list({ limit: 100, offset: 0 })
+    // Label uses common display fields in priority order; falls back to the record's id.
+    {{name}}Options.value = (res.data?.items ?? []).map((r) => ({
+      label: String(r.name ?? r.title ?? r.username ?? r.email ?? r.id),
+      value: r.id,
+    }))
+  } catch { /* ignore — options stay empty */ }
+{{/each}}
+})
+{{/if}}
+async function handleSubmit() {
+  loading.value = true
+  try {
+    const payload = { ...form.value }
+    for (const k of jsonFields) {
+      if (payload[k] && typeof payload[k] === 'string') {
+        try { payload[k] = JSON.parse(payload[k]) } catch {
+          message.error(`Field "${k}" must be valid JSON`)
+          return
+        }
+      }
+    }
+    for (const k of nullableDateTimeFields) {
+      if (payload[k] === '') payload[k] = null
+    }
+    if (props.record?.id) {
+      await {{pascalCase name}}Api.update(props.record.id, payload)
+    } else {
+      await {{pascalCase name}}Api.create(payload)
+    }
+    emit('saved')
+  } catch (err) {
+    message.error(err instanceof Error ? err.message : 'Save failed')
+  } finally {
+    loading.value = false
+  }
+}
+</script>
+
+<template>
+  <a-modal
+    :open="visible"
+    :title="record?.id ? 'Edit {{pascalCase name}}' : 'Create {{pascalCase name}}'"
+    :confirm-loading="loading"
+    @ok="handleSubmit"
+    @cancel="emit('close')"
+  >
+    <a-form :model="form" layout="vertical" style="margin-top: 16px">
+{{#each fields}}
+{{#unless isRelation}}
+{{#unless (includes modifiers "id")}}
+{{#unless isUpdatedAt}}
+{{#unless (includes modifiers "default_now")}}
+      <a-form-item label="{{pascalCase name}}"{{#if nullable}} extra="Optional"{{/if}} name="{{name}}">
+{{#if (eq type "Boolean")}}
+        <a-switch v-model:checked="form.{{name}}" />
+{{else if (eq type "Int")}}
+        <a-input-number v-model:value="form.{{name}}" style="width: 100%" />
+{{else if (eq type "Float")}}
+        <a-input-number v-model:value="form.{{name}}" :step="0.01" style="width: 100%" />
+{{else if (eq type "DateTime")}}
+        <a-input v-model:value="form.{{name}}" placeholder="YYYY-MM-DD HH:MM:SS" />
+{{else if (eq type "Text")}}
+        <a-textarea v-model:value="form.{{name}}" :rows="4" />
+{{else if (eq type "Json")}}
+        <a-textarea v-model:value="form.{{name}}" :rows="4" placeholder="{}" style="font-family: monospace" />
+{{else if (eq type "Enum")}}
+        <a-select v-model:value="form.{{name}}" style="width: 100%">
+{{#each enumValues}}
+          <a-select-option value="{{this}}">{{this}}</a-select-option>
+{{/each}}
+        </a-select>
+{{else}}
+        <a-input v-model:value="form.{{name}}" />
+{{/if}}
+      </a-form-item>
+{{/unless}}
+{{/unless}}
+{{/unless}}
+{{/unless}}
+{{/each}}
+{{#each manyToOneRelations}}
+      <a-form-item label="{{pascalCase name}}"{{#if nullable}} extra="Optional"{{/if}} name="{{fkName}}">
+        <a-select
+          v-model:value="form.{{fkName}}"
+          :options="{{name}}Options"
+          placeholder="Select {{pascalCase relatedEntity}}"
+          show-search
+          :filter-option="(input, opt) => (opt?.label?.toString().toLowerCase() ?? '').includes(input.toLowerCase())"
+          {{#if nullable}}:allow-clear="true"{{/if}}
+          style="width: 100%"
+        />
+      </a-form-item>
+{{/each}}
+{{#if hasAuth}}{{#if (eq name auth.userEntity)}}{{#if (includes auth.methods "usernameAndPassword")}}
+      <a-form-item
+        name="password"
+        :label="record?.id ? 'New Password' : 'Password'"
+        :extra="record?.id ? 'Optional — leave blank to keep current password' : 'Required, min. 8 characters'"
+      >
+        <a-input-password v-model:value="form.password" placeholder="Min. 8 characters" />
+      </a-form-item>
+{{/if}}{{/if}}{{/if}}
+    </a-form>
+  </a-modal>
+</template>

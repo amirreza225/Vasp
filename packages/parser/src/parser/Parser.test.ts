@@ -680,3 +680,55 @@ describe('Parser — snapshot: minimal fixture', () => {
     expect(clean).toMatchSnapshot()
   })
 })
+
+describe('Parser — admin block', () => {
+  const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`
+
+  it('parses admin block with entities list', () => {
+    const ast = parse(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      entity User { id: Int @id username: String }
+      admin {
+        entities: [Todo, User]
+      }
+    `)
+    expect(ast.admin).toMatchObject({
+      type: 'Admin',
+      entities: ['Todo', 'User'],
+    })
+  })
+
+  it('parses admin block with a single entity', () => {
+    const ast = parse(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      admin {
+        entities: [Todo]
+      }
+    `)
+    expect(ast.admin).toBeDefined()
+    expect(ast.admin!.entities).toEqual(['Todo'])
+  })
+
+  it('admin is undefined when no admin block is present', () => {
+    const ast = parse(`${APP}`)
+    expect(ast.admin).toBeUndefined()
+  })
+
+  it('throws on duplicate admin blocks (E046)', () => {
+    expect(() => parse(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      admin { entities: [Todo] }
+      admin { entities: [Todo] }
+    `)).toThrow('E046_DUPLICATE_ADMIN_BLOCK')
+  })
+
+  it('throws on unknown admin property', () => {
+    expect(() => parse(`
+      ${APP}
+      admin { unknown: foo }
+    `)).toThrow('E047_UNKNOWN_PROP')
+  })
+})

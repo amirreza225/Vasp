@@ -323,6 +323,15 @@ export class ScaffoldGenerator extends BaseGenerator {
       )
     }
 
+    if (ast.admin && ast.admin.entities.length > 0) {
+      lines.push(
+        `admin {`,
+        `  entities: [${ast.admin.entities.join(', ')}]`,
+        `}`,
+        '',
+      )
+    }
+
     return lines.join('\n')
   }
 }

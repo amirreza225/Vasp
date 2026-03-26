@@ -114,24 +114,35 @@ export class TemplateEngine {
 
     /** valibotSchema: maps a Vasp field type + nullability to a Valibot schema expression */
     this.hbs.registerHelper('valibotSchema', (fieldType: string, nullable?: boolean, optional?: unknown, enumValues?: unknown) => {
+      const isNullable = nullable === true
+      const isOptional = optional === true || optional === 'true'
+
       let base: string
       if (fieldType === 'Enum' && Array.isArray(enumValues) && enumValues.length > 0) {
         const items = enumValues.map((v: string) => `'${v}'`).join(', ')
         base = `v.picklist([${items}])`
+      } else if (fieldType === 'DateTime') {
+        // Validate that the string is non-empty and parses to a valid Date before transforming.
+        // For nullable fields use v.union so that null is accepted but empty strings are rejected.
+        const validDate = `v.pipe(v.string(), v.minLength(1), v.transform(s => new Date(s)), v.check(d => !isNaN(d.getTime()), 'Invalid date'))`
+        if (isNullable) {
+          const schema = `v.union([v.null(), ${validDate}])`
+          return isOptional ? `v.optional(${schema})` : schema
+        }
+        return isOptional ? `v.optional(${validDate})` : validDate
       } else {
+        // Nullable String/Text fields accept empty strings — no minLength(1) required.
+        // Non-nullable String/Text fields still enforce minLength(1) to prevent blank values.
         const baseMap: Record<string, string> = {
-          String: 'v.pipe(v.string(), v.minLength(1))',
-          Text: 'v.pipe(v.string(), v.minLength(1))',
+          String: isNullable ? 'v.string()' : 'v.pipe(v.string(), v.minLength(1))',
+          Text: isNullable ? 'v.string()' : 'v.pipe(v.string(), v.minLength(1))',
           Int: 'v.number()',
           Float: 'v.number()',
           Boolean: 'v.boolean()',
-          DateTime: 'v.pipe(v.string(), v.transform(s => new Date(s)))',
           Json: 'v.unknown()',
         }
         base = baseMap[fieldType] ?? 'v.unknown()'
       }
-
-      const isOptional = optional === true || optional === 'true'
 
       if (nullable) {
         return isOptional

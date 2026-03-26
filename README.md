@@ -103,9 +103,41 @@ job sendWelcomeEmail {
   }
   schedule: "0 * * * *"
 }
+
+admin {
+  entities: [Todo, User]
+}
 ```
 
 Vasp reads this file and generates a complete full-stack application. You only write business logic — everything else is handled.
+
+---
+
+## Admin Panel
+
+Add an `admin` block to instantly generate a standalone **Ant Design Vue** admin panel wired to your CRUD endpoints:
+
+```vasp
+admin {
+  entities: [Todo, User]
+}
+```
+
+Vasp generates an `admin/` directory containing a full Vite + Vue 3 application:
+
+- **Collapsible sidebar** with a route per entity and a dashboard overview
+- **Per-entity CRUD table** — server-paginated, sortable, with inline Delete confirmation
+- **Create / Edit modal** — form fields are automatically typed (`a-switch` for Boolean, `a-input-number` for Int/Float, `a-textarea` for Text, `a-input` for String, etc.)
+- **Axios API client** per entity, proxied to your Elysia backend at `/api/crud`
+- Supports both **JavaScript** and **TypeScript** (controlled by `app.typescript`)
+
+Run the admin panel independently:
+
+```bash
+cd admin
+bun install
+bun run dev   # starts on port 5174
+```
 
 ---
 
@@ -188,6 +220,17 @@ my-app/
 │       └── jobs/
 ├── drizzle/
 │   └── schema.js/.ts       ← Auto-generated Drizzle schema
+├── admin/                  ← Only when admin block is present
+│   ├── package.json        ← Vue 3 + Ant Design Vue + Pinia + Vite
+│   ├── index.html
+│   ├── vite.config.js/.ts
+│   └── src/
+│       ├── main.js/.ts
+│       ├── App.vue
+│       ├── router/
+│       ├── layouts/        ← AdminLayout (collapsible sidebar)
+│       ├── views/          ← Per-entity CRUD pages + FormModal
+│       └── api/            ← Per-entity axios clients
 ├── nuxt/                   ← Only when ssr/ssg enabled
 ├── bunfig.toml
 ├── vite.config.js          ← or nuxt.config.ts when SSR/SSG
@@ -245,6 +288,7 @@ vasp --version
 | CRUD endpoints (with pagination/sorting) | Done |
 | Realtime (WebSocket with auth & rooms) | Done |
 | Background jobs (PgBoss with cron scheduling) | Done |
+| Admin panel generation (Ant Design Vue, per-entity CRUD UI) | Done |
 | `vasp new` CLI command | Done |
 | `vasp new` interactive prompts (TypeScript / SSR / starter) | Done |
 | `vasp new --starter=<name>` | Done |
@@ -326,6 +370,7 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
    - `RealtimeGenerator` → WebSocket channels
    - `JobGenerator` → PgBoss background job wiring
    - `FrontendGenerator` → Vue 3 SPA (Vite) **or** Nuxt 4 SSR/SSG
+   - `AdminGenerator` → standalone Ant Design Vue admin panel (when `admin` block is present)
 
    All output files are produced from [Handlebars](https://handlebarsjs.com) templates under `templates/`. There are four template trees: SPA+JS, SPA+TS, SSR+JS, SSR+TS.
 

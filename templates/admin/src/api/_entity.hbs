@@ -1,0 +1,14 @@
+import axios from 'axios'
+
+const http = axios.create({
+  baseURL: '/api/admin',
+  withCredentials: true,
+})
+
+export const {{pascalCase name}}Api = {
+  list: (params) => http.get('/{{camelCase name}}', { params }).then(r => r.data),
+  get: (id) => http.get(`/{{camelCase name}}/${id}`).then(r => r.data),
+  create: (data) => http.post('/{{camelCase name}}', data).then(r => r.data),
+  update: (id, data) => http.put(`/{{camelCase name}}/${id}`, data).then(r => r.data),
+  remove: (id) => http.delete(`/{{camelCase name}}/${id}`).then(r => r.data),
+}

@@ -1,6 +1,7 @@
 import type { GeneratorOptions, GeneratorResult, VaspAST } from '@vasp-framework/core'
 import { VASP_VERSION } from '@vasp-framework/core'
 import { createConsoleLogger, createContext } from './GeneratorContext.js'
+import { AdminGenerator } from './generators/AdminGenerator.js'
 import { AuthGenerator } from './generators/AuthGenerator.js'
 import { ApiGenerator } from './generators/ApiGenerator.js'
 import { BackendGenerator } from './generators/BackendGenerator.js'
@@ -58,6 +59,7 @@ export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult 
     new JobGenerator(ctx, engine, filesWritten, manifest).run()
     new SeedGenerator(ctx, engine, filesWritten, manifest).run()
     new FrontendGenerator(ctx, engine, filesWritten, manifest).run()
+    new AdminGenerator(ctx, engine, filesWritten, manifest).run()
 
     // All generators succeeded — commit staged files to real output dir.
     // .env is preserved if the existing one has non-placeholder values.

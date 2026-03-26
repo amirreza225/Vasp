@@ -1,4 +1,5 @@
 import type {
+  AdminNode,
   ApiMethod,
   ApiNode,
   ActionNode,
@@ -137,11 +138,23 @@ class Parser {
             }
             ast.seed = this.parseSeed()
             break
+          case TokenType.KW_ADMIN:
+            if (ast.admin) {
+              this.consume(TokenType.KW_ADMIN)
+              throw this.error(
+                'E046_DUPLICATE_ADMIN_BLOCK',
+                'Duplicate admin block found',
+                'Only one admin block is allowed in main.vasp',
+                kw.loc,
+              )
+            }
+            ast.admin = this.parseAdmin()
+            break
           default:
             throw this.error(
               'E010_UNEXPECTED_TOKEN',
               `Unexpected token '${kw.value}' at top level`,
-              'Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, or seed',
+              'Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, or admin',
               kw.loc,
             )
         }
@@ -789,6 +802,30 @@ class Parser {
     }
 
     return { type: 'Seed', fn, loc }
+  }
+
+  private parseAdmin(): AdminNode {
+    const loc = this.consume(TokenType.KW_ADMIN).loc
+    this.consume(TokenType.LBRACE)
+
+    let entities: string[] = []
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier()
+      this.consume(TokenType.COLON)
+
+      switch (key.value) {
+        case 'entities':
+          entities = this.parseIdentifierArray()
+          break
+        default:
+          throw this.error('E047_UNKNOWN_PROP', `Unknown admin property '${key.value}'`, 'Valid properties: entities', key.loc)
+      }
+    }
+
+    this.consume(TokenType.RBRACE)
+
+    return { type: 'Admin', entities, loc }
   }
 
   // ---- Value parsers ----
