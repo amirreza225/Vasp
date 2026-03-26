@@ -14,14 +14,14 @@ auth User {
 
 entity User {
   id: Int @id
-  username: String @unique
-  email: String @unique
+  username: String @unique @validate(minLength: 3, maxLength: 30)
+  email: String @unique @validate(email)
   todos: Todo[]
 }
 
 entity Todo {
   id: Int @id
-  title: String
+  title: String @validate(minLength: 1, maxLength: 255)
   done: Boolean
   content: Text @nullable
   metadata: Json @nullable

@@ -1,3 +1,4 @@
+import type { FieldValidation } from '@vasp-framework/core'
 import { GeneratorError } from '@vasp-framework/core'
 import Handlebars from 'handlebars'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -112,10 +113,14 @@ export class TemplateEngine {
       return tsMap[fieldType] ?? fieldType
     })
 
-    /** valibotSchema: maps a Vasp field type + nullability to a Valibot schema expression */
-    this.hbs.registerHelper('valibotSchema', (fieldType: string, nullable?: boolean, optional?: unknown, enumValues?: unknown) => {
+    /** valibotSchema: maps a Vasp field type + nullability + validation rules to a Valibot schema expression */
+    this.hbs.registerHelper('valibotSchema', (fieldType: string, nullable?: boolean, optional?: unknown, enumValues?: unknown, validation?: unknown) => {
       const isNullable = nullable === true
       const isOptional = optional === true || optional === 'true'
+      // validation may come from Handlebars template context (FieldValidation object or undefined)
+      const vld = (validation && typeof validation === 'object' && !Array.isArray(validation) && !('hash' in (validation as object)))
+        ? (validation as FieldValidation)
+        : undefined
 
       let base: string
       if (fieldType === 'Enum' && Array.isArray(enumValues) && enumValues.length > 0) {
@@ -130,14 +135,33 @@ export class TemplateEngine {
           return isOptional ? `v.optional(${schema})` : schema
         }
         return isOptional ? `v.optional(${validDate})` : validDate
+      } else if (fieldType === 'String' || fieldType === 'Text') {
+        // Build a v.pipe() chain from the base string validator + any declared rules
+        const parts: string[] = ['v.string()']
+
+        // Format validators (mutually exclusive: email, url, uuid)
+        if (vld?.email) parts.push('v.email()')
+        else if (vld?.url) parts.push('v.url()')
+        else if (vld?.uuid) parts.push('v.uuid()')
+
+        // Length constraints
+        if (vld?.minLength != null) {
+          parts.push(`v.minLength(${vld.minLength})`)
+        } else {
+          // Default: all strings must be non-empty unless user overrides minLength
+          parts.push('v.minLength(1)')
+        }
+        if (vld?.maxLength != null) parts.push(`v.maxLength(${vld.maxLength})`)
+
+        base = parts.length > 1 ? `v.pipe(${parts.join(', ')})` : parts[0]!
+      } else if (fieldType === 'Int' || fieldType === 'Float') {
+        // Build a v.pipe() chain for numeric types
+        const parts: string[] = ['v.number()']
+        if (vld?.min != null) parts.push(`v.minValue(${vld.min})`)
+        if (vld?.max != null) parts.push(`v.maxValue(${vld.max})`)
+        base = parts.length > 1 ? `v.pipe(${parts.join(', ')})` : parts[0]!
       } else {
-        // Nullable String/Text fields accept empty strings — no minLength(1) required.
-        // Non-nullable String/Text fields still enforce minLength(1) to prevent blank values.
         const baseMap: Record<string, string> = {
-          String: isNullable ? 'v.string()' : 'v.pipe(v.string(), v.minLength(1))',
-          Text: isNullable ? 'v.string()' : 'v.pipe(v.string(), v.minLength(1))',
-          Int: 'v.number()',
-          Float: 'v.number()',
           Boolean: 'v.boolean()',
           Json: 'v.unknown()',
         }

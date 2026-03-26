@@ -12,6 +12,7 @@ import type {
   EnvRequirement,
   FieldModifier,
   FieldNode,
+  FieldValidation,
   ImportExpression,
   JobNode,
   MiddlewareNode,
@@ -41,6 +42,43 @@ export function parse(source: string, filename = 'main.vasp'): VaspAST {
 function extractRouteParams(path: string): string[] {
   const matches = path.match(/:([^/]+)/g)
   return matches ? matches.map((m) => m.slice(1)) : []
+}
+
+/**
+ * Parse the raw content of a @validate(...) modifier into a FieldValidation object.
+ * Examples:
+ *   "email"                         → { email: true }
+ *   "minLength: 3, maxLength: 30"   → { minLength: 3, maxLength: 30 }
+ *   "email, minLength: 5"           → { email: true, minLength: 5 }
+ *   "min: 0, max: 100"              → { min: 0, max: 100 }
+ */
+function parseValidateArgs(raw: string): FieldValidation {
+  const validation: FieldValidation = {}
+  const rules = raw.split(',').map((r) => r.trim()).filter(Boolean)
+
+  for (const rule of rules) {
+    const colonIdx = rule.indexOf(':')
+    if (colonIdx === -1) {
+      // Boolean flag: email | url | uuid
+      const flag = rule.trim()
+      if (flag === 'email') validation.email = true
+      else if (flag === 'url') validation.url = true
+      else if (flag === 'uuid') validation.uuid = true
+    } else {
+      // Numeric key-value: minLength: 3 | maxLength: 100 | min: 0 | max: 255
+      const key = rule.slice(0, colonIdx).trim()
+      const value = rule.slice(colonIdx + 1).trim()
+      const numValue = Number(value)
+      if (!isNaN(numValue)) {
+        if (key === 'minLength') validation.minLength = numValue
+        else if (key === 'maxLength') validation.maxLength = numValue
+        else if (key === 'min') validation.min = numValue
+        else if (key === 'max') validation.max = numValue
+      }
+    }
+  }
+
+  return validation
 }
 
 class Parser {
@@ -384,12 +422,13 @@ class Parser {
 
       const isRelation = !primitiveTypes.has(fieldTypeStr)
 
-      // Parse modifiers (@id, @unique, @default(...), @nullable, @updatedAt, @onDelete(...))
+      // Parse modifiers (@id, @unique, @default(...), @nullable, @updatedAt, @onDelete(...), @validate(...))
       const modifiers: FieldModifier[] = []
       let nullable = false
       let defaultValue: string | undefined
       let onDelete: OnDeleteBehavior | undefined
       let isUpdatedAt = false
+      let fieldValidation: FieldValidation | undefined
 
       while (this.check(TokenType.AT_MODIFIER)) {
         const mod = this.consume(TokenType.AT_MODIFIER)
@@ -413,6 +452,8 @@ class Parser {
         } else if (modVal.startsWith('onDelete_')) {
           const raw = modVal.slice('onDelete_'.length)
           onDelete = (raw === 'setNull' ? 'set null' : raw) as OnDeleteBehavior
+        } else if (modVal.startsWith('validate_')) {
+          fieldValidation = parseValidateArgs(modVal.slice('validate_'.length))
         }
         // Unknown modifiers are silently ignored (forward-compat)
       }
@@ -430,6 +471,7 @@ class Parser {
       if (defaultValue !== undefined) field.defaultValue = defaultValue
       if (onDelete !== undefined) field.onDelete = onDelete
       if (enumValues !== undefined) field.enumValues = enumValues
+      if (fieldValidation !== undefined) field.validation = fieldValidation
 
       fields.push(field)
     }

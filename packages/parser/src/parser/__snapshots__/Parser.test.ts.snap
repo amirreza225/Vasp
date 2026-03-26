@@ -85,6 +85,10 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
           "name": "username",
           "nullable": false,
           "type": "String",
+          "validation": {
+            "maxLength": 30,
+            "minLength": 3,
+          },
         },
         {
           "isArray": false,
@@ -96,6 +100,9 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
           "name": "email",
           "nullable": false,
           "type": "String",
+          "validation": {
+            "email": true,
+          },
         },
         {
           "isArray": true,
@@ -132,6 +139,10 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
           "name": "title",
           "nullable": false,
           "type": "String",
+          "validation": {
+            "maxLength": 255,
+            "minLength": 1,
+          },
         },
         {
           "isArray": false,
