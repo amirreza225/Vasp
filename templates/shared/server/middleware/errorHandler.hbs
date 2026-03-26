@@ -59,6 +59,56 @@ export function errorHandler() {
         }
       }
 
+      // Known PostgreSQL / Drizzle database errors — surface a user-friendly message.
+      // PostgreSQL error codes: https://www.postgresql.org/docs/current/errcodes-appendix.html
+      const pgErr{{#if isTypeScript}}: Record<string, unknown>{{/if}} = error{{#if isTypeScript}} as Record<string, unknown>{{/if}}
+      const pgCode = pgErr?.code
+      if (typeof pgCode === 'string') {
+        const detail = String(pgErr?.detail ?? '')
+        if (pgCode === '23505') {
+          set.status = 409
+          return {
+            ok: false,
+            error: {
+              code: 'UNIQUE_VIOLATION',
+              message: detail ? `Unique constraint violation: ${detail}` : 'A record with this value already exists.',
+            },
+          }
+        }
+        if (pgCode === '23503') {
+          set.status = 400
+          return {
+            ok: false,
+            error: {
+              code: 'FOREIGN_KEY_VIOLATION',
+              message: detail ? `Foreign key constraint violation: ${detail}` : 'Referenced record does not exist.',
+            },
+          }
+        }
+        if (pgCode === '23502') {
+          const column = String(pgErr?.column ?? '')
+          set.status = 400
+          return {
+            ok: false,
+            error: {
+              code: 'NOT_NULL_VIOLATION',
+              message: column ? `Field "${column}" cannot be null.` : 'A required field cannot be null.',
+            },
+          }
+        }
+        if (pgCode === '23514') {
+          const constraint = String(pgErr?.constraint ?? '')
+          set.status = 400
+          return {
+            ok: false,
+            error: {
+              code: 'CHECK_VIOLATION',
+              message: constraint ? `Check constraint "${constraint}" was violated.` : 'A check constraint was violated.',
+            },
+          }
+        }
+      }
+
       // Unexpected error — log and mask (expose stack only in development)
       console.error('[server error]', error)
       set.status = 500
