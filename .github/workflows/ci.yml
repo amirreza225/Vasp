@@ -31,6 +31,16 @@ jobs:
       - run: bun install
       - run: bun run typecheck
 
+  exhaustiveness:
+    name: Exhaustiveness Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - run: bun run check:exhaustiveness
+
   test-e2e:
     name: E2E Tests
     runs-on: ubuntu-latest

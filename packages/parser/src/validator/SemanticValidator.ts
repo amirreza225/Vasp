@@ -1,3 +1,8 @@
+// @exhaustiveness-partial: field-type
+// Intentional: checkValidationRules() only branches on String/Text/Int/Float
+// because those are the only types that support @validate. All other
+// PrimitiveFieldType values (Boolean, DateTime, Json, Enum, File) are
+// rejected earlier via the noValidationTypes Set.
 import type {
   ParseDiagnostic,
   SourceLocation,
