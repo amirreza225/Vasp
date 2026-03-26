@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 {{#each adminEntities}}
-import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{ext}}'
+import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{../ext}}'
 {{/each}}
 
 const counts = ref({
