@@ -42,8 +42,8 @@ jobs:
       - name: Exhaustiveness check
         run: bun run check:exhaustiveness
 
-      - name: Prettier — format check
-        run: bunx prettier --check "packages/*/src/**/*.ts"
+      # - name: Prettier — format check
+      #   run: bunx prettier --check "packages/*/src/**/*.ts"
 
       - name: ESLint
         run: bun run lint

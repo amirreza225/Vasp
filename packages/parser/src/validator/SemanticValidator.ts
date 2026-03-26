@@ -316,7 +316,10 @@ export class SemanticValidator {
           });
         }
         // The permission value must be declared in auth.permissions
-        if (declaredPermissions.size > 0 && !declaredPermissions.has(permName)) {
+        if (
+          declaredPermissions.size > 0 &&
+          !declaredPermissions.has(permName)
+        ) {
           this.diagnostics.push({
             code: "E125_UNKNOWN_PERMISSION_REF",
             message: `crud '${crud.name}' references undeclared permission '${permName}'`,
