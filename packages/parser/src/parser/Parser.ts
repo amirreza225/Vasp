@@ -764,7 +764,7 @@ class Parser {
       loc,
       entity,
       operations,
-      listConfig,
+      ...(listConfig !== undefined ? { listConfig } : {}),
     };
   }
 

@@ -59,7 +59,10 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         if (!f.isManyToMany || !f.isArray || !f.isRelation) continue;
         const otherEntity = f.relatedEntity!;
         // Sort alphabetically so User↔Project and Project↔User produce the same key/table
-        const [nameA, nameB] = [entity.name, otherEntity].sort();
+        const [nameA, nameB] = [entity.name, otherEntity].sort() as [
+          string,
+          string,
+        ];
         const key = `${nameA}:${nameB}`;
         if (seenJunctions.has(key)) continue;
         seenJunctions.add(key);
@@ -80,7 +83,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
 
     // Helper: find the junction table const for a given pair of entities
     const junctionFor = (a: string, b: string): string => {
-      const [nameA, nameB] = [a, b].sort();
+      const [nameA, nameB] = [a, b].sort() as [string, string];
       return `${toCamelCase(nameA)}sTo${toPascalCase(nameB)}s`;
     };
 
@@ -296,7 +299,6 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         hasAnyRelations,
         authUserExtraFields,
         authUserOneToMany,
-        authUserManyToOne,
         authUserManyToOne,
         authUserManyToManyRefs,
         authUserHasRelations,
