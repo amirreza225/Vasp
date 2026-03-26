@@ -6,8 +6,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    # Weekly scan every Monday at 06:00 UTC — catches new CVEs in dependencies
-    # even when the codebase hasn't changed.
+    # Weekly scan every Monday at 06:00 UTC
     - cron: "0 6 * * 1"
 
 jobs:
@@ -16,20 +15,15 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      # Required to read the repository
       contents: read
-      # Required to upload SARIF results to GitHub Security tab
+      # Not required when upload: false, but kept so enabling Code Scanning
+      # later in repo settings requires no workflow change.
       security-events: write
-      # Required for private repos using GitHub Advanced Security
-      actions: read
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Install bun so CodeQL's extractor can resolve node_modules for type info.
-      # The extractor does not compile the code — it reads .ts files directly —
-      # but it needs node_modules present for import resolution.
       - name: Set up Bun
         uses: oven-sh/setup-bun@v1
         with:
@@ -38,22 +32,44 @@ jobs:
       - name: Install dependencies
         run: bun install
 
-      # Initialize CodeQL with our custom config.
-      # The config loads the default security-extended suite PLUS our two
-      # project-specific exhaustiveness queries.
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
         with:
           languages: javascript-typescript
           config-file: .github/codeql/codeql-config.yml
 
-      # CodeQL's JS/TS extractor does not require a build step — it reads
-      # TypeScript source files directly. We skip autobuild to avoid confusion
-      # with bun vs npm tooling.
+      # upload: false — avoids the "Code scanning not enabled" error that
+      # occurs when GitHub Advanced Security / Code Scanning has not been
+      # turned on in the repository settings. Results are written to a local
+      # SARIF file and checked in the next step instead.
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
         with:
           category: "/language:javascript-typescript"
-          # Upload SARIF to the GitHub Security tab.
-          # Results appear under Security → Code scanning alerts.
-          upload: true
+          upload: false
+          output: codeql-results
+
+      # Parse the SARIF output and fail the build if any findings exist.
+      # This makes CodeQL act as a hard CI gate without needing Code Scanning.
+      - name: Check for findings
+        run: |
+          sarif_file=$(ls codeql-results/*.sarif 2>/dev/null | head -1)
+          if [[ -z "$sarif_file" ]]; then
+            echo "No SARIF output found — skipping check."
+            exit 0
+          fi
+
+          findings=$(jq '[.runs[].results[] | select(.level == "warning" or .level == "error")] | length' "$sarif_file")
+
+          if [[ "$findings" -gt 0 ]]; then
+            echo "CodeQL found $findings issue(s):"
+            echo ""
+            jq -r '
+              .runs[].results[]
+              | select(.level == "warning" or .level == "error")
+              | "  [\(.level | ascii_upcase)] \(.ruleId // "unknown")\n  \(.message.text)\n  \(.locations[0].physicalLocation.artifactLocation.uri // ""):\(.locations[0].physicalLocation.region.startLine // "")\n"
+            ' "$sarif_file"
+            exit 1
+          fi
+
+          echo "No CodeQL findings."
