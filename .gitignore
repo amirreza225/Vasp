@@ -148,3 +148,4 @@ e2e/__pw_app__/
 test-results/
 playwright-report/
 .playwright/
+vasp-analysis.md
