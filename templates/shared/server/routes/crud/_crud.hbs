@@ -6,7 +6,7 @@ import { {{camelCase entity}}s } from '../../../drizzle/schema.{{ext}}'
 import { Create{{pascalCase entity}}Schema, Update{{pascalCase entity}}Schema } from '../../../shared/validation.{{ext}}'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 {{#if hasAuth}}
-import { requireAuth } from '../../auth/middleware.{{ext}}'
+import { requireAuth{{#if hasPermissions}}, PERMISSIONS{{/if}} } from '../../auth/middleware.{{ext}}'
 {{/if}}
 {{#if hasRealtime}}
 import { publish{{pascalCase realtimeName}} } from '../realtime/{{camelCase realtimeName}}.{{ext}}'
@@ -104,7 +104,14 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     return { items: data, total: countResult[0]?.count ?? 0, limit, offset }
 {{/if}}
 {{/if}}
-  })
+  }{{#if listPermission}}, {
+    beforeHandle: ({ user }{{#if isTypeScript}}: { user: { role?: unknown } | null }{{/if}}) => {
+      const _allowed = PERMISSIONS['{{listPermission}}'] ?? []
+      if (!_allowed.includes(typeof user?.role === 'string' ? user.role : '')) {
+        throw new VaspError('AUTH_FORBIDDEN', 'Insufficient permissions', 403)
+      }
+    },
+  }{{/if}})
 {{/if}}
 {{#if (includes operations "create")}}
   .post('/', async ({ body, set }) => {
@@ -124,7 +131,14 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{/if}}
     set.status = 201
     return created
-  })
+  }{{#if createPermission}}, {
+    beforeHandle: ({ user }{{#if isTypeScript}}: { user: { role?: unknown } | null }{{/if}}) => {
+      const _allowed = PERMISSIONS['{{createPermission}}'] ?? []
+      if (!_allowed.includes(typeof user?.role === 'string' ? user.role : '')) {
+        throw new VaspError('AUTH_FORBIDDEN', 'Insufficient permissions', 403)
+      }
+    },
+  }{{/if}})
 {{/if}}
   .get('/:id', async ({ params: { id } }) => {
 {{#if hasRelations}}
@@ -160,7 +174,14 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     publish{{pascalCase realtimeName}}('updated', updated)
 {{/if}}
     return updated
-  })
+  }{{#if updatePermission}}, {
+    beforeHandle: ({ user }{{#if isTypeScript}}: { user: { role?: unknown } | null }{{/if}}) => {
+      const _allowed = PERMISSIONS['{{updatePermission}}'] ?? []
+      if (!_allowed.includes(typeof user?.role === 'string' ? user.role : '')) {
+        throw new VaspError('AUTH_FORBIDDEN', 'Insufficient permissions', 403)
+      }
+    },
+  }{{/if}})
 {{/if}}
 {{#if (includes operations "delete")}}
   .delete('/:id', async ({ params: { id } }) => {
@@ -170,5 +191,13 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     publish{{pascalCase realtimeName}}('deleted', deleted)
 {{/if}}
     return { ok: true }
-  })
+  }{{#if deletePermission}}, {
+    beforeHandle: ({ user }{{#if isTypeScript}}: { user: { role?: unknown } | null }{{/if}}) => {
+      const _allowed = PERMISSIONS['{{deletePermission}}'] ?? []
+      if (!_allowed.includes(typeof user?.role === 'string' ? user.role : '')) {
+        throw new VaspError('AUTH_FORBIDDEN', 'Insufficient permissions', 403)
+      }
+    },
+  }{{/if}})
 {{/if}}
+

@@ -10,6 +10,7 @@ import type {
   CrudNode,
   CrudListConfig,
   CrudOperation,
+  CrudPermissions,
   EmailNode,
   EmailProvider,
   EmailTemplateEntry,
@@ -24,6 +25,7 @@ import type {
   MiddlewareScope,
   OnDeleteBehavior,
   PageNode,
+  PermissionMap,
   QueryNode,
   RealtimeEvent,
   RealtimeNode,
@@ -381,6 +383,7 @@ class Parser {
     let userEntity = "";
     let methods: AuthMethod[] = [];
     let roles: string[] = [];
+    let permissions: PermissionMap | undefined;
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -396,11 +399,14 @@ class Parser {
         case "roles":
           roles = this.parseIdentifierArray();
           break;
+        case "permissions":
+          permissions = this.parseAuthPermissionsMap();
+          break;
         default:
           throw this.error(
             "E013_UNKNOWN_PROP",
             `Unknown auth property '${key.value}'`,
-            "Valid properties: userEntity, methods, roles",
+            "Valid properties: userEntity, methods, roles, permissions",
             key.loc,
           );
       }
@@ -414,6 +420,7 @@ class Parser {
       userEntity,
       methods,
       ...(roles.length > 0 ? { roles } : {}),
+      ...(permissions !== undefined ? { permissions } : {}),
     };
   }
 
@@ -772,6 +779,7 @@ class Parser {
     let entity = "";
     let operations: CrudOperation[] = [];
     let listConfig: CrudListConfig | undefined;
+    let permissions: CrudPermissions | undefined;
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -787,11 +795,14 @@ class Parser {
         case "list":
           listConfig = this.parseCrudListConfig();
           break;
+        case "permissions":
+          permissions = this.parseCrudPermissionsMap();
+          break;
         default:
           throw this.error(
             "E021_UNKNOWN_PROP",
             `Unknown crud property '${key.value}'`,
-            "Valid properties: entity, operations, list",
+            "Valid properties: entity, operations, list, permissions",
             key.loc,
           );
       }
@@ -805,6 +816,7 @@ class Parser {
       entity,
       operations,
       ...(listConfig !== undefined ? { listConfig } : {}),
+      ...(permissions !== undefined ? { permissions } : {}),
     };
   }
 
@@ -845,6 +857,93 @@ class Parser {
 
     this.consume(TokenType.RBRACE);
     return { paginate, sortable, filterable, search };
+  }
+
+  /**
+   * Parses a permission name that may be a simple identifier ("read") or a
+   * namespaced identifier ("task:read"). Uses one token of lookahead so that
+   * the `COLON` inside `task:read` is not confused with a key-value separator.
+   *
+   * Lookahead pattern detected as namespace: COLON followed immediately by
+   * another IDENTIFIER token (the name segment).
+   */
+  private parsePermissionName(): string {
+    const first = this.consumeIdentifier().value;
+    // Peek ahead: if the next token is COLON and the token after is an
+    // IDENTIFIER, this is a namespaced permission name (e.g. "task:read").
+    if (
+      this.check(TokenType.COLON) &&
+      this.tokens[this.pos + 1]?.type === TokenType.IDENTIFIER
+    ) {
+      this.consume(TokenType.COLON);
+      const second = this.consumeIdentifier().value;
+      return `${first}:${second}`;
+    }
+    return first;
+  }
+
+  /**
+   * Parses the auth `permissions` block:
+   *   { task:create: [admin, manager] task:read: [admin, viewer] }
+   *
+   * Keys may be namespaced (task:create) or simple (read).
+   * Values are arrays of role identifiers.
+   */
+  private parseAuthPermissionsMap(): PermissionMap {
+    this.consume(TokenType.LBRACE);
+    const result: PermissionMap = {};
+
+    while (!this.check(TokenType.RBRACE)) {
+      // Parse key — may be "ns:name" or a simple name.
+      // After consuming the first identifier, check whether the next COLON is
+      // a namespace separator or the key-value separator:
+      //   ns:name:  → IDENTIFIER COLON IDENTIFIER COLON [...]
+      //   simple:   → IDENTIFIER COLON [...]
+      const first = this.consumeIdentifier().value;
+      let key = first;
+      if (
+        this.check(TokenType.COLON) &&
+        this.tokens[this.pos + 1]?.type === TokenType.IDENTIFIER &&
+        this.tokens[this.pos + 2]?.type === TokenType.COLON
+      ) {
+        // Namespace separator — consume the COLON and the name segment.
+        this.consume(TokenType.COLON);
+        const second = this.consumeIdentifier().value;
+        key = `${first}:${second}`;
+      }
+      // Consume the key-value separator.
+      this.consume(TokenType.COLON);
+      const roles = this.parseIdentifierArray();
+      result[key] = roles;
+    }
+
+    this.consume(TokenType.RBRACE);
+    return result;
+  }
+
+  /**
+   * Parses the crud `permissions` block:
+   *   { list: task:read  create: task:create  delete: task:delete }
+   *
+   * Keys are simple operation names; values are permission names (may be
+   * namespaced, e.g. "task:read").
+   */
+  private parseCrudPermissionsMap(): CrudPermissions {
+    this.consume(TokenType.LBRACE);
+    const result: CrudPermissions = {};
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier().value;
+      this.consume(TokenType.COLON);
+      const permissionName = this.parsePermissionName();
+      result[key] = permissionName;
+      if (this.check(TokenType.COMMA)) {
+        this.consume(TokenType.COMMA);
+      }
+    }
+
+    this.consume(TokenType.RBRACE);
+    return result;
   }
 
   private parseApi(): ApiNode {

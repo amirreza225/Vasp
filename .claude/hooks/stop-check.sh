@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Stop hook: comprehensive project health checks
-# Runs: TSC type check, Handlebars template validation, JSON validation, Prettier format, Knip dead code
+# Runs: build, TSC type check, Handlebars template validation, JSON validation, Prettier format, Knip dead code
 
 VASP_ROOT="/Users/amirreza.alibeigi/Documents/GitHub/Vasp"
 TSC="$VASP_ROOT/node_modules/.bin/tsc"
@@ -11,6 +11,14 @@ HBS_NODE="$VASP_ROOT/packages/generator/node_modules/handlebars"
 
 ERRORS=""
 WARNINGS=""
+
+# --- 0. Build all packages (ensures dist is up to date before checking) ---
+build_output=$(cd "$VASP_ROOT" && bun run build 2>&1) || {
+  ERRORS+="### Build failed:
+$build_output
+
+"
+}
 
 # --- 1. TypeScript type checking ---
 for dir in "$VASP_ROOT"/packages/*/; do

@@ -40,6 +40,14 @@ export class CrudGenerator extends BaseGenerator {
       const hasSearch = searchFields.length > 0;
       const hasListConfig = !!listConfig;
 
+      // Per-operation permission names (empty string = no permission required)
+      const crudPerms = crud.permissions ?? {};
+      const hasPermissions = Object.keys(crudPerms).length > 0;
+      const listPermission = crudPerms["list"] ?? "";
+      const createPermission = crudPerms["create"] ?? "";
+      const updatePermission = crudPerms["update"] ?? "";
+      const deletePermission = crudPerms["delete"] ?? "";
+
       this.write(
         `server/routes/crud/${toCamelCase(crud.entity)}.${ext}`,
         this.render("shared/server/routes/crud/_crud.hbs", {
@@ -57,6 +65,11 @@ export class CrudGenerator extends BaseGenerator {
           hasSortable,
           hasFilterable,
           hasSearch,
+          hasPermissions,
+          listPermission,
+          createPermission,
+          updatePermission,
+          deletePermission,
         }),
       );
     }

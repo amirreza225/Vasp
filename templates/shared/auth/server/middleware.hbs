@@ -14,6 +14,21 @@ if (!process.env.JWT_SECRET) {
 
 const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'vasp-dev-secret-do-not-use-in-production')
 
+{{#if hasPermissions}}
+/**
+ * PERMISSIONS — maps each named permission to the list of roles that hold it.
+ * Generated from the `permissions` map in the auth block of main.vasp.
+ *
+ * @example
+ *   PERMISSIONS['task:create'] // → ['admin', 'manager', 'member']
+ */
+export const PERMISSIONS{{#if isTypeScript}}: Record<string, string[]>{{/if}} = {
+{{#each permissionEntries}}
+  '{{name}}': [{{#each roles}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}],
+{{/each}}
+}
+{{/if}}
+
 /**
  * requireAuth — Elysia plugin that verifies the JWT cookie and injects `user` into the context.
  * Use on any route that requires authentication.
@@ -57,3 +72,24 @@ export function requireRole(roles{{#if isTypeScript}}: string[]{{/if}}) {
       }
     })
 }
+
+{{#if hasPermissions}}
+/**
+ * requirePermission — Elysia plugin that enforces a named RBAC permission.
+ * Requires the user to be authenticated AND have a role that holds the given permission.
+ *
+ * @example
+ * new Elysia().use(requirePermission('task:create')).post('/tasks', handler)
+ */
+export function requirePermission(permission{{#if isTypeScript}}: string{{/if}}) {
+  return new Elysia({ name: `require-permission-${permission}` })
+    .use(requireAuth)
+    .onBeforeHandle({ as: 'scoped' }, ({ user }) => {
+      const userRole = typeof user?.role === 'string' ? user.role : ''
+      const allowedRoles = PERMISSIONS[permission] ?? []
+      if (!allowedRoles.includes(userRole)) {
+        throw new VaspError('AUTH_FORBIDDEN', 'Insufficient permissions', 403)
+      }
+    })
+}
+{{/if}}

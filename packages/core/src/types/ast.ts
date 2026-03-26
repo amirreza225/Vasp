@@ -34,6 +34,19 @@ export type ImportExpression = DefaultImportExpression | NamedImportExpression;
 
 export type AuthMethod = "usernameAndPassword" | "google" | "github";
 
+/**
+ * Maps a permission name (e.g. "task:create") to the list of roles that hold it.
+ * Defined inside the `auth` block's `permissions` property.
+ */
+export type PermissionMap = Record<string, string[]>;
+
+/**
+ * Maps a CRUD operation name (e.g. "list", "create") to the permission name required
+ * to perform it (e.g. "task:read", "task:create").
+ * Defined inside a `crud` block's `permissions` property.
+ */
+export type CrudPermissions = Record<string, string>;
+
 // ------ CRUD ------
 
 export type CrudOperation = "list" | "create" | "update" | "delete";
@@ -190,6 +203,8 @@ export interface AuthNode extends BaseNode {
   userEntity: string; // name of the entity used for users (e.g. "User")
   methods: AuthMethod[];
   roles?: string[];
+  /** Granular permission map: permName → roles that hold it */
+  permissions?: PermissionMap;
 }
 
 export interface RouteNode extends BaseNode {
@@ -233,6 +248,8 @@ export interface CrudNode extends BaseNode {
   entity: string;
   operations: CrudOperation[];
   listConfig?: CrudListConfig;
+  /** Per-operation permission requirements: operation → permission name */
+  permissions?: CrudPermissions;
 }
 
 export interface RealtimeNode extends BaseNode {

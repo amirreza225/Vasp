@@ -9,9 +9,19 @@ export class AuthGenerator extends BaseGenerator {
 
     const { ext, ast } = this.ctx;
     const authMethods = ast.auth!.methods;
+    const authPermissions = ast.auth!.permissions ?? {};
+    const hasPermissions = Object.keys(authPermissions).length > 0;
+
+    // Transform the permissions map into a template-friendly array of entries
+    const permissionEntries = Object.entries(authPermissions).map(
+      ([name, roles]) => ({ name, roles }),
+    );
+
     const data = {
       authMethods,
       backendPort: DEFAULT_BACKEND_PORT,
+      hasPermissions,
+      permissionEntries,
     };
 
     // Server: auth plugin (JWT + cookie — separate file to avoid circular imports)
