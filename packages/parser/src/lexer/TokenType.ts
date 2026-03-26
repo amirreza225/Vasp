@@ -30,6 +30,9 @@ export enum TokenType {
   // Field modifier: @id, @unique, @default(now)
   AT_MODIFIER = "AT_MODIFIER",
 
+  // Table-level directive: @@index([fields]), @@unique([fields])
+  AT_AT_DIRECTIVE = "AT_AT_DIRECTIVE",
+
   // Punctuation
   LBRACE = "{",
   RBRACE = "}",

@@ -290,9 +290,27 @@ export interface MiddlewareNode extends BaseNode {
   scope: MiddlewareScope;
 }
 
+/** Index type for @@index — omit for default btree, use "fulltext" for GIN-based full-text search */
+export type EntityIndexType = "fulltext";
+
+/** A table-level index declared with @@index([fields]) or @@index([fields], type: fulltext) */
+export interface EntityIndex {
+  fields: string[];
+  type?: EntityIndexType;
+}
+
+/** A table-level composite unique constraint declared with @@unique([fields]) */
+export interface EntityUniqueConstraint {
+  fields: string[];
+}
+
 export interface EntityNode extends BaseNode {
   type: "Entity";
   fields: FieldNode[];
+  /** Table-level indexes (compound and/or full-text) declared with @@index */
+  indexes?: EntityIndex[];
+  /** Table-level composite unique constraints declared with @@unique */
+  uniqueConstraints?: EntityUniqueConstraint[];
 }
 
 export interface AdminNode {

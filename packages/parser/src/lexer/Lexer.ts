@@ -132,8 +132,13 @@ export class Lexer {
     }
 
     // Field modifier: @id, @unique, @default(now)
+    // Table-level directive: @@index([fields]), @@unique([fields])
     if (ch === "@") {
-      this.scanModifier();
+      if (this.peek(1) === "@") {
+        this.scanTableDirective();
+      } else {
+        this.scanModifier();
+      }
       return;
     }
 
@@ -164,6 +169,22 @@ export class Lexer {
         loc: this.loc(),
       },
     ]);
+  }
+
+  private scanTableDirective(): void {
+    const loc = this.loc();
+    this.advance(); // first '@'
+    this.advance(); // second '@'
+    let name = "";
+    while (this.pos < this.source.length) {
+      const c = this.peek();
+      if ((c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c === "_") {
+        name += this.advance();
+      } else {
+        break;
+      }
+    }
+    this.tokens.push({ type: TokenType.AT_AT_DIRECTIVE, value: name, loc });
   }
 
   private scanModifier(): void {

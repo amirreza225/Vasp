@@ -206,6 +206,36 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
           junctionTableConst: junctionFor(entity.name, f.relatedEntity!),
         }));
 
+      // Table-level indexes from @@index directives
+      const tableIndexes = (entity.indexes ?? []).map((idx) => {
+        const camelFields = idx.fields.map(toCamelCase);
+        const fieldSlug = camelFields.join("_");
+        const isFulltext = idx.type === "fulltext";
+        const suffix = isFulltext ? "ft" : "idx";
+        const name = `${toCamelCase(entity.name)}s_${fieldSlug}_${suffix}`;
+        // For fulltext: pre-build the to_tsvector SQL expression
+        const fulltextSqlExpr = isFulltext
+          ? camelFields.length === 1
+            ? `to_tsvector('english', \${t.${camelFields[0]}})`
+            : `to_tsvector('english', ${camelFields.map((f) => `\${t.${f}}`).join(" || ' ' || ")})`
+          : undefined;
+        return { name, fields: camelFields, isFulltext, fulltextSqlExpr };
+      });
+
+      // Table-level unique constraints from @@unique directives
+      const tableUniqueConstraints = (entity.uniqueConstraints ?? []).map(
+        (uc) => {
+          const fieldSlug = uc.fields.map(toCamelCase).join("_");
+          return {
+            name: `${toCamelCase(entity.name)}s_${fieldSlug}_unique`,
+            fields: uc.fields.map(toCamelCase),
+          };
+        },
+      );
+
+      const hasTableIndexes =
+        tableIndexes.length > 0 || tableUniqueConstraints.length > 0;
+
       return {
         name: entity.name,
         scalarFields,
@@ -216,6 +246,9 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
           manyToOne.length > 0 ||
           oneToMany.length > 0 ||
           manyToManyRefs.length > 0,
+        tableIndexes,
+        tableUniqueConstraints,
+        hasTableIndexes,
       };
     });
 
@@ -272,6 +305,9 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
           oneToMany: [],
           manyToManyRefs: [],
           hasRelations: false,
+          tableIndexes: [],
+          tableUniqueConstraints: [],
+          hasTableIndexes: false,
         });
       }
     }
@@ -291,6 +327,11 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
       authUserHasRelations ||
       junctionTables.length > 0;
 
+    const hasAnyIndexes = entitiesWithSchema.some((e) => e.hasTableIndexes);
+    const hasAnyFulltextIndexes = entitiesWithSchema.some((e) =>
+      e.tableIndexes.some((idx) => idx.isFulltext),
+    );
+
     this.write(
       `drizzle/schema.${this.ctx.ext}`,
       this.render("shared/drizzle/schema.hbs", {
@@ -305,6 +346,8 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         enumDeclarations,
         hasEnums,
         junctionTables,
+        hasAnyIndexes,
+        hasAnyFulltextIndexes,
       }),
     );
 

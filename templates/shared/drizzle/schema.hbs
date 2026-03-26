@@ -1,6 +1,9 @@
-import { pgTable, text, integer, boolean, timestamp, doublePrecision, jsonb{{#if hasEnums}}, pgEnum{{/if}} } from 'drizzle-orm/pg-core'
+import { pgTable, text, integer, boolean, timestamp, doublePrecision, jsonb{{#if hasEnums}}, pgEnum{{/if}}{{#if hasAnyIndexes}}, index, uniqueIndex{{/if}} } from 'drizzle-orm/pg-core'
 {{#if hasAnyRelations}}
 import { relations } from 'drizzle-orm'
+{{/if}}
+{{#if hasAnyFulltextIndexes}}
+import { sql } from 'drizzle-orm'
 {{/if}}
 {{#if isTypeScript}}
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
@@ -52,7 +55,18 @@ export const {{camelCase name}}s = pgTable('{{camelCase name}}s', {
 {{/each}}
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
-})
+}{{#if hasTableIndexes}}, (t) => [
+{{#each tableIndexes}}
+{{#if isFulltext}}
+  index('{{name}}').using('gin', sql`{{{fulltextSqlExpr}}}`),
+{{else}}
+  index('{{name}}').on({{#each fields}}t.{{this}}{{#unless @last}}, {{/unless}}{{/each}}),
+{{/if}}
+{{/each}}
+{{#each tableUniqueConstraints}}
+  uniqueIndex('{{name}}').on({{#each fields}}t.{{this}}{{#unless @last}}, {{/unless}}{{/each}}),
+{{/each}}
+]{{/if}})
 {{#if ../isTypeScript}}
 export type {{pascalCase name}} = InferSelectModel<typeof {{camelCase name}}s>
 export type New{{pascalCase name}} = InferInsertModel<typeof {{camelCase name}}s>

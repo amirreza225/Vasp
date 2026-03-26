@@ -805,3 +805,102 @@ describe("SemanticValidator — email blocks", () => {
     ).not.toThrow();
   });
 });
+
+describe("SemanticValidator — @@index and @@unique (E170, E171)", () => {
+  it("passes when @@index references declared fields", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        projectId: Int
+        status: Enum(todo, done)
+        @@index([projectId, status])
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes when @@index([field], type: fulltext) references declared field", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        title: String
+        @@index([title], type: fulltext)
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes when @@unique references declared fields", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        projectId: Int
+        title: String
+        @@unique([projectId, title])
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes when @@index and @@unique mix declared fields", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        projectId: Int
+        status: Enum(todo, done)
+        title: String
+        @@index([projectId, status])
+        @@index([title], type: fulltext)
+        @@unique([projectId, title])
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails when @@index references an undeclared field (E170)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        title: String
+        @@index([nonExistentField])
+      }
+    `),
+    ).toThrow("E170_INDEX_UNKNOWN_FIELD");
+  });
+
+  it("fails when @@unique references an undeclared field (E171)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        title: String
+        @@unique([title, ghost])
+      }
+    `),
+    ).toThrow("E171_UNIQUE_CONSTRAINT_UNKNOWN_FIELD");
+  });
+
+  it("passes when @@index references createdAt or updatedAt (auto fields)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        title: String
+        @@index([createdAt])
+      }
+    `),
+    ).not.toThrow();
+  });
+});

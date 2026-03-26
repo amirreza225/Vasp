@@ -14,7 +14,10 @@ import type {
   EmailNode,
   EmailProvider,
   EmailTemplateEntry,
+  EntityIndex,
+  EntityIndexType,
   EntityNode,
+  EntityUniqueConstraint,
   EnvRequirement,
   FieldModifier,
   FieldNode,
@@ -443,8 +446,84 @@ class Parser {
     ]);
 
     const fields: FieldNode[] = [];
+    const indexes: EntityIndex[] = [];
+    const uniqueConstraints: EntityUniqueConstraint[] = [];
 
     while (!this.check(TokenType.RBRACE)) {
+      // Table-level directives: @@index([fields]), @@index([fields], type: fulltext), @@unique([fields])
+      if (this.check(TokenType.AT_AT_DIRECTIVE)) {
+        const directive = this.consume(TokenType.AT_AT_DIRECTIVE);
+        if (directive.value === "index") {
+          this.consume(TokenType.LBRACKET);
+          const indexFields: string[] = [];
+          while (!this.check(TokenType.RBRACKET)) {
+            indexFields.push(this.consumeIdentifier().value);
+            if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA);
+          }
+          this.consume(TokenType.RBRACKET);
+          if (indexFields.length === 0) {
+            throw this.error(
+              "E165_EMPTY_INDEX_FIELDS",
+              `@@index on entity '${name.value}' must specify at least one field`,
+              "Example: @@index([field1, field2])",
+              directive.loc,
+            );
+          }
+          let indexType: EntityIndexType | undefined;
+          if (this.check(TokenType.COMMA)) {
+            this.consume(TokenType.COMMA);
+            const typeKey = this.consumeIdentifier();
+            if (typeKey.value !== "type") {
+              throw this.error(
+                "E166_UNKNOWN_INDEX_OPTION",
+                `Unknown @@index option '${typeKey.value}'`,
+                "Valid options: type",
+                typeKey.loc,
+              );
+            }
+            this.consume(TokenType.COLON);
+            const typeVal = this.consumeIdentifier();
+            if (typeVal.value === "fulltext") {
+              indexType = "fulltext";
+            } else {
+              throw this.error(
+                "E167_UNKNOWN_INDEX_TYPE",
+                `Unknown @@index type '${typeVal.value}'`,
+                "Valid types: fulltext",
+                typeVal.loc,
+              );
+            }
+          }
+          indexes.push({ fields: indexFields, ...(indexType ? { type: indexType } : {}) });
+          continue;
+        } else if (directive.value === "unique") {
+          this.consume(TokenType.LBRACKET);
+          const uniqueFields: string[] = [];
+          while (!this.check(TokenType.RBRACKET)) {
+            uniqueFields.push(this.consumeIdentifier().value);
+            if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA);
+          }
+          this.consume(TokenType.RBRACKET);
+          if (uniqueFields.length === 0) {
+            throw this.error(
+              "E168_EMPTY_UNIQUE_FIELDS",
+              `@@unique on entity '${name.value}' must specify at least one field`,
+              "Example: @@unique([field1, field2])",
+              directive.loc,
+            );
+          }
+          uniqueConstraints.push({ fields: uniqueFields });
+          continue;
+        } else {
+          throw this.error(
+            "E169_UNKNOWN_TABLE_DIRECTIVE",
+            `Unknown table directive '@@${directive.value}'`,
+            "Valid table directives: @@index, @@unique",
+            directive.loc,
+          );
+        }
+      }
+
       const fieldName = this.consumeIdentifier();
       this.consume(TokenType.COLON);
       const fieldTypeToken = this.consumeIdentifier();
@@ -554,7 +633,14 @@ class Parser {
     }
 
     this.consume(TokenType.RBRACE);
-    return { type: "Entity", name: name.value, loc, fields };
+    return {
+      type: "Entity",
+      name: name.value,
+      loc,
+      fields,
+      ...(indexes.length > 0 ? { indexes } : {}),
+      ...(uniqueConstraints.length > 0 ? { uniqueConstraints } : {}),
+    };
   }
 
   private parseRoute(): RouteNode {

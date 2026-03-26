@@ -44,6 +44,7 @@ export class SemanticValidator {
     this.checkRelationModifiers(ast);
     this.checkModifierTypeConstraints(ast);
     this.checkFieldValidation(ast);
+    this.checkEntityIndexFields(ast);
     this.checkAdminEntities(ast);
     this.checkStorageBlocks(ast);
     this.checkStorageFieldRefs(ast);
@@ -833,6 +834,50 @@ export class SemanticValidator {
             hint: `Add a storage block named '${field.storageBlock}', or fix the @storage() modifier`,
             loc: entity.loc,
           });
+        }
+      }
+    }
+  }
+
+  private checkEntityIndexFields(ast: VaspAST): void {
+    for (const entity of ast.entities) {
+      // Build a set of scalar field names (including auto FK columns for relations)
+      const fieldNames = new Set<string>();
+      for (const f of entity.fields) {
+        if (f.isRelation && !f.isArray) {
+          // Many-to-one → FK column is named {fieldName}Id
+          fieldNames.add(`${f.name}Id`);
+        } else if (!f.isArray) {
+          fieldNames.add(f.name);
+        }
+      }
+      // Also allow createdAt / updatedAt (auto-appended by template)
+      fieldNames.add("createdAt");
+      fieldNames.add("updatedAt");
+
+      for (const idx of entity.indexes ?? []) {
+        for (const field of idx.fields) {
+          if (!fieldNames.has(field)) {
+            this.diagnostics.push({
+              code: "E170_INDEX_UNKNOWN_FIELD",
+              message: `@@index on entity '${entity.name}' references unknown field '${field}'`,
+              hint: `Field '${field}' is not declared in entity '${entity.name}'`,
+              loc: entity.loc,
+            });
+          }
+        }
+      }
+
+      for (const uc of entity.uniqueConstraints ?? []) {
+        for (const field of uc.fields) {
+          if (!fieldNames.has(field)) {
+            this.diagnostics.push({
+              code: "E171_UNIQUE_CONSTRAINT_UNKNOWN_FIELD",
+              message: `@@unique on entity '${entity.name}' references unknown field '${field}'`,
+              hint: `Field '${field}' is not declared in entity '${entity.name}'`,
+              loc: entity.loc,
+            });
+          }
         }
       }
     }

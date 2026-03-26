@@ -206,6 +206,111 @@ describe("Parser — entity block", () => {
       modifiers: [],
     });
   });
+
+  it("parses @@index compound index on entity", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Task {
+        id: Int @id
+        projectId: Int
+        status: Enum(todo, done)
+        @@index([projectId, status])
+      }
+    `);
+    expect(ast.entities[0]?.indexes).toEqual([
+      { fields: ["projectId", "status"] },
+    ]);
+    expect(ast.entities[0]?.uniqueConstraints).toBeUndefined();
+  });
+
+  it("parses @@index with type: fulltext", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Task {
+        id: Int @id
+        title: String
+        @@index([title], type: fulltext)
+      }
+    `);
+    expect(ast.entities[0]?.indexes).toEqual([
+      { fields: ["title"], type: "fulltext" },
+    ]);
+  });
+
+  it("parses @@unique composite unique constraint", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Task {
+        id: Int @id
+        projectId: Int
+        title: String
+        @@unique([projectId, title])
+      }
+    `);
+    expect(ast.entities[0]?.uniqueConstraints).toEqual([
+      { fields: ["projectId", "title"] },
+    ]);
+    expect(ast.entities[0]?.indexes).toBeUndefined();
+  });
+
+  it("parses entity with multiple @@index and @@unique directives", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Task {
+        id: Int @id
+        title: String @index
+        status: Enum(todo, in_progress, done) @index
+        projectId: Int
+        @@index([projectId, status])
+        @@index([title], type: fulltext)
+        @@unique([projectId, title])
+      }
+    `);
+    const entity = ast.entities[0]!;
+    expect(entity.indexes).toHaveLength(2);
+    expect(entity.indexes![0]).toEqual({ fields: ["projectId", "status"] });
+    expect(entity.indexes![1]).toEqual({ fields: ["title"], type: "fulltext" });
+    expect(entity.uniqueConstraints).toHaveLength(1);
+    expect(entity.uniqueConstraints![0]).toEqual({
+      fields: ["projectId", "title"],
+    });
+  });
+
+  it("throws E165 on empty @@index field list", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        entity Task { id: Int @id @@index([]) }
+      `),
+    ).toThrow("E165_EMPTY_INDEX_FIELDS");
+  });
+
+  it("throws E167 on unknown @@index type", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        entity Task { id: Int @id title: String @@index([title], type: hash) }
+      `),
+    ).toThrow("E167_UNKNOWN_INDEX_TYPE");
+  });
+
+  it("throws E168 on empty @@unique field list", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        entity Task { id: Int @id @@unique([]) }
+      `),
+    ).toThrow("E168_EMPTY_UNIQUE_FIELDS");
+  });
+
+  it("throws E169 on unknown table directive", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        entity Task { id: Int @id @@check([id > 0]) }
+      `),
+    ).toThrow("E169_UNKNOWN_TABLE_DIRECTIVE");
+  });
 });
 
 describe("Parser — route and page", () => {
