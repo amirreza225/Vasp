@@ -951,3 +951,204 @@ describe("Parser — @validate modifier (field-level validation)", () => {
     expect(field?.validation).toEqual({ minLength: 3 });
   });
 });
+
+describe("Parser — storage block", () => {
+  const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`;
+
+  it("parses a local storage block with all properties", () => {
+    const ast = parse(`
+      ${APP}
+      storage Files {
+        provider: local
+        maxSize: "10mb"
+        allowedTypes: ["image/*", "application/pdf"]
+        publicPath: "/uploads"
+      }
+    `);
+    expect(ast.storages).toHaveLength(1);
+    expect(ast.storages![0]).toMatchObject({
+      type: "Storage",
+      name: "Files",
+      provider: "local",
+      maxSize: "10mb",
+      allowedTypes: ["image/*", "application/pdf"],
+      publicPath: "/uploads",
+    });
+  });
+
+  it("parses a minimal storage block with only provider", () => {
+    const ast = parse(`
+      ${APP}
+      storage Docs {
+        provider: local
+      }
+    `);
+    expect(ast.storages).toHaveLength(1);
+    expect(ast.storages![0]?.name).toBe("Docs");
+    expect(ast.storages![0]?.provider).toBe("local");
+    expect(ast.storages![0]?.bucket).toBeUndefined();
+  });
+
+  it("parses an s3 storage block with bucket", () => {
+    const ast = parse(`
+      ${APP}
+      storage Assets {
+        provider: s3
+        bucket: "my-assets-bucket"
+        maxSize: "50mb"
+        allowedTypes: ["image/*"]
+        publicPath: "/media"
+      }
+    `);
+    expect(ast.storages![0]).toMatchObject({
+      type: "Storage",
+      name: "Assets",
+      provider: "s3",
+      bucket: "my-assets-bucket",
+    });
+  });
+
+  it("parses multiple storage blocks", () => {
+    const ast = parse(`
+      ${APP}
+      storage Images {
+        provider: local
+        publicPath: "/images"
+      }
+      storage Docs {
+        provider: s3
+        bucket: "docs-bucket"
+      }
+    `);
+    expect(ast.storages).toHaveLength(2);
+    expect(ast.storages![0]?.name).toBe("Images");
+    expect(ast.storages![1]?.name).toBe("Docs");
+  });
+
+  it("storages is undefined when no storage block is present", () => {
+    const ast = parse(`${APP}`);
+    expect(ast.storages).toBeUndefined();
+  });
+
+  it("throws on missing provider (E056)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      storage Files {
+        maxSize: "10mb"
+      }
+    `),
+    ).toThrow("E056_MISSING_STORAGE_PROVIDER");
+  });
+
+  it("throws on unknown storage property (E055)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      storage Files {
+        provider: local
+        unknown: foo
+      }
+    `),
+    ).toThrow("E055_UNKNOWN_PROP");
+  });
+
+  it("parses File field type with @storage() modifier", () => {
+    const ast = parse(`
+      ${APP}
+      storage Files {
+        provider: local
+      }
+      entity Post {
+        id: Int @id
+        title: String
+        coverImage: File @storage(Files)
+      }
+    `);
+    const field = ast.entities[0]?.fields.find((f) => f.name === "coverImage");
+    expect(field).toBeDefined();
+    expect(field?.type).toBe("File");
+    expect(field?.storageBlock).toBe("Files");
+  });
+
+  it("parses File field type without @storage() modifier", () => {
+    const ast = parse(`
+      ${APP}
+      entity Post {
+        id: Int @id
+        attachment: File
+      }
+    `);
+    const field = ast.entities[0]?.fields.find((f) => f.name === "attachment");
+    expect(field?.type).toBe("File");
+    expect(field?.storageBlock).toBeUndefined();
+  });
+});
+
+describe("SemanticValidator — storage blocks", () => {
+  const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`;
+
+  it("throws on duplicate storage block names (E160)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      storage Files {
+        provider: local
+      }
+      storage Files {
+        provider: s3
+        bucket: "my-bucket"
+      }
+    `),
+    ).toThrow("E160_DUPLICATE_STORAGE");
+  });
+
+  it("throws on unknown storage provider (E161)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      storage Files {
+        provider: ftp
+      }
+    `),
+    ).toThrow("E161_UNKNOWN_STORAGE_PROVIDER");
+  });
+
+  it("throws when cloud provider has no bucket (E162)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      storage Assets {
+        provider: s3
+      }
+    `),
+    ).toThrow("E162_STORAGE_REQUIRES_BUCKET");
+  });
+
+  it("throws when @storage() references undeclared storage block (E163)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      entity Post {
+        id: Int @id
+        photo: File @storage(Nonexistent)
+      }
+    `),
+    ).toThrow("E163_UNKNOWN_STORAGE_REF");
+  });
+
+  it("accepts a valid File field referencing a declared storage block", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      storage Files {
+        provider: local
+      }
+      entity Post {
+        id: Int @id
+        photo: File @storage(Files)
+      }
+    `),
+    ).not.toThrow();
+  });
+});

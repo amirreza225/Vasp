@@ -43,6 +43,9 @@ import { {{camelCase name}}ScheduleRoute } from './routes/jobs/{{camelCase name}
 {{#if hasAdmin}}
 import { adminRoutes } from './routes/admin/index.{{ext}}'
 {{/if}}
+{{#each storages}}
+import { {{camelCase name}}UploadRoutes } from './routes/storage/{{camelCase name}}.{{../ext}}'
+{{/each}}
 
 const PORT = Number(process.env.PORT) || {{backendPort}}
 
@@ -110,6 +113,9 @@ const app = new Elysia()
 {{#if hasAdmin}}
   .use(adminRoutes)
 {{/if}}
+{{#each storages}}
+  .use({{camelCase name}}UploadRoutes)
+{{/each}}
   .listen(PORT)
 
 console.log(`🚀 Vasp backend running at http://localhost:${PORT}`)
