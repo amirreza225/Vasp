@@ -23,6 +23,7 @@ export class SemanticValidator {
     this.checkFieldTypes(ast)
     this.checkRelationModifiers(ast)
     this.checkModifierTypeConstraints(ast)
+    this.checkFieldValidation(ast)
     this.checkAdminEntities(ast)
 
     const hasErrors = this.diagnostics.some((d) => d.code.startsWith('E'))
@@ -497,6 +498,112 @@ export class SemanticValidator {
         })
       }
       seen.add(node.name)
+    }
+  }
+
+  /**
+   * E154 — Validate that @validate(...) rules are compatible with the field type.
+   * String/Text fields support: email, url, uuid, minLength, maxLength
+   * Int/Float fields support: min, max
+   * Other types (Boolean, DateTime, Enum, Json, relations) do not support @validate.
+   */
+  private checkFieldValidation(ast: VaspAST): void {
+    const stringTextRules = new Set(['email', 'url', 'uuid', 'minLength', 'maxLength'])
+    const numericRules = new Set(['min', 'max'])
+    const noValidationTypes = new Set(['Boolean', 'DateTime', 'Json', 'Enum'])
+
+    for (const entity of ast.entities) {
+      for (const field of entity.fields) {
+        const vld = field.validation
+        if (!vld) continue
+
+        const usedRules = [
+          vld.email ? 'email' : null,
+          vld.url ? 'url' : null,
+          vld.uuid ? 'uuid' : null,
+          vld.minLength != null ? 'minLength' : null,
+          vld.maxLength != null ? 'maxLength' : null,
+          vld.min != null ? 'min' : null,
+          vld.max != null ? 'max' : null,
+        ].filter(Boolean) as string[]
+
+        if (usedRules.length === 0) continue
+
+        if (field.isRelation) {
+          this.diagnostics.push({
+            code: 'E154_VALIDATE_ON_RELATION',
+            message: `Field '${field.name}' in entity '${entity.name}' has @validate but is a relation field`,
+            hint: '@validate can only be used on primitive (non-relation) fields',
+            loc: entity.loc,
+          })
+          continue
+        }
+
+        if (noValidationTypes.has(field.type)) {
+          this.diagnostics.push({
+            code: 'E154_VALIDATE_UNSUPPORTED_TYPE',
+            message: `Field '${field.name}' in entity '${entity.name}' has @validate but type '${field.type}' does not support validation rules`,
+            hint: '@validate is supported on String, Text, Int, and Float fields',
+            loc: entity.loc,
+          })
+          continue
+        }
+
+        const isStringType = field.type === 'String' || field.type === 'Text'
+        const isNumericType = field.type === 'Int' || field.type === 'Float'
+
+        if (isStringType) {
+          for (const rule of usedRules) {
+            if (!stringTextRules.has(rule)) {
+              this.diagnostics.push({
+                code: 'E154_VALIDATE_INCOMPATIBLE_RULE',
+                message: `Validation rule '${rule}' is not compatible with ${field.type} field '${field.name}' in entity '${entity.name}'`,
+                hint: `String/Text fields support: email, url, uuid, minLength, maxLength`,
+                loc: entity.loc,
+              })
+            }
+          }
+          // email, url, uuid are mutually exclusive
+          const formatFlags = [vld.email, vld.url, vld.uuid].filter(Boolean)
+          if (formatFlags.length > 1) {
+            this.diagnostics.push({
+              code: 'E154_VALIDATE_EXCLUSIVE_FLAGS',
+              message: `Field '${field.name}' in entity '${entity.name}' has multiple exclusive format validators`,
+              hint: 'Only one of: email, url, uuid can be used per field',
+              loc: entity.loc,
+            })
+          }
+          // minLength must not exceed maxLength
+          if (vld.minLength != null && vld.maxLength != null && vld.minLength > vld.maxLength) {
+            this.diagnostics.push({
+              code: 'E154_VALIDATE_LENGTH_ORDER',
+              message: `Field '${field.name}' in entity '${entity.name}' has minLength (${vld.minLength}) greater than maxLength (${vld.maxLength})`,
+              hint: 'minLength must be less than or equal to maxLength',
+              loc: entity.loc,
+            })
+          }
+        } else if (isNumericType) {
+          for (const rule of usedRules) {
+            if (!numericRules.has(rule)) {
+              this.diagnostics.push({
+                code: 'E154_VALIDATE_INCOMPATIBLE_RULE',
+                message: `Validation rule '${rule}' is not compatible with ${field.type} field '${field.name}' in entity '${entity.name}'`,
+                hint: `Int/Float fields support: min, max`,
+                loc: entity.loc,
+              })
+            }
+          }
+          // min must not exceed max
+          if (vld.min != null && vld.max != null && vld.min > vld.max) {
+            this.diagnostics.push({
+              code: 'E154_VALIDATE_RANGE_ORDER',
+              message: `Field '${field.name}' in entity '${entity.name}' has min (${vld.min}) greater than max (${vld.max})`,
+              hint: 'min must be less than or equal to max',
+              loc: entity.loc,
+            })
+          }
+        }
+      }
     }
   }
 

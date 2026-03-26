@@ -164,14 +164,14 @@ export class Lexer {
         break
       }
     }
-    // Handle modifiers with parenthetical args: @default(now), @default("val"), @onDelete(cascade)
+    // Handle modifiers with parenthetical args: @default(now), @default("val"), @onDelete(cascade), @validate(...)
     let modifier = name
-    if ((name === 'default' || name === 'onDelete') && this.peek() === '(') {
+    if ((name === 'default' || name === 'onDelete' || name === 'validate') && this.peek() === '(') {
       const parenLoc = this.loc() // capture opening '(' location for error reporting
       this.advance() // (
       let arg = ''
       while (this.pos < this.source.length && this.peek() !== ')') {
-        // Skip surrounding quotes for string args like @default("value")
+        // Preserve quoted string content (strip surrounding quotes)
         const c = this.peek()
         if (c === '"' || c === "'") {
           this.advance() // opening quote
@@ -195,9 +195,12 @@ export class Lexer {
       const argTrimmed = arg.trim()
       if (name === 'default') {
         modifier = argTrimmed === 'now' ? 'default_now' : `default_${argTrimmed}`
-      } else {
+      } else if (name === 'onDelete') {
         // onDelete: cascade | restrict | setNull
         modifier = `onDelete_${argTrimmed}`
+      } else {
+        // validate: raw key-value content preserved for the Parser to decode
+        modifier = `validate_${argTrimmed}`
       }
     }
     this.tokens.push({ type: TokenType.AT_MODIFIER, value: modifier, loc })

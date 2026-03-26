@@ -52,6 +52,31 @@ export type FieldType = PrimitiveFieldType
 
 export type FieldModifier = 'id' | 'unique' | 'default_now' | 'nullable' | 'updatedAt'
 
+/**
+ * DSL-declared validation constraints for a field, expressed via @validate(...).
+ * These are used to generate Valibot schemas with precise runtime checks.
+ *
+ * String / Text fields:
+ *   email — enforce RFC 5321 email format
+ *   url   — enforce URL format
+ *   uuid  — enforce UUID v4 format
+ *   minLength — minimum character count
+ *   maxLength — maximum character count
+ *
+ * Int / Float fields:
+ *   min — minimum numeric value (inclusive)
+ *   max — maximum numeric value (inclusive)
+ */
+export interface FieldValidation {
+  email?: boolean
+  url?: boolean
+  uuid?: boolean
+  minLength?: number
+  maxLength?: number
+  min?: number
+  max?: number
+}
+
 export type OnDeleteBehavior = 'cascade' | 'restrict' | 'set null'
 
 export interface FieldNode {
@@ -75,6 +100,8 @@ export interface FieldNode {
   isUpdatedAt: boolean
   /** Enum variant values when type === 'Enum', e.g. ['active', 'inactive', 'archived'] */
   enumValues?: string[]
+  /** DSL-declared validation constraints from @validate(...) */
+  validation?: FieldValidation
 }
 
 // ------ Job Executors ------
