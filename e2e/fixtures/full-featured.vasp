@@ -72,6 +72,12 @@ action deleteTodo {
 crud Todo {
   entity: Todo
   operations: [list, create, update, delete]
+  list: {
+    paginate: true
+    sortable: [createdAt, title]
+    filterable: [status, done]
+    search: [title]
+  }
 }
 
 realtime TodoChannel {

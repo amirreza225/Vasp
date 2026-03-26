@@ -44,11 +44,69 @@ export function use{{pascalCase entity}}Crud() {
     loading,
     error,
 {{#if (includes operations "list")}}
-    list: async (): Promise<{ items: {{pascalCase entity}}[]; total: number; limit: number; offset: number }> => {
+    list: async (params?: {
+{{#if listConfig}}
+{{#if listConfig.paginate}}
+      page?: number
+{{else}}
+      offset?: number
+{{/if}}
+      limit?: number
+{{#if listConfig.sortable}}
+      sortBy?: {{#each listConfig.sortable}}'{{this}}'{{#unless @last}} | {{/unless}}{{/each}}
+      dir?: 'asc' | 'desc'
+{{/if}}
+{{#if listConfig.filterable}}
+      filter?: Partial<Record<{{#each listConfig.filterable}}'{{this}}'{{#unless @last}} | {{/unless}}{{/each}}, string>>
+{{/if}}
+{{#if listConfig.search}}
+      search?: string
+{{/if}}
+{{else}}
+      limit?: number
+      offset?: number
+      orderBy?: string
+      dir?: string
+{{/if}}
+    }): Promise<{
+      items: {{pascalCase entity}}[]
+      total: number
+{{#if listConfig.paginate}}
+      page: number
+      limit: number
+{{else}}
+      limit: number
+      offset: number
+{{/if}}
+    }> => {
       loading.value = true
       error.value = null
       try {
-        return unwrap(await $fetch(base, { credentials: 'include' }))
+        const query: Record<string, string | number | undefined> = {}
+        if (params?.limit !== undefined) query.limit = params.limit
+{{#if listConfig.paginate}}
+        if ((params as { page?: number } | undefined)?.page !== undefined) query.page = (params as { page?: number }).page
+{{else}}
+        if ((params as { offset?: number } | undefined)?.offset !== undefined) query.offset = (params as { offset?: number }).offset
+{{/if}}
+{{#if listConfig.sortable}}
+        if ((params as { sortBy?: string } | undefined)?.sortBy) query.sortBy = (params as { sortBy?: string }).sortBy
+        if ((params as { dir?: string } | undefined)?.dir) query.dir = (params as { dir?: string }).dir
+{{else}}
+        if ((params as { orderBy?: string } | undefined)?.orderBy) query.orderBy = (params as { orderBy?: string }).orderBy
+        if ((params as { dir?: string } | undefined)?.dir) query.dir = (params as { dir?: string }).dir
+{{/if}}
+{{#if listConfig.filterable}}
+        if ((params as { filter?: Record<string, string | undefined> } | undefined)?.filter) {
+          for (const [k, v] of Object.entries((params as { filter: Record<string, string | undefined> }).filter)) {
+            if (v !== undefined) query[`filter.${k}`] = v
+          }
+        }
+{{/if}}
+{{#if listConfig.search}}
+        if ((params as { search?: string } | undefined)?.search) query.search = (params as { search?: string }).search
+{{/if}}
+        return unwrap(await $fetch(base, { query, credentials: 'include' }))
       } catch (err) {
         fail(err)
         throw err

@@ -19,7 +19,12 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{#if (includes operations "list")}}
   .get('/', async ({ query }) => {
     const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
+{{#if paginate}}
+    const page = Math.max(Number(query.page) || 1, 1)
+    const offset = (page - 1) * limit
+{{else}}
     const offset = Math.max(Number(query.offset) || 0, 0)
+{{/if}}
 
 {{#if hasRelations}}
     const items = await db.query.{{camelCase entity}}s.findMany({
@@ -32,10 +37,21 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
       offset,
     })
     const [countResult] = await db.select({ count: sql`count(*)::int` }).from({{camelCase entity}}s)
+{{#if paginate}}
+    return { items, total: countResult?.count ?? 0, page, limit }
+{{else}}
     return { items, total: countResult?.count ?? 0, limit, offset }
+{{/if}}
 {{else}}
     const table = {{camelCase entity}}s
 
+{{#if hasSortable}}
+    // Allowlisted sort fields
+    const SORTABLE_FIELDS = [{{#each sortableFields}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]
+    const sortBy = SORTABLE_FIELDS.includes(query.sortBy ?? '') ? (query.sortBy as string) : 'id'
+    const dirFn = query.dir === 'desc' ? desc : asc
+    const orderClauses = [dirFn(table[sortBy] ?? table.id)]
+{{else}}
     // Multi-column sorting: orderBy=col1,col2 & dir=asc,desc
     const orderByFields = (query.orderBy ?? 'id').split(',')
     const directions = (query.dir ?? 'asc').split(',')
@@ -44,15 +60,34 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
       const dirFn = (directions[i] ?? directions[0] ?? 'asc').trim() === 'desc' ? desc : asc
       return dirFn(col)
     })
+{{/if}}
 
-    // Build WHERE conditions from filter.* query params
+    // Build WHERE conditions
     const conditions = []
+{{#if hasFilterable}}
+    // Allowlisted filter fields: ?filter.fieldName=value
+    const FILTERABLE_FIELDS = [{{#each filterableFields}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]
+    for (const field of FILTERABLE_FIELDS) {
+      const value = (query as Record<string, string | undefined>)[`filter.${field}`]
+      if (value !== undefined && table[field]) {
+        conditions.push(eq(table[field], value))
+      }
+    }
+{{else}}
     for (const [key, value] of Object.entries(query)) {
       if (!key.startsWith('filter.')) continue
       const field = key.slice(7)
       if (!table[field]) continue
       conditions.push(eq(table[field], value))
     }
+{{/if}}
+{{#if hasSearch}}
+    // Full-text search: ?search=keyword
+    if (query.search) {
+      const pattern = `%${query.search}%`
+      conditions.push(or({{#each searchFields}}ilike(table.{{this}}, pattern){{#unless @last}}, {{/unless}}{{/each}})!)
+    }
+{{/if}}
     const where = conditions.length > 0 ? and(...conditions) : undefined
 
     const baseQuery = db.select().from(table)
@@ -63,7 +98,11 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
       where ? countQuery.where(where) : countQuery,
     ])
 
+{{#if paginate}}
+    return { items: data, total: countResult[0]?.count ?? 0, page, limit }
+{{else}}
     return { items: data, total: countResult[0]?.count ?? 0, limit, offset }
+{{/if}}
 {{/if}}
   })
 {{/if}}

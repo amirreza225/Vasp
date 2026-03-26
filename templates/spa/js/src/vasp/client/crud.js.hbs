@@ -39,11 +39,35 @@ export function use{{pascalCase entity}}Crud() {
         loading,
         error,
 {{#if (includes operations "list")}}
-        list: async () => {
+        list: async (params) => {
             loading.value = true
             error.value = null
             try {
-                return unwrap(await $fetch(base, { credentials: 'include' }))
+                const query = {}
+                if (params?.limit !== undefined) query.limit = params.limit
+{{#if listConfig.paginate}}
+                if (params?.page !== undefined) query.page = params.page
+{{else}}
+                if (params?.offset !== undefined) query.offset = params.offset
+{{/if}}
+{{#if listConfig.sortable}}
+                if (params?.sortBy) query.sortBy = params.sortBy
+                if (params?.dir) query.dir = params.dir
+{{else}}
+                if (params?.orderBy) query.orderBy = params.orderBy
+                if (params?.dir) query.dir = params.dir
+{{/if}}
+{{#if listConfig.filterable}}
+                if (params?.filter) {
+                    for (const [k, v] of Object.entries(params.filter)) {
+                        if (v !== undefined) query[`filter.${k}`] = v
+                    }
+                }
+{{/if}}
+{{#if listConfig.search}}
+                if (params?.search) query.search = params.search
+{{/if}}
+                return unwrap(await $fetch(base, { query, credentials: 'include' }))
             } catch (err) {
                 fail(err)
                 throw err
