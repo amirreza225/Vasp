@@ -59,12 +59,18 @@ export function errorHandler() {
         }
       }
 
-      // Unexpected error — log and mask
+      // Unexpected error — log and mask (expose stack only in development)
       console.error('[server error]', error)
       set.status = 500
       return {
         ok: false,
-        error: { code: 'INTERNAL_ERROR', message: 'Internal server error' },
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error',
+          ...(process.env.NODE_ENV === 'development'
+            ? { stack: error instanceof Error ? error.stack : String(error) }
+            : {}),
+        },
       }
     })
     .onAfterHandle({ as: 'global' }, ({ response }) => {

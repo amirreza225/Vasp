@@ -8,9 +8,15 @@ const http = axios.create({
 http.interceptors.response.use(
   (response) => response,
   (error) => {
-    const serverMessage = error?.response?.data?.error?.message
-    if (serverMessage) {
-      error.message = serverMessage
+    const serverError = error?.response?.data?.error
+    if (serverError?.message) {
+      error.message = serverError.message
+    }
+    if (serverError?.code) {
+      error.errorCode = serverError.code
+    }
+    if (serverError?.stack) {
+      error.serverStack = serverError.stack
     }
     return Promise.reject(error)
   },

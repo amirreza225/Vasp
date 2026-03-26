@@ -1,8 +1,8 @@
 <script setup>
-import { ref, watch{{#if hasManyToOneRelations}}, onMounted{{/if}} } from 'vue'
+import { h, ref, watch{{#if hasManyToOneRelations}}, onMounted{{/if}} } from 'vue'
 import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{ext}}'
 {{#each uniqueRelatedEntities}}import { {{pascalCase this}}Api } from '@/api/{{kebabCase this}}.{{../ext}}'
-{{/each}}import { message } from 'ant-design-vue'
+{{/each}}import { message, notification } from 'ant-design-vue'
 
 const props = defineProps({
   visible: Boolean,
@@ -19,6 +19,21 @@ const nullableDateTimeFields = [{{#each fields}}{{#unless isRelation}}{{#unless 
 // Options for relation selects (loaded on mount)
 {{#each manyToOneRelations}}const {{name}}Options = ref([])
 {{/each}}
+function showApiError(err, fallbackMsg) {
+  const errCode = err?.errorCode ?? 'ERROR'
+  const errMsg = err instanceof Error ? err.message : fallbackMsg
+  const errStack = import.meta.env.DEV ? (err?.serverStack ?? null) : null
+  notification.error({
+    message: `[${errCode}] ${errMsg}`,
+    ...(errStack
+      ? {
+          description: h('pre', { style: 'font-size:11px;max-height:200px;overflow:auto;white-space:pre-wrap;margin:0' }, errStack),
+          duration: 0,
+        }
+      : {}),
+  })
+}
+
 function emptyForm() {
   return {
 {{#each fields}}
@@ -91,7 +106,7 @@ async function handleSubmit() {
     }
     emit('saved')
   } catch (err) {
-    message.error(err instanceof Error ? err.message : 'Save failed')
+    showApiError(err, 'Save failed')
   } finally {
     loading.value = false
   }
