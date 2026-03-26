@@ -64,7 +64,8 @@ onMounted(async () => {
       value: r.id,
     }))
   } catch { /* ignore — options stay empty */ }
-{{/each}}})
+{{/each}}
+})
 {{/if}}
 async function handleSubmit() {
   loading.value = true
