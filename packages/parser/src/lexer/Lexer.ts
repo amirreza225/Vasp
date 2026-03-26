@@ -181,7 +181,10 @@ export class Lexer {
     // Handle modifiers with parenthetical args: @default(now), @default("val"), @onDelete(cascade), @validate(...)
     let modifier = name;
     if (
-      (name === "default" || name === "onDelete" || name === "validate" || name === "storage") &&
+      (name === "default" ||
+        name === "onDelete" ||
+        name === "validate" ||
+        name === "storage") &&
       this.peek() === "("
     ) {
       const parenLoc = this.loc(); // capture opening '(' location for error reporting

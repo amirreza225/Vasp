@@ -568,7 +568,13 @@ export class SemanticValidator {
       "maxLength",
     ]);
     const numericRules = new Set(["min", "max"]);
-    const noValidationTypes = new Set(["Boolean", "DateTime", "Json", "Enum", "File"]);
+    const noValidationTypes = new Set([
+      "Boolean",
+      "DateTime",
+      "Json",
+      "Enum",
+      "File",
+    ]);
 
     for (const entity of ast.entities) {
       for (const field of entity.fields) {

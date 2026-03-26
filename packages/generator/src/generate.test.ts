@@ -2762,7 +2762,9 @@ storage Photos {
       engine: sharedEngine,
     });
     expect(existsSync(join(outputDir, "server/storage/photos.ts"))).toBe(true);
-    expect(existsSync(join(outputDir, "server/routes/storage/photos.ts"))).toBe(true);
+    expect(existsSync(join(outputDir, "server/routes/storage/photos.ts"))).toBe(
+      true,
+    );
   });
 
   it("server/index.js imports storage upload routes", () => {

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parse } from "./Parser.js";
+import { parse as parseWithValidation } from "../index.js";
 
 const FIXTURES_DIR = join(import.meta.dirname, "../../../../e2e/fixtures");
 
@@ -1090,7 +1091,7 @@ describe("SemanticValidator — storage blocks", () => {
 
   it("throws on duplicate storage block names (E160)", () => {
     expect(() =>
-      parse(`
+      parseWithValidation(`
       ${APP}
       storage Files {
         provider: local
@@ -1105,7 +1106,7 @@ describe("SemanticValidator — storage blocks", () => {
 
   it("throws on unknown storage provider (E161)", () => {
     expect(() =>
-      parse(`
+      parseWithValidation(`
       ${APP}
       storage Files {
         provider: ftp
@@ -1116,7 +1117,7 @@ describe("SemanticValidator — storage blocks", () => {
 
   it("throws when cloud provider has no bucket (E162)", () => {
     expect(() =>
-      parse(`
+      parseWithValidation(`
       ${APP}
       storage Assets {
         provider: s3
@@ -1127,7 +1128,7 @@ describe("SemanticValidator — storage blocks", () => {
 
   it("throws when @storage() references undeclared storage block (E163)", () => {
     expect(() =>
-      parse(`
+      parseWithValidation(`
       ${APP}
       entity Post {
         id: Int @id
@@ -1139,7 +1140,7 @@ describe("SemanticValidator — storage blocks", () => {
 
   it("accepts a valid File field referencing a declared storage block", () => {
     expect(() =>
-      parse(`
+      parseWithValidation(`
       ${APP}
       storage Files {
         provider: local
