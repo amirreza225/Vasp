@@ -4,6 +4,211 @@ Vasp is a declarative full-stack framework for Vue developers. A single `main.va
 
 ---
 
+## Quick Reference by Task
+
+Read this first. It tells you exactly which files to open for any common task — no codebase exploration needed.
+
+| Task | Files to read first | Files to edit |
+|------|--------------------|--------------:|
+| Add new DSL block type | `core/src/types/ast.ts`, `parser/src/parser/Parser.ts` | See 13-step checklist below |
+| Fix parser bug | `parser/src/lexer/TokenType.ts`, `parser/src/parser/Parser.ts` | Same files |
+| Fix semantic validation error | `parser/src/validator/SemanticValidator.ts` | Same file |
+| Fix generated server output | `generator/src/generators/<Name>Generator.ts` | Generator + matching `templates/shared/server/…hbs` |
+| Fix generated frontend output | `generator/src/generators/FrontendGenerator.ts` | `templates/spa/` or `templates/ssr/` |
+| Fix auth behavior | `templates/shared/auth/server/middleware.hbs`, `plugin.hbs` | Same templates + `AuthGenerator.ts` |
+| Fix Drizzle schema output | `generator/src/generators/DrizzleSchemaGenerator.ts` | `templates/shared/drizzle/schema.hbs` |
+| Fix admin panel | `generator/src/generators/AdminGenerator.ts` | `templates/admin/**/*.hbs` |
+| Fix email generation | `generator/src/generators/EmailGenerator.ts` | `templates/shared/email/_mailer.hbs` |
+| Fix storage/upload | `generator/src/generators/StorageGenerator.ts` | `templates/shared/server/routes/storage/`, `templates/shared/server/storage/` |
+| Fix CRUD endpoints | `generator/src/generators/CrudGenerator.ts` | `templates/shared/server/routes/crud/_crud.hbs` |
+| Fix realtime/WebSocket | `generator/src/generators/RealtimeGenerator.ts` | `templates/shared/server/routes/realtime/` |
+| Fix background jobs | `generator/src/generators/JobGenerator.ts` | `templates/shared/jobs/` |
+| Fix CLI command | `cli/src/commands/<command>.ts` | Same file |
+| Fix `vasp new` scaffolding | `cli/src/commands/new.ts`, `generator/src/generators/ScaffoldGenerator.ts` | Same files |
+| Fix runtime composable | `runtime/src/client/composables/use<Name>.ts` | Same file |
+| Fix template helper | `generator/src/template/TemplateEngine.ts` | Same file |
+| Add/fix a Handlebars template | See template map below | The `.hbs` file directly |
+
+---
+
+## Complete File Map
+
+### `packages/core/src/`
+```
+types/
+  ast.ts          ← VaspAST, all Node interfaces, VaspNode union — SOURCE OF TRUTH
+  config.ts       ← VaspConfig (CLI config)
+constants.ts      ← SUPPORTED_FIELD_TYPES, SUPPORTED_AUTH_METHODS, SUPPORTED_*
+errors/
+  VaspError.ts    ← base error class
+  ParseError.ts   ← parser errors
+  GeneratorError.ts
+index.ts          ← re-exports everything
+```
+
+### `packages/parser/src/`
+```
+lexer/
+  TokenType.ts    ← every keyword token (KW_APP, KW_ENTITY, KW_EMAIL, …)
+  Token.ts        ← Token interface
+  Lexer.ts        ← keyword map + tokenisation
+parser/
+  Parser.ts       ← main parse() loop + one parseXxx() method per block type
+validator/
+  SemanticValidator.ts  ← validate() calls one checkXxx() per block type
+errors/
+  DiagnosticFormatter.ts
+index.ts
+```
+
+### `packages/generator/src/`
+```
+generate.ts                         ← orchestrates all generators in order
+GeneratorContext.ts                 ← ctx shape: ast, outputDir, isTypeScript, isSsr…
+generators/
+  BaseGenerator.ts                  ← base class; baseData() exposes ast to templates
+  ScaffoldGenerator.ts              ← package.json, tsconfig, .env, README, tests
+  DrizzleSchemaGenerator.ts         ← DB schema, enums, relations, junction tables
+  BackendGenerator.ts               ← Elysia server entry, DB client, middleware
+  AuthGenerator.ts                  ← auth routes, Login/Register components
+  MiddlewareGenerator.ts            ← custom middleware blocks
+  QueryActionGenerator.ts           ← query + action server handlers
+  ApiGenerator.ts                   ← custom API endpoints
+  CrudGenerator.ts                  ← CRUD REST endpoints
+  RealtimeGenerator.ts              ← WebSocket channels
+  JobGenerator.ts                   ← PgBoss background jobs
+  SeedGenerator.ts                  ← DB seed script
+  StorageGenerator.ts               ← file upload endpoints + config
+  EmailGenerator.ts                 ← email provider + mailer
+  AdminGenerator.ts                 ← Vue admin panel (separate Vite app)
+  FrontendGenerator.ts              ← Vue SPA (Vite) or Nuxt 4 SSR/SSG
+template/
+  TemplateEngine.ts                 ← Handlebars setup + helpers
+manifest/
+  Manifest.ts                       ← tracks generated files for --dry-run / diff
+utils/
+  fs.ts
+```
+
+### `packages/cli/src/`
+```
+index.ts                  ← main switch on command name
+commands/
+  new.ts                  ← vasp new
+  generate.ts             ← vasp generate
+  start.ts                ← vasp start
+  build.ts                ← vasp build
+  db.ts                   ← vasp db push/generate/migrate/studio/seed
+  add.ts                  ← vasp add entity/page/crud/…
+  deploy.ts               ← vasp deploy --target=…
+  eject.ts                ← vasp eject
+  enable-ssr.ts           ← vasp enable-ssr
+  migrate-to-ts.ts        ← vasp migrate-to-ts
+utils/
+  template-dir.ts         ← resolves templates/ path for both dev and prod binary
+  logger.ts
+  prompt.ts
+  parse-error.ts
+bin/vasp.ts               ← entry point (NO shebang — injected by bun build --banner)
+```
+
+### `packages/runtime/src/`
+```
+client/
+  ofetch.ts               ← $vasp HTTP client factory (ofetch-based)
+  composables/
+    useQuery.ts
+    useAction.ts
+    useAuth.ts
+    useVasp.ts
+types.ts
+index.ts
+```
+
+### `templates/`
+```
+shared/                               ← emitted for every generated app
+  server/
+    index.hbs                         ← Elysia entry point
+    db/client.hbs                     ← Drizzle client
+    db/seed.hbs                       ← seed script
+    middleware/
+      rateLimit.hbs                   ← IP rate limiter (always included)
+      csrf.hbs
+      logger.hbs
+      errorHandler.hbs
+    routes/
+      _vasp.hbs                       ← vasp meta route
+      queries/_query.hbs              ← per-query handler
+      actions/_action.hbs             ← per-action handler
+      crud/_crud.hbs                  ← per-entity CRUD endpoints
+      api/_api.hbs                    ← per-api endpoint
+      realtime/index.hbs              ← WebSocket setup
+      realtime/_channel.hbs           ← per-channel handler
+      jobs/_schedule.hbs              ← per-job schedule
+      admin/index.hbs                 ← admin API router
+      admin/_admin.hbs                ← per-entity admin endpoints
+      storage/_upload.hbs             ← per-storage upload endpoint
+    storage/_provider.hbs             ← storage provider config
+  auth/
+    server/
+      index.hbs                       ← auth router
+      middleware.hbs                  ← requireAuth (jose JWT verify)
+      plugin.hbs                      ← authPlugin (@elysiajs/jwt sign)
+      providers/
+        usernameAndPassword.hbs
+        google.hbs
+        github.hbs
+    client/
+      Login.vue.hbs
+      Register.vue.hbs
+  drizzle/
+    schema.hbs                        ← full Drizzle schema
+    drizzle.config.hbs
+  email/
+    _mailer.hbs                       ← mailer setup per email block
+  jobs/
+    boss.hbs                          ← PgBoss setup
+    _job.hbs                          ← per-job worker
+  shared/
+    types.hbs                         ← shared TypeScript types
+    validation.hbs                    ← Valibot schemas
+  tests/…                             ← test scaffold templates
+  package.json.hbs, tsconfig.json.hbs, .env.hbs, .env.example.hbs, README.md.hbs …
+
+spa/{js,ts}/                          ← Vite SPA only
+  src/vasp/client/                    ← typed API client (queries, actions, crud)
+  src/vasp/plugin.{js,ts}.hbs
+  src/App.vue.hbs
+  src/router/index.{js,ts}.hbs
+  src/components/VaspErrorBoundary.vue.hbs
+  src/components/VaspNotifications.vue.hbs
+
+ssr/{js,ts}/                          ← Nuxt 4 SSR/SSG only
+  nuxt.config.{js,ts}.hbs
+  app.vue.hbs
+  plugins/vasp.server.{js,ts}.hbs
+  plugins/vasp.client.{js,ts}.hbs
+  composables/useVasp.{js,ts}.hbs
+  middleware/auth.{js,ts}.hbs
+
+admin/                                ← standalone Vue 3 + Ant Design admin panel
+  src/views/_entity/index.vue.hbs    ← entity list view (table + search)
+  src/views/_entity/FormModal.vue.hbs ← create/edit modal
+  src/api/_entity.hbs                 ← typed API wrapper per entity
+  src/router/index.hbs
+  src/layouts/AdminLayout.vue.hbs
+  vite.config.hbs
+
+starters/                             ← pre-built .vasp starter files
+  minimal.vasp
+  todo.vasp
+  todo-auth-ssr.vasp
+  recipe.vasp
+```
+
+---
+
 ## Monorepo Layout
 
 ```
