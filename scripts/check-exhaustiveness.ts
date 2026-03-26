@@ -124,7 +124,8 @@ function findSwitchCaseValues(
   const found = new Set<string>()
   const re = /case\s+["']([^"']+)["']\s*:/g
   for (const match of content.matchAll(re)) {
-    if (knownTypes.has(match[1])) found.add(match[1])
+    const val = match[1]
+    if (val && knownTypes.has(val)) found.add(val)
   }
   return found
 }
