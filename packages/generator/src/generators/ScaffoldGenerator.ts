@@ -203,6 +203,18 @@ export class ScaffoldGenerator extends BaseGenerator {
         }
         if (field.nullable) modParts.push('@nullable')
         if (field.isUpdatedAt) modParts.push('@updatedAt')
+        if (field.validation) {
+          const vld = field.validation
+          const parts: string[] = []
+          if (vld.email) parts.push('email')
+          else if (vld.url) parts.push('url')
+          else if (vld.uuid) parts.push('uuid')
+          if (vld.minLength != null) parts.push(`minLength: ${vld.minLength}`)
+          if (vld.maxLength != null) parts.push(`maxLength: ${vld.maxLength}`)
+          if (vld.min != null) parts.push(`min: ${vld.min}`)
+          if (vld.max != null) parts.push(`max: ${vld.max}`)
+          if (parts.length > 0) modParts.push(`@validate(${parts.join(', ')})`)
+        }
 
         const mods = modParts.join(' ')
         lines.push(`  ${field.name}: ${typeStr}${mods ? ' ' + mods : ''}`)

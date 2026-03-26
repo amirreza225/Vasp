@@ -509,3 +509,69 @@ describe('SemanticValidator — admin block', () => {
     `)).not.toThrow()
   })
 })
+
+describe('SemanticValidator — @validate rules (E154)', () => {
+  it('passes valid @validate(email) on String field', () => {
+    expect(() => validate(`
+      ${APP}
+      entity User { id: Int @id email: String @validate(email) }
+    `)).not.toThrow()
+  })
+
+  it('passes valid @validate(min: 0, max: 100) on Int field', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Product { id: Int @id stock: Int @validate(min: 0, max: 100) }
+    `)).not.toThrow()
+  })
+
+  it('fails when @validate is used on a relation field (E154_VALIDATE_ON_RELATION)', () => {
+    expect(() => validate(`
+      ${APP}
+      entity User { id: Int @id }
+      entity Todo { id: Int @id author: User @onDelete(cascade) @validate(email) }
+    `)).toThrow('E154_VALIDATE_ON_RELATION')
+  })
+
+  it('fails when @validate is used on a Boolean field (E154_VALIDATE_UNSUPPORTED_TYPE)', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Todo { id: Int @id done: Boolean @validate(email) }
+    `)).toThrow('E154_VALIDATE_UNSUPPORTED_TYPE')
+  })
+
+  it('fails when numeric rule used on String field (E154_VALIDATE_INCOMPATIBLE_RULE)', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String @validate(min: 0) }
+    `)).toThrow('E154_VALIDATE_INCOMPATIBLE_RULE')
+  })
+
+  it('fails when string rule used on Int field (E154_VALIDATE_INCOMPATIBLE_RULE)', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Todo { id: Int @id count: Int @validate(email) }
+    `)).toThrow('E154_VALIDATE_INCOMPATIBLE_RULE')
+  })
+
+  it('fails when multiple exclusive format flags are used (E154_VALIDATE_EXCLUSIVE_FLAGS)', () => {
+    expect(() => validate(`
+      ${APP}
+      entity User { id: Int @id contact: String @validate(email, url) }
+    `)).toThrow('E154_VALIDATE_EXCLUSIVE_FLAGS')
+  })
+
+  it('fails when minLength > maxLength (E154_VALIDATE_LENGTH_ORDER)', () => {
+    expect(() => validate(`
+      ${APP}
+      entity User { id: Int @id name: String @validate(minLength: 10, maxLength: 5) }
+    `)).toThrow('E154_VALIDATE_LENGTH_ORDER')
+  })
+
+  it('fails when min > max (E154_VALIDATE_RANGE_ORDER)', () => {
+    expect(() => validate(`
+      ${APP}
+      entity Product { id: Int @id count: Int @validate(min: 100, max: 10) }
+    `)).toThrow('E154_VALIDATE_RANGE_ORDER')
+  })
+})

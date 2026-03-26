@@ -732,3 +732,72 @@ describe('Parser — admin block', () => {
     `)).toThrow('E047_UNKNOWN_PROP')
   })
 })
+
+describe('Parser — @validate modifier (field-level validation)', () => {
+  it('parses @validate(email) on a String field', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User { id: Int @id email: String @validate(email) }
+    `)
+    const emailField = ast.entities[0]?.fields[1]
+    expect(emailField?.validation).toEqual({ email: true })
+  })
+
+  it('parses @validate(url) on a String field', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Post { id: Int @id website: String @validate(url) }
+    `)
+    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ url: true })
+  })
+
+  it('parses @validate(uuid) on a String field', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Post { id: Int @id externalId: String @validate(uuid) }
+    `)
+    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ uuid: true })
+  })
+
+  it('parses @validate(minLength: 3, maxLength: 30) on a String field', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User { id: Int @id username: String @validate(minLength: 3, maxLength: 30) }
+    `)
+    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ minLength: 3, maxLength: 30 })
+  })
+
+  it('parses @validate(min: 0, max: 100) on an Int field', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Product { id: Int @id stock: Int @validate(min: 0, max: 100) }
+    `)
+    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ min: 0, max: 100 })
+  })
+
+  it('parses combined @validate(email, minLength: 5) on a String field', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User { id: Int @id email: String @validate(email, minLength: 5) }
+    `)
+    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ email: true, minLength: 5 })
+  })
+
+  it('leaves validation undefined when @validate is absent', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Todo { id: Int @id title: String }
+    `)
+    expect(ast.entities[0]?.fields[1]?.validation).toBeUndefined()
+  })
+
+  it('parses @validate together with other modifiers', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User { id: Int @id username: String @unique @validate(minLength: 3) }
+    `)
+    const field = ast.entities[0]?.fields[1]
+    expect(field?.modifiers).toContain('unique')
+    expect(field?.validation).toEqual({ minLength: 3 })
+  })
+})

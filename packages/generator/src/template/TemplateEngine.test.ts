@@ -224,3 +224,78 @@ describe('String transform utils', () => {
     expect(toKebabCase('getTodos')).toBe('get-todos')
   })
 })
+
+describe('TemplateEngine — valibotSchema helper with validation rules', () => {
+  const engine = new TemplateEngine()
+  const render = (type: string, nullable?: boolean, optional?: boolean, enumValues?: unknown, validation?: unknown) =>
+    engine.renderString('{{{valibotSchema type nullable optional enumValues validation}}}', { type, nullable, optional, enumValues, validation })
+
+  it('generates v.email() when email validation is set', () => {
+    const result = render('String', false, false, undefined, { email: true })
+    expect(result).toContain('v.email()')
+    expect(result).toContain('v.pipe(')
+  })
+
+  it('generates v.url() when url validation is set', () => {
+    const result = render('String', false, false, undefined, { url: true })
+    expect(result).toContain('v.url()')
+  })
+
+  it('generates v.uuid() when uuid validation is set', () => {
+    const result = render('String', false, false, undefined, { uuid: true })
+    expect(result).toContain('v.uuid()')
+  })
+
+  it('generates v.minLength(3) when minLength is set', () => {
+    const result = render('String', false, false, undefined, { minLength: 3 })
+    expect(result).toContain('v.minLength(3)')
+  })
+
+  it('generates v.maxLength(30) when maxLength is set', () => {
+    const result = render('String', false, false, undefined, { maxLength: 30 })
+    expect(result).toContain('v.maxLength(30)')
+  })
+
+  it('generates both minLength and maxLength when both are set', () => {
+    const result = render('String', false, false, undefined, { minLength: 3, maxLength: 30 })
+    expect(result).toContain('v.minLength(3)')
+    expect(result).toContain('v.maxLength(30)')
+  })
+
+  it('generates v.minValue(0) for Int with min validation', () => {
+    const result = render('Int', false, false, undefined, { min: 0 })
+    expect(result).toContain('v.minValue(0)')
+  })
+
+  it('generates v.maxValue(100) for Int with max validation', () => {
+    const result = render('Int', false, false, undefined, { max: 100 })
+    expect(result).toContain('v.maxValue(100)')
+  })
+
+  it('generates pipe with both min and max for Int', () => {
+    const result = render('Int', false, false, undefined, { min: 0, max: 100 })
+    expect(result).toBe('v.pipe(v.number(), v.minValue(0), v.maxValue(100))')
+  })
+
+  it('wraps in v.nullable when nullable=true and email validation set', () => {
+    const result = render('String', true, false, undefined, { email: true })
+    expect(result).toContain('v.nullable(')
+    expect(result).toContain('v.email()')
+  })
+
+  it('generates plain v.pipe(v.string(), v.minLength(1)) for String without validation (backward compat)', () => {
+    const result = render('String', false, false, undefined, undefined)
+    expect(result).toBe('v.pipe(v.string(), v.minLength(1))')
+  })
+
+  it('generates v.string() without minLength(1) for nullable String without validation', () => {
+    const result = render('String', true, false, undefined, undefined)
+    expect(result).toBe('v.nullable(v.string())')
+  })
+
+  it('overrides default minLength(1) when explicit minLength: 0 is given', () => {
+    const result = render('String', false, false, undefined, { minLength: 0 })
+    expect(result).toContain('v.minLength(0)')
+    expect(result).not.toMatch(/v\.minLength\(1\)/)
+  })
+})
