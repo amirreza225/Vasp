@@ -422,13 +422,14 @@ class Parser {
 
       const isRelation = !primitiveTypes.has(fieldTypeStr)
 
-      // Parse modifiers (@id, @unique, @default(...), @nullable, @updatedAt, @onDelete(...), @validate(...))
+      // Parse modifiers (@id, @unique, @default(...), @nullable, @updatedAt, @onDelete(...), @validate(...), @manyToMany)
       const modifiers: FieldModifier[] = []
       let nullable = false
       let defaultValue: string | undefined
       let onDelete: OnDeleteBehavior | undefined
       let isUpdatedAt = false
       let fieldValidation: FieldValidation | undefined
+      let isManyToMany = false
 
       while (this.check(TokenType.AT_MODIFIER)) {
         const mod = this.consume(TokenType.AT_MODIFIER)
@@ -447,6 +448,8 @@ class Parser {
         } else if (modVal === 'updatedAt') {
           isUpdatedAt = true
           modifiers.push('updatedAt')
+        } else if (modVal === 'manyToMany') {
+          isManyToMany = true
         } else if (modVal.startsWith('default_')) {
           defaultValue = modVal.slice('default_'.length)
         } else if (modVal.startsWith('onDelete_')) {
@@ -472,6 +475,7 @@ class Parser {
       if (onDelete !== undefined) field.onDelete = onDelete
       if (enumValues !== undefined) field.enumValues = enumValues
       if (fieldValidation !== undefined) field.validation = fieldValidation
+      if (isManyToMany) field.isManyToMany = true
 
       fields.push(field)
     }
