@@ -288,9 +288,9 @@ describe('TemplateEngine — valibotSchema helper with validation rules', () => 
     expect(result).toBe('v.pipe(v.string(), v.minLength(1))')
   })
 
-  it('generates v.string() without minLength(1) for nullable String without validation', () => {
+  it('generates v.nullable(v.pipe(v.string(), v.minLength(1))) for nullable String without validation', () => {
     const result = render('String', true, false, undefined, undefined)
-    expect(result).toBe('v.nullable(v.string())')
+    expect(result).toBe('v.nullable(v.pipe(v.string(), v.minLength(1)))')
   })
 
   it('overrides default minLength(1) when explicit minLength: 0 is given', () => {

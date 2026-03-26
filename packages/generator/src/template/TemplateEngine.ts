@@ -147,8 +147,8 @@ export class TemplateEngine {
         // Length constraints
         if (vld?.minLength != null) {
           parts.push(`v.minLength(${vld.minLength})`)
-        } else if (!isNullable) {
-          // Default: non-nullable strings must be non-empty unless user overrides minLength
+        } else {
+          // Default: all strings must be non-empty unless user overrides minLength
           parts.push('v.minLength(1)')
         }
         if (vld?.maxLength != null) parts.push(`v.maxLength(${vld.maxLength})`)
