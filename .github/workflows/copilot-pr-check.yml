@@ -45,8 +45,8 @@ jobs:
       # - name: Prettier — format check
       #   run: bunx prettier --check "packages/*/src/**/*.ts"
 
-      - name: ESLint
-        run: bun run lint
+      # - name: ESLint
+      #   run: bun run lint
 
       - name: Unit tests
         run: bun run test

@@ -274,7 +274,7 @@ class Parser {
     let db = "Drizzle" as const;
     let ssr: boolean | "ssg" = false;
     let typescript = false;
-    let env: Record<string, EnvRequirement> = {};
+    const env: Record<string, EnvRequirement> = {};
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
