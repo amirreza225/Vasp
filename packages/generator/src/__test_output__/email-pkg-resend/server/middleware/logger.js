@@ -1,0 +1,78 @@
+import { Elysia } from 'elysia'
+import crypto from 'node:crypto'
+
+const isDev = process.env.NODE_ENV !== 'production'
+
+const colors = {
+  GET: '\x1b[32m',    // green
+  POST: '\x1b[34m',   // blue
+  PUT: '\x1b[33m',    // yellow
+  PATCH: '\x1b[33m',  // yellow
+  DELETE: '\x1b[31m', // red
+  reset: '\x1b[0m',
+  dim: '\x1b[2m',
+  bold: '\x1b[1m',
+}
+
+function colorMethod(method) {
+  return `${colors[method] ?? ''}${method}${colors.reset}`
+}
+
+function statusColor(status) {
+  if (status < 300) return '\x1b[32m'
+  if (status < 400) return '\x1b[36m'
+  if (status < 500) return '\x1b[33m'
+  return '\x1b[31m'
+}
+
+/**
+ * Request tracing & logging middleware.
+ *
+ * - Assigns a unique `x-request-id` header to every request (UUID v4).
+ * - Logs method, path, status, and duration in dev mode.
+ * - The request ID is available in handlers via `store.requestId`.
+ */
+export function logger() {
+  return new Elysia({ name: 'vasp-logger' })
+    .derive({ as: 'scoped' }, ({ request }) => {
+      const requestId = request.headers.get('x-request-id') || crypto.randomUUID()
+      return { requestId, requestStart: performance.now() }
+    })
+    .onAfterHandle({ as: 'scoped' }, ({ request, requestId, requestStart, set }) => {
+      set.headers['x-request-id'] = requestId
+
+      if (!isDev) return
+
+      const duration = (performance.now() - requestStart).toFixed(1)
+      const url = new URL(request.url)
+      const status = typeof set.status === 'number' ? set.status : 200
+      const sc = statusColor(status)
+      console.log(
+        `${colors.dim}[${new Date().toISOString()}]${colors.reset} ` +
+        `${colorMethod(request.method)} ${url.pathname} ` +
+        `${sc}${status}${colors.reset} ${colors.dim}${duration}ms${colors.reset} ` +
+        `${colors.dim}rid:${requestId.slice(0, 8)}${colors.reset}`,
+      )
+    })
+    .onError({ as: 'scoped' }, ({ request, requestId, requestStart, set, error }) => {
+      // requestId/requestStart may be undefined when onError fires before .derive() runs
+      // (e.g. 404, parse errors, pre-routing validation failures in Elysia 1.x)
+      const rid = requestId ?? request.headers.get('x-request-id') ?? crypto.randomUUID()
+      set.headers['x-request-id'] = rid
+
+      if (!isDev) return
+
+      const start = requestStart ?? performance.now()
+      const duration = (performance.now() - start).toFixed(1)
+      const url = new URL(request.url)
+      const status = typeof set.status === 'number' ? set.status : 500
+      const sc = statusColor(status)
+      console.log(
+        `${colors.dim}[${new Date().toISOString()}]${colors.reset} ` +
+        `${colorMethod(request.method)} ${url.pathname} ` +
+        `${sc}${status}${colors.reset} ${colors.dim}${duration}ms${colors.reset} ` +
+        `${colors.dim}rid:${rid.slice(0, 8)}${colors.reset} ` +
+        `${colors.bold}\x1b[31m${error.message}${colors.reset}`,
+      )
+    })
+}

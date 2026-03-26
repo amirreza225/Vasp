@@ -1,0 +1,48 @@
+<script setup>
+import { onErrorCaptured, ref } from 'vue'
+
+const hasError = ref(false)
+const message = ref('Something went wrong')
+const stack = ref('')
+
+onErrorCaptured((error) => {
+  hasError.value = true
+  if (error instanceof Error) {
+    message.value = error.message
+    stack.value = error.stack ?? ''
+  } else {
+    message.value = String(error)
+    stack.value = ''
+  }
+  return false
+})
+
+function dismiss() {
+  hasError.value = false
+  message.value = 'Something went wrong'
+  stack.value = ''
+}
+</script>
+
+<template>
+  <div v-if="hasError" class="vasp-error-boundary">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <h2 style="margin:0 0 8px">Unexpected error</h2>
+      <button @click="dismiss" style="background:none;border:none;cursor:pointer;font-size:1.2rem;color:#991b1b;padding:0 4px" title="Dismiss">&times;</button>
+    </div>
+    <p style="margin:0 0 12px;font-weight:500"></p>
+    <pre v-if="stack" style="font-size:0.75rem;overflow:auto;background:#fff4f4;padding:10px;border-radius:4px;border:1px solid #fca5a5;white-space:pre-wrap;max-height:300px"></pre>
+  </div>
+  <slot v-else />
+</template>
+
+<style scoped>
+.vasp-error-boundary {
+  margin: 24px;
+  padding: 16px;
+  border: 1px solid #ef4444;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+}
+</style>

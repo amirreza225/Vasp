@@ -1,0 +1,36 @@
+{
+  "name": "minimal-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vasp start",
+    "build": "vasp build",
+    "test": "vitest run",
+    "dev:server": "bun --hot server/index.js",
+    "dev:client": "vite",
+    "db:generate": "bunx drizzle-kit generate",
+    "db:migrate": "bunx drizzle-kit migrate",
+    "db:push": "bunx drizzle-kit push",
+    "db:studio": "bunx drizzle-kit studio"
+  },
+  "dependencies": {
+    "@vasp-framework/runtime": "^1.0.0",
+    "elysia": "^1.1.0",
+    "@elysiajs/cors": "^1.1.0",
+    "@elysiajs/static": "^1.1.0",
+    "@elysiajs/swagger": "^1.1.0",
+    "valibot": "^1.0.0",
+    "drizzle-orm": "^0.36.0",
+    "postgres": "^3.4.0",
+    "ofetch": "^1.3.4",
+    "vue": "^3.5.0",
+    "vue-router": "^4.4.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.28.0",
+    "vitest": "^2.1.9",
+    "@vitejs/plugin-vue": "^5.2.0",
+    "vite": "^6.0.0"
+  }
+}

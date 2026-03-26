@@ -2800,6 +2800,7 @@ storage Photos {
   });
 });
 
+describe("EmailGenerator", () => {
   // ── Email generation ────────────────────────────────────────────────────
 
   it("generates a resend mailer file when an email block is declared", () => {
