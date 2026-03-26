@@ -454,6 +454,7 @@ class Parser {
       if (this.check(TokenType.AT_AT_DIRECTIVE)) {
         const directive = this.consume(TokenType.AT_AT_DIRECTIVE);
         if (directive.value === "index") {
+          this.consume(TokenType.LPAREN);
           this.consume(TokenType.LBRACKET);
           const indexFields: string[] = [];
           while (!this.check(TokenType.RBRACKET)) {
@@ -494,9 +495,11 @@ class Parser {
               );
             }
           }
+          this.consume(TokenType.RPAREN);
           indexes.push({ fields: indexFields, ...(indexType ? { type: indexType } : {}) });
           continue;
         } else if (directive.value === "unique") {
+          this.consume(TokenType.LPAREN);
           this.consume(TokenType.LBRACKET);
           const uniqueFields: string[] = [];
           while (!this.check(TokenType.RBRACKET)) {
@@ -512,6 +515,7 @@ class Parser {
               directive.loc,
             );
           }
+          this.consume(TokenType.RPAREN);
           uniqueConstraints.push({ fields: uniqueFields });
           continue;
         } else {

@@ -307,7 +307,7 @@ describe("Parser — entity block", () => {
     expect(() =>
       parse(`
         app A { title: "T" db: Drizzle ssr: false typescript: false }
-        entity Task { id: Int @id @@check([id > 0]) }
+        entity Task { id: Int @id @@check([id]) }
       `),
     ).toThrow("E169_UNKNOWN_TABLE_DIRECTIVE");
   });
