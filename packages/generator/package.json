@@ -1,6 +1,6 @@
 {
   "name": "@vasp-framework/generator",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Code generator: produces Elysia backend, Vue/Nuxt frontend, and @vasp-framework/client SDK from a VaspAST",
   "license": "Apache-2.0",
   "type": "module",
