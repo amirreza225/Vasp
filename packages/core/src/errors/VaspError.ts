@@ -3,7 +3,7 @@ export class VaspError extends Error {
     message: string,
     public readonly code: string,
   ) {
-    super(message)
-    this.name = 'VaspError'
+    super(message);
+    this.name = "VaspError";
   }
 }

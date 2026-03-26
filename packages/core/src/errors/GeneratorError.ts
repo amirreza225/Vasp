@@ -1,4 +1,4 @@
-import { VaspError } from './VaspError.js'
+import { VaspError } from "./VaspError.js";
 
 export class GeneratorError extends VaspError {
   constructor(
@@ -6,7 +6,7 @@ export class GeneratorError extends VaspError {
     public readonly generatorName: string,
     public override readonly cause?: unknown,
   ) {
-    super(message, 'GENERATOR_ERROR')
-    this.name = 'GeneratorError'
+    super(message, "GENERATOR_ERROR");
+    this.name = "GeneratorError";
   }
 }

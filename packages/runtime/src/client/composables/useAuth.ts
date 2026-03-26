@@ -1,16 +1,16 @@
-import { ref, shallowRef, type Ref } from 'vue'
-import { useVasp } from './useVasp.js'
-import { invalidateQueries, queryRegistry } from './useQuery.js'
+import { ref, shallowRef, type Ref } from "vue";
+import { useVasp } from "./useVasp.js";
+import { invalidateQueries, queryRegistry } from "./useQuery.js";
 
 export interface UseAuthResult<T = unknown> {
-  user: Ref<T | null>
-  loading: Ref<boolean>
-  error: Ref<Error | null>
-  isAuthenticated: Ref<boolean>
-  login: (credentials: unknown) => Promise<void>
-  register: (credentials: unknown) => Promise<void>
-  logout: () => Promise<void>
-  refresh: () => Promise<void>
+  user: Ref<T | null>;
+  loading: Ref<boolean>;
+  error: Ref<Error | null>;
+  isAuthenticated: Ref<boolean>;
+  login: (credentials: unknown) => Promise<void>;
+  register: (credentials: unknown) => Promise<void>;
+  logout: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 /**
@@ -20,80 +20,89 @@ export interface UseAuthResult<T = unknown> {
  * const { user, isAuthenticated, login, logout } = useAuth()
  */
 export function useAuth<T = unknown>(): UseAuthResult<T> {
-  const { $vasp } = useVasp()
-  const user = shallowRef<T | null>(null)
-  const loading = ref(true)
-  const error = ref<Error | null>(null)
-  const isAuthenticated = ref(false)
+  const { $vasp } = useVasp();
+  const user = shallowRef<T | null>(null);
+  const loading = ref(true);
+  const error = ref<Error | null>(null);
+  const isAuthenticated = ref(false);
 
   async function refresh() {
-    loading.value = true
-    error.value = null
+    loading.value = true;
+    error.value = null;
     try {
-      const result = await $vasp.query('auth/me')
-      user.value = result as T
-      isAuthenticated.value = !!result
+      const result = await $vasp.query("auth/me");
+      user.value = result as T;
+      isAuthenticated.value = !!result;
     } catch {
-      user.value = null
-      isAuthenticated.value = false
+      user.value = null;
+      isAuthenticated.value = false;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
   async function login(credentials: unknown) {
-    loading.value = true
-    error.value = null
+    loading.value = true;
+    error.value = null;
     try {
-      const result = await $vasp.action('auth/login', credentials)
-      user.value = result as T
-      isAuthenticated.value = true
+      const result = await $vasp.action("auth/login", credentials);
+      user.value = result as T;
+      isAuthenticated.value = true;
       // Notify all registered queries so stale user-scoped data is refreshed
-      await invalidateQueries([...queryRegistry.keys()])
+      await invalidateQueries([...queryRegistry.keys()]);
     } catch (err) {
-      error.value = err instanceof Error ? err : new Error(String(err))
-      throw error.value
+      error.value = err instanceof Error ? err : new Error(String(err));
+      throw error.value;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
   async function register(credentials: unknown) {
-    loading.value = true
-    error.value = null
+    loading.value = true;
+    error.value = null;
     try {
-      const result = await $vasp.action('auth/register', credentials)
-      user.value = result as T
-      isAuthenticated.value = true
+      const result = await $vasp.action("auth/register", credentials);
+      user.value = result as T;
+      isAuthenticated.value = true;
       // Notify all registered queries so stale user-scoped data is refreshed
-      await invalidateQueries([...queryRegistry.keys()])
+      await invalidateQueries([...queryRegistry.keys()]);
     } catch (err) {
-      error.value = err instanceof Error ? err : new Error(String(err))
-      throw error.value
+      error.value = err instanceof Error ? err : new Error(String(err));
+      throw error.value;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
   async function logout() {
-    loading.value = true
-    error.value = null
+    loading.value = true;
+    error.value = null;
     try {
-      await $vasp.action('auth/logout')
-      user.value = null
-      isAuthenticated.value = false
+      await $vasp.action("auth/logout");
+      user.value = null;
+      isAuthenticated.value = false;
       // Notify all registered queries so stale user-scoped data is refreshed
-      await invalidateQueries([...queryRegistry.keys()])
+      await invalidateQueries([...queryRegistry.keys()]);
     } catch (err) {
-      error.value = err instanceof Error ? err : new Error(String(err))
-      throw error.value
+      error.value = err instanceof Error ? err : new Error(String(err));
+      throw error.value;
     } finally {
-      loading.value = false
+      loading.value = false;
     }
   }
 
   // Auto-fetch current user on creation
-  refresh()
+  refresh();
 
-  return { user, loading, error, isAuthenticated, login, register, logout, refresh }
+  return {
+    user,
+    loading,
+    error,
+    isAuthenticated,
+    login,
+    register,
+    logout,
+    refresh,
+  };
 }

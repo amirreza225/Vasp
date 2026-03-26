@@ -1,5 +1,5 @@
-import { join } from 'node:path'
-import { existsSync } from 'node:fs'
+import { join } from "node:path";
+import { existsSync } from "node:fs";
 
 /**
  * Resolves the templates directory in both environments:
@@ -7,16 +7,16 @@ import { existsSync } from 'node:fs'
  *   Development: source at src/commands/ → monorepo root templates (4 levels up)
  */
 export function resolveTemplateDir(fromDir: string): string {
-  const prod = join(fromDir, '..', 'templates')
-  if (existsSync(prod)) return prod
+  const prod = join(fromDir, "..", "templates");
+  if (existsSync(prod)) return prod;
 
-  const dev = join(fromDir, '..', '..', '..', '..', 'templates')
-  if (existsSync(dev)) return dev
+  const dev = join(fromDir, "..", "..", "..", "..", "templates");
+  if (existsSync(dev)) return dev;
 
   throw new Error(
     `Templates directory not found. Searched:\n  ${prod}\n  ${dev}\n` +
-    `Run 'bun run build' inside packages/cli to copy templates.`
-  )
+      `Run 'bun run build' inside packages/cli to copy templates.`,
+  );
 }
 
 /**
@@ -25,11 +25,13 @@ export function resolveTemplateDir(fromDir: string): string {
  *   Development: source at src/commands/ → packages/cli/starters/ (2 levels up)
  */
 export function resolveStartersDir(fromDir: string): string {
-  const prod = join(fromDir, '..', 'starters')
-  if (existsSync(prod)) return prod
+  const prod = join(fromDir, "..", "starters");
+  if (existsSync(prod)) return prod;
 
-  const dev = join(fromDir, '..', '..', 'starters')
-  if (existsSync(dev)) return dev
+  const dev = join(fromDir, "..", "..", "starters");
+  if (existsSync(dev)) return dev;
 
-  throw new Error(`Starters directory not found. Searched:\n  ${prod}\n  ${dev}`)
+  throw new Error(
+    `Starters directory not found. Searched:\n  ${prod}\n  ${dev}`,
+  );
 }

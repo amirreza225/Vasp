@@ -1,12 +1,12 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
-import { parse } from './Parser.js'
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, expect, it } from "vitest";
+import { parse } from "./Parser.js";
 
-const FIXTURES_DIR = join(import.meta.dirname, '../../../../e2e/fixtures')
+const FIXTURES_DIR = join(import.meta.dirname, "../../../../e2e/fixtures");
 
-describe('Parser — minimal app', () => {
-  it('parses app block', () => {
+describe("Parser — minimal app", () => {
+  it("parses app block", () => {
     const ast = parse(`
       app MinimalApp {
         title: "Hello Vasp"
@@ -14,33 +14,39 @@ describe('Parser — minimal app', () => {
         ssr: false
         typescript: false
       }
-    `)
+    `);
     expect(ast.app).toMatchObject({
-      type: 'App',
-      name: 'MinimalApp',
-      title: 'Hello Vasp',
-      db: 'Drizzle',
+      type: "App",
+      name: "MinimalApp",
+      title: "Hello Vasp",
+      db: "Drizzle",
       ssr: false,
       typescript: false,
-    })
-  })
+    });
+  });
 
-  it('parses ssr: true', () => {
-    const ast = parse(`app A { title: "T" db: Drizzle ssr: true typescript: false }`)
-    expect(ast.app.ssr).toBe(true)
-  })
+  it("parses ssr: true", () => {
+    const ast = parse(
+      `app A { title: "T" db: Drizzle ssr: true typescript: false }`,
+    );
+    expect(ast.app.ssr).toBe(true);
+  });
 
   it('parses ssr: "ssg"', () => {
-    const ast = parse(`app A { title: "T" db: Drizzle ssr: "ssg" typescript: false }`)
-    expect(ast.app.ssr).toBe('ssg')
-  })
+    const ast = parse(
+      `app A { title: "T" db: Drizzle ssr: "ssg" typescript: false }`,
+    );
+    expect(ast.app.ssr).toBe("ssg");
+  });
 
-  it('parses typescript: true', () => {
-    const ast = parse(`app A { title: "T" db: Drizzle ssr: false typescript: true }`)
-    expect(ast.app.typescript).toBe(true)
-  })
+  it("parses typescript: true", () => {
+    const ast = parse(
+      `app A { title: "T" db: Drizzle ssr: false typescript: true }`,
+    );
+    expect(ast.app.typescript).toBe(true);
+  });
 
-  it('parses app env schema', () => {
+  it("parses app env schema", () => {
     const ast = parse(`
       app A {
         title: "T"
@@ -52,16 +58,17 @@ describe('Parser — minimal app', () => {
           GOOGLE_CLIENT_ID: optional
         }
       }
-    `)
+    `);
 
     expect(ast.app.env).toEqual({
-      DATABASE_URL: 'required',
-      GOOGLE_CLIENT_ID: 'optional',
-    })
-  })
+      DATABASE_URL: "required",
+      GOOGLE_CLIENT_ID: "optional",
+    });
+  });
 
-  it('throws on invalid app env requirement', () => {
-    expect(() => parse(`
+  it("throws on invalid app env requirement", () => {
+    expect(() =>
+      parse(`
       app A {
         title: "T"
         db: Drizzle
@@ -71,11 +78,13 @@ describe('Parser — minimal app', () => {
           DATABASE_URL: mandatory
         }
       }
-    `)).toThrow('E038_INVALID_ENV_REQUIREMENT')
-  })
+    `),
+    ).toThrow("E038_INVALID_ENV_REQUIREMENT");
+  });
 
-  it('throws on duplicate app env keys', () => {
-    expect(() => parse(`
+  it("throws on duplicate app env keys", () => {
+    expect(() =>
+      parse(`
       app A {
         title: "T"
         db: Drizzle
@@ -86,28 +95,29 @@ describe('Parser — minimal app', () => {
           DATABASE_URL: optional
         }
       }
-    `)).toThrow('E039_DUPLICATE_ENV_KEY')
-  })
-})
+    `),
+    ).toThrow("E039_DUPLICATE_ENV_KEY");
+  });
+});
 
-describe('Parser — auth block', () => {
-  it('parses auth with all methods', () => {
+describe("Parser — auth block", () => {
+  it("parses auth with all methods", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       auth User {
         userEntity: User
         methods: [ usernameAndPassword, google, github ]
       }
-    `)
+    `);
     expect(ast.auth).toMatchObject({
-      type: 'Auth',
-      name: 'User',
-      userEntity: 'User',
-      methods: ['usernameAndPassword', 'google', 'github'],
-    })
-  })
+      type: "Auth",
+      name: "User",
+      userEntity: "User",
+      methods: ["usernameAndPassword", "google", "github"],
+    });
+  });
 
-  it('parses auth roles', () => {
+  it("parses auth roles", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       auth User {
@@ -115,15 +125,15 @@ describe('Parser — auth block', () => {
         methods: [ usernameAndPassword ]
         roles: [ admin, editor, viewer ]
       }
-    `)
+    `);
     expect(ast.auth).toMatchObject({
-      roles: ['admin', 'editor', 'viewer'],
-    })
-  })
-})
+      roles: ["admin", "editor", "viewer"],
+    });
+  });
+});
 
-describe('Parser — entity block', () => {
-  it('parses entity with fields and modifiers', () => {
+describe("Parser — entity block", () => {
+  it("parses entity with fields and modifiers", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Todo {
@@ -132,85 +142,98 @@ describe('Parser — entity block', () => {
         done: Boolean
         createdAt: DateTime @default(now)
       }
-    `)
-    expect(ast.entities).toHaveLength(1)
+    `);
+    expect(ast.entities).toHaveLength(1);
     expect(ast.entities[0]).toMatchObject({
-      type: 'Entity',
-      name: 'Todo',
+      type: "Entity",
+      name: "Todo",
       fields: [
-        { name: 'id', type: 'Int', modifiers: ['id'] },
-        { name: 'title', type: 'String', modifiers: [] },
-        { name: 'done', type: 'Boolean', modifiers: [] },
-        { name: 'createdAt', type: 'DateTime', modifiers: ['default_now'] },
+        { name: "id", type: "Int", modifiers: ["id"] },
+        { name: "title", type: "String", modifiers: [] },
+        { name: "done", type: "Boolean", modifiers: [] },
+        { name: "createdAt", type: "DateTime", modifiers: ["default_now"] },
       ],
-    })
-  })
+    });
+  });
 
-  it('parses entity with unique modifier', () => {
+  it("parses entity with unique modifier", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity User {
         id: Int @id
         email: String @unique
       }
-    `)
+    `);
     expect(ast.entities[0]?.fields[1]).toMatchObject({
-      name: 'email',
-      type: 'String',
-      modifiers: ['unique'],
-    })
-  })
+      name: "email",
+      type: "String",
+      modifiers: ["unique"],
+    });
+  });
 
-  it('parses multiple entities', () => {
+  it("parses multiple entities", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Todo { id: Int @id title: String }
       entity User { id: Int @id email: String @unique }
-    `)
-    expect(ast.entities).toHaveLength(2)
-    expect(ast.entities[0]?.name).toBe('Todo')
-    expect(ast.entities[1]?.name).toBe('User')
-  })
+    `);
+    expect(ast.entities).toHaveLength(2);
+    expect(ast.entities[0]?.name).toBe("Todo");
+    expect(ast.entities[1]?.name).toBe("User");
+  });
 
-  it('treats capitalised field types as relation references (no parser throw)', () => {
+  it("treats capitalised field types as relation references (no parser throw)", () => {
     // Unknown capitalized names (e.g. Uuid) are treated as relation entity references.
     // Semantic validation (E115) catches undefined relation entities — not the parser.
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Todo { id: Uuid @id }
-    `)
-    const idField = ast.entities[0]?.fields[0]
-    expect(idField?.type).toBe('Uuid')
-    expect(idField?.isRelation).toBe(true)
-  })
+    `);
+    const idField = ast.entities[0]?.fields[0];
+    expect(idField?.type).toBe("Uuid");
+    expect(idField?.isRelation).toBe(true);
+  });
 
-  it('parses entity with Float field', () => {
+  it("parses entity with Float field", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Product { id: Int @id price: Float }
-    `)
-    expect(ast.entities[0]?.fields[1]).toMatchObject({ name: 'price', type: 'Float', modifiers: [] })
-  })
-})
+    `);
+    expect(ast.entities[0]?.fields[1]).toMatchObject({
+      name: "price",
+      type: "Float",
+      modifiers: [],
+    });
+  });
+});
 
-describe('Parser — route and page', () => {
-  it('parses route and page', () => {
+describe("Parser — route and page", () => {
+  it("parses route and page", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       route HomeRoute { path: "/" to: HomePage }
       page HomePage { component: import Home from "@src/pages/Home.vue" }
-    `)
-    expect(ast.routes[0]).toMatchObject({ type: 'Route', name: 'HomeRoute', path: '/', to: 'HomePage' })
+    `);
+    expect(ast.routes[0]).toMatchObject({
+      type: "Route",
+      name: "HomeRoute",
+      path: "/",
+      to: "HomePage",
+    });
     expect(ast.pages[0]).toMatchObject({
-      type: 'Page',
-      name: 'HomePage',
-      component: { kind: 'default', defaultExport: 'Home', source: '@src/pages/Home.vue' },
-    })
-  })
-})
+      type: "Page",
+      name: "HomePage",
+      component: {
+        kind: "default",
+        defaultExport: "Home",
+        source: "@src/pages/Home.vue",
+      },
+    });
+  });
+});
 
-describe('Parser — query and action', () => {
-  it('parses query with named import', () => {
+describe("Parser — query and action", () => {
+  it("parses query with named import", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       crud Todo { entity: Todo operations: [list] }
@@ -218,17 +241,17 @@ describe('Parser — query and action', () => {
         fn: import { getTodos } from "@src/queries.js"
         entities: [Todo]
       }
-    `)
+    `);
     expect(ast.queries[0]).toMatchObject({
-      type: 'Query',
-      name: 'getTodos',
-      fn: { kind: 'named', namedExport: 'getTodos', source: '@src/queries.js' },
-      entities: ['Todo'],
+      type: "Query",
+      name: "getTodos",
+      fn: { kind: "named", namedExport: "getTodos", source: "@src/queries.js" },
+      entities: ["Todo"],
       auth: false,
-    })
-  })
+    });
+  });
 
-  it('parses action', () => {
+  it("parses action", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       crud Todo { entity: Todo operations: [create] }
@@ -236,15 +259,19 @@ describe('Parser — query and action', () => {
         fn: import { createTodo } from "@src/actions.js"
         entities: [Todo]
       }
-    `)
+    `);
     expect(ast.actions[0]).toMatchObject({
-      type: 'Action',
-      name: 'createTodo',
-      fn: { kind: 'named', namedExport: 'createTodo', source: '@src/actions.js' },
-    })
-  })
+      type: "Action",
+      name: "createTodo",
+      fn: {
+        kind: "named",
+        namedExport: "createTodo",
+        source: "@src/actions.js",
+      },
+    });
+  });
 
-  it('parses roles on query/action', () => {
+  it("parses roles on query/action", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       crud Todo { entity: Todo operations: [list, create] }
@@ -262,15 +289,15 @@ describe('Parser — query and action', () => {
         auth: true
         roles: [admin]
       }
-    `)
+    `);
 
-    expect(ast.queries[0]?.roles).toEqual(['admin', 'editor'])
-    expect(ast.actions[0]?.roles).toEqual(['admin'])
-  })
-})
+    expect(ast.queries[0]?.roles).toEqual(["admin", "editor"]);
+    expect(ast.actions[0]?.roles).toEqual(["admin"]);
+  });
+});
 
-describe('Parser — api', () => {
-  it('parses api with method/path/fn/auth', () => {
+describe("Parser — api", () => {
+  it("parses api with method/path/fn/auth", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       api uploadRecipeImage {
@@ -279,24 +306,24 @@ describe('Parser — api', () => {
         fn: import { uploadRecipeImage } from "@src/api.js"
         auth: true
       }
-    `)
+    `);
 
-    expect(ast.apis).toHaveLength(1)
+    expect(ast.apis).toHaveLength(1);
     expect(ast.apis?.[0]).toMatchObject({
-      type: 'Api',
-      name: 'uploadRecipeImage',
-      method: 'POST',
-      path: '/api/recipes/:id/image',
+      type: "Api",
+      name: "uploadRecipeImage",
+      method: "POST",
+      path: "/api/recipes/:id/image",
       auth: true,
       fn: {
-        kind: 'named',
-        namedExport: 'uploadRecipeImage',
-        source: '@src/api.js',
+        kind: "named",
+        namedExport: "uploadRecipeImage",
+        source: "@src/api.js",
       },
-    })
-  })
+    });
+  });
 
-  it('parses api roles', () => {
+  it("parses api roles", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       api uploadRecipeImage {
@@ -306,54 +333,54 @@ describe('Parser — api', () => {
         auth: true
         roles: [admin]
       }
-    `)
+    `);
 
-    expect(ast.apis?.[0]?.roles).toEqual(['admin'])
-  })
-})
+    expect(ast.apis?.[0]?.roles).toEqual(["admin"]);
+  });
+});
 
-describe('Parser — middleware', () => {
-  it('parses middleware with fn and scope', () => {
+describe("Parser — middleware", () => {
+  it("parses middleware with fn and scope", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       middleware Logger {
         fn: import logger from "@src/middleware/logger.js"
         scope: global
       }
-    `)
+    `);
 
-    expect(ast.middlewares).toHaveLength(1)
+    expect(ast.middlewares).toHaveLength(1);
     expect(ast.middlewares?.[0]).toMatchObject({
-      type: 'Middleware',
-      name: 'Logger',
-      scope: 'global',
+      type: "Middleware",
+      name: "Logger",
+      scope: "global",
       fn: {
-        kind: 'default',
-        defaultExport: 'logger',
-        source: '@src/middleware/logger.js',
+        kind: "default",
+        defaultExport: "logger",
+        source: "@src/middleware/logger.js",
       },
-    })
-  })
-})
+    });
+  });
+});
 
-describe('Parser — crud', () => {
-  it('parses crud with all operations', () => {
+describe("Parser — crud", () => {
+  it("parses crud with all operations", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       crud Todo {
         entity: Todo
         operations: [list, create, update, delete]
       }
-    `)
+    `);
     expect(ast.cruds[0]).toMatchObject({
-      type: 'Crud',
-      name: 'Todo',
-      entity: 'Todo',
-      operations: ['list', 'create', 'update', 'delete'],
-    })
-  })
+      type: "Crud",
+      name: "Todo",
+      entity: "Todo",
+      operations: ["list", "create", "update", "delete"],
+    });
+  });
 
-  it('parses crud with full list config (paginate, sortable, filterable, search)', () => {
+  it("parses crud with full list config (paginate, sortable, filterable, search)", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       crud Task {
@@ -366,22 +393,22 @@ describe('Parser — crud', () => {
           search: [title, description]
         }
       }
-    `)
+    `);
     expect(ast.cruds[0]).toMatchObject({
-      type: 'Crud',
-      name: 'Task',
-      entity: 'Task',
-      operations: ['list', 'create', 'update', 'delete'],
+      type: "Crud",
+      name: "Task",
+      entity: "Task",
+      operations: ["list", "create", "update", "delete"],
       listConfig: {
         paginate: true,
-        sortable: ['createdAt', 'priority', 'title'],
-        filterable: ['status', 'assigneeId'],
-        search: ['title', 'description'],
+        sortable: ["createdAt", "priority", "title"],
+        filterable: ["status", "assigneeId"],
+        search: ["title", "description"],
       },
-    })
-  })
+    });
+  });
 
-  it('parses crud with list config paginate: false and empty arrays', () => {
+  it("parses crud with list config paginate: false and empty arrays", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       crud Todo {
@@ -394,37 +421,39 @@ describe('Parser — crud', () => {
           search: []
         }
       }
-    `)
+    `);
     expect(ast.cruds[0].listConfig).toMatchObject({
       paginate: false,
-      sortable: ['createdAt'],
+      sortable: ["createdAt"],
       filterable: [],
       search: [],
-    })
-  })
+    });
+  });
 
-  it('parses crud without list config — listConfig is undefined', () => {
+  it("parses crud without list config — listConfig is undefined", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       crud Todo { entity: Todo operations: [list] }
-    `)
-    expect(ast.cruds[0].listConfig).toBeUndefined()
-  })
+    `);
+    expect(ast.cruds[0].listConfig).toBeUndefined();
+  });
 
-  it('rejects unknown list sub-block property', () => {
-    expect(() => parse(`
+  it("rejects unknown list sub-block property", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       crud Todo {
         entity: Todo
         operations: [list]
         list: { unknown: true }
       }
-    `)).toThrow('E021_UNKNOWN_PROP')
-  })
-})
+    `),
+    ).toThrow("E021_UNKNOWN_PROP");
+  });
+});
 
-describe('Parser — realtime', () => {
-  it('parses realtime block', () => {
+describe("Parser — realtime", () => {
+  it("parses realtime block", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       crud Todo { entity: Todo operations: [list] }
@@ -432,18 +461,18 @@ describe('Parser — realtime', () => {
         entity: Todo
         events: [created, updated, deleted]
       }
-    `)
+    `);
     expect(ast.realtimes[0]).toMatchObject({
-      type: 'Realtime',
-      name: 'TodoChannel',
-      entity: 'Todo',
-      events: ['created', 'updated', 'deleted'],
-    })
-  })
-})
+      type: "Realtime",
+      name: "TodoChannel",
+      entity: "Todo",
+      events: ["created", "updated", "deleted"],
+    });
+  });
+});
 
-describe('Parser — job', () => {
-  it('parses job with nested perform block', () => {
+describe("Parser — job", () => {
+  it("parses job with nested perform block", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       job sendWelcomeEmail {
@@ -452,308 +481,347 @@ describe('Parser — job', () => {
           fn: import { sendWelcomeEmail } from "@src/jobs.js"
         }
       }
-    `)
+    `);
     expect(ast.jobs[0]).toMatchObject({
-      type: 'Job',
-      name: 'sendWelcomeEmail',
-      executor: 'PgBoss',
+      type: "Job",
+      name: "sendWelcomeEmail",
+      executor: "PgBoss",
       perform: {
-        fn: { kind: 'named', namedExport: 'sendWelcomeEmail', source: '@src/jobs.js' },
+        fn: {
+          kind: "named",
+          namedExport: "sendWelcomeEmail",
+          source: "@src/jobs.js",
+        },
       },
-    })
-  })
-})
+    });
+  });
+});
 
-describe('Parser — seed', () => {
-  it('parses seed block', () => {
+describe("Parser — seed", () => {
+  it("parses seed block", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       seed {
         fn: import seedData from "@src/seed.js"
       }
-    `)
+    `);
 
     expect(ast.seed).toMatchObject({
-      type: 'Seed',
+      type: "Seed",
       fn: {
-        kind: 'default',
-        defaultExport: 'seedData',
-        source: '@src/seed.js',
+        kind: "default",
+        defaultExport: "seedData",
+        source: "@src/seed.js",
       },
-    })
-  })
-})
+    });
+  });
+});
 
-describe('Parser — error cases', () => {
-  it('throws on unknown top-level token', () => {
-    expect(() => parse('unknown Foo {}')).toThrow('E010_UNEXPECTED_TOKEN')
-  })
+describe("Parser — error cases", () => {
+  it("throws on unknown top-level token", () => {
+    expect(() => parse("unknown Foo {}")).toThrow("E010_UNEXPECTED_TOKEN");
+  });
 
-  it('throws when api fn is missing', () => {
-    expect(() => parse(`
+  it("throws when api fn is missing", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       api Upload {
         method: POST
         path: "/api/upload"
       }
-    `)).toThrow('E034_MISSING_FN')
-  })
+    `),
+    ).toThrow("E034_MISSING_FN");
+  });
 
-  it('throws when middleware fn is missing', () => {
-    expect(() => parse(`
+  it("throws when middleware fn is missing", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       middleware Logger { scope: global }
-    `)).toThrow('E037_MISSING_FN')
-  })
+    `),
+    ).toThrow("E037_MISSING_FN");
+  });
 
-  it('throws when seed fn is missing', () => {
-    expect(() => parse(`
+  it("throws when seed fn is missing", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       seed {}
-    `)).toThrow('E042_MISSING_FN')
-  })
+    `),
+    ).toThrow("E042_MISSING_FN");
+  });
 
-  it('throws on duplicate seed blocks', () => {
-    expect(() => parse(`
+  it("throws on duplicate seed blocks", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       seed { fn: import seedData from "@src/seed.js" }
       seed { fn: import otherSeed from "@src/seed2.js" }
-    `)).toThrow('E040_DUPLICATE_SEED_BLOCK')
-  })
+    `),
+    ).toThrow("E040_DUPLICATE_SEED_BLOCK");
+  });
 
-  it('throws on duplicate app blocks (E043)', () => {
-    expect(() => parse(`
+  it("throws on duplicate app blocks (E043)", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       app B { title: "T2" db: Drizzle ssr: false typescript: false }
-    `)).toThrow('E043_DUPLICATE_APP_BLOCK')
-  })
+    `),
+    ).toThrow("E043_DUPLICATE_APP_BLOCK");
+  });
 
-  it('throws on duplicate auth blocks (E044)', () => {
-    expect(() => parse(`
+  it("throws on duplicate auth blocks (E044)", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       auth UserAuth { userEntity: User methods: [usernameAndPassword] }
       auth AdminAuth { userEntity: User methods: [usernameAndPassword] }
-    `)).toThrow('E044_DUPLICATE_AUTH_BLOCK')
-  })
+    `),
+    ).toThrow("E044_DUPLICATE_AUTH_BLOCK");
+  });
 
-  it('throws on empty Enum variants (E141, not E116)', () => {
-    expect(() => parse(`
+  it("throws on empty Enum variants (E141, not E116)", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Todo { id: Int @id status: Enum() }
-    `)).toThrow('E141_EMPTY_ENUM')
-  })
+    `),
+    ).toThrow("E141_EMPTY_ENUM");
+  });
 
-  it('throws on duplicate elements in an identifier array (E045)', () => {
-    expect(() => parse(`
+  it("throws on duplicate elements in an identifier array (E045)", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       crud Todo { entity: Todo operations: [list, create, list] }
-    `)).toThrow('E045_DUPLICATE_ARRAY_ELEMENT')
-  })
+    `),
+    ).toThrow("E045_DUPLICATE_ARRAY_ELEMENT");
+  });
 
-  it('throws on duplicate auth methods (E045)', () => {
-    expect(() => parse(`
+  it("throws on duplicate auth methods (E045)", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       auth UserAuth { userEntity: User methods: [usernameAndPassword, usernameAndPassword] }
-    `)).toThrow('E045_DUPLICATE_ARRAY_ELEMENT')
-  })
+    `),
+    ).toThrow("E045_DUPLICATE_ARRAY_ELEMENT");
+  });
 
-  it('throws on empty app title (E046)', () => {
-    expect(() => parse(`
+  it("throws on empty app title (E046)", () => {
+    expect(() =>
+      parse(`
       app A { title: "" db: Drizzle ssr: false typescript: false }
-    `)).toThrow('E046_EMPTY_APP_TITLE')
-  })
+    `),
+    ).toThrow("E046_EMPTY_APP_TITLE");
+  });
 
-  it('throws when api path does not start with slash (E047)', () => {
-    expect(() => parse(`
+  it("throws when api path does not start with slash (E047)", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       api Upload {
         method: POST
         path: "api/upload"
         fn: import { upload } from "@src/api.js"
       }
-    `)).toThrow('E047_INVALID_API_PATH')
-  })
+    `),
+    ).toThrow("E047_INVALID_API_PATH");
+  });
 
-  it('passes when api path starts with slash', () => {
-    expect(() => parse(`
+  it("passes when api path starts with slash", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       api Upload {
         method: POST
         path: "/api/upload"
         fn: import { upload } from "@src/api.js"
       }
-    `)).not.toThrow()
-  })
+    `),
+    ).not.toThrow();
+  });
 
-  it('throws on missing component in page', () => {
-    expect(() => parse(`
+  it("throws on missing component in page", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       page HomePage {}
-    `)).toThrow('E016_MISSING_COMPONENT')
-  })
+    `),
+    ).toThrow("E016_MISSING_COMPONENT");
+  });
 
-  it('throws on missing fn in query', () => {
-    expect(() => parse(`
+  it("throws on missing fn in query", () => {
+    expect(() =>
+      parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       query getTodos { entities: [Todo] }
-    `)).toThrow('E018_MISSING_FN')
-  })
+    `),
+    ).toThrow("E018_MISSING_FN");
+  });
 
-  it('preserves line numbers in errors', () => {
+  it("preserves line numbers in errors", () => {
     try {
-      parse('$bad')
+      parse("$bad");
     } catch (e: unknown) {
-      expect((e as Error).message).toContain('line 1')
+      expect((e as Error).message).toContain("line 1");
     }
-  })
-})
+  });
+});
 
-describe('Parser — relation fields (Phase 2)', () => {
-  it('parses a many-to-one relation field', () => {
+describe("Parser — relation fields (Phase 2)", () => {
+  it("parses a many-to-one relation field", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity User { id: Int @id }
       entity Todo { id: Int @id author: User }
-    `)
-    const authorField = ast.entities[1]?.fields[1]
+    `);
+    const authorField = ast.entities[1]?.fields[1];
     expect(authorField).toMatchObject({
-      name: 'author',
-      type: 'User',
+      name: "author",
+      type: "User",
       isRelation: true,
-      relatedEntity: 'User',
+      relatedEntity: "User",
       isArray: false,
       nullable: false,
-    })
-  })
+    });
+  });
 
-  it('parses a one-to-many virtual array relation field', () => {
+  it("parses a one-to-many virtual array relation field", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity User { id: Int @id todos: Todo[] }
       entity Todo { id: Int @id }
-    `)
-    const todosField = ast.entities[0]?.fields[1]
+    `);
+    const todosField = ast.entities[0]?.fields[1];
     expect(todosField).toMatchObject({
-      name: 'todos',
-      type: 'Todo',
+      name: "todos",
+      type: "Todo",
       isRelation: true,
-      relatedEntity: 'Todo',
+      relatedEntity: "Todo",
       isArray: true,
-    })
-  })
+    });
+  });
 
-  it('parses @onDelete(cascade) modifier on a relation field', () => {
+  it("parses @onDelete(cascade) modifier on a relation field", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity User { id: Int @id }
       entity Todo { id: Int @id author: User @onDelete(cascade) }
-    `)
-    const authorField = ast.entities[1]?.fields[1]
+    `);
+    const authorField = ast.entities[1]?.fields[1];
     expect(authorField).toMatchObject({
-      name: 'author',
+      name: "author",
       isRelation: true,
-      onDelete: 'cascade',
-    })
-  })
+      onDelete: "cascade",
+    });
+  });
 
-  it('parses @onDelete(setNull) modifier', () => {
+  it("parses @onDelete(setNull) modifier", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity User { id: Int @id }
       entity Todo { id: Int @id author: User @onDelete(setNull) }
-    `)
-    expect(ast.entities[1]?.fields[1]?.onDelete).toBe('set null')
-  })
-})
+    `);
+    expect(ast.entities[1]?.fields[1]?.onDelete).toBe("set null");
+  });
+});
 
-describe('Parser — new field types and modifiers (Phase 2)', () => {
-  it('parses Text field type', () => {
+describe("Parser — new field types and modifiers (Phase 2)", () => {
+  it("parses Text field type", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Post { id: Int @id body: Text }
-    `)
+    `);
     expect(ast.entities[0]?.fields[1]).toMatchObject({
-      name: 'body',
-      type: 'Text',
+      name: "body",
+      type: "Text",
       isRelation: false,
-    })
-  })
+    });
+  });
 
-  it('parses Json field type', () => {
+  it("parses Json field type", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Post { id: Int @id metadata: Json }
-    `)
+    `);
     expect(ast.entities[0]?.fields[1]).toMatchObject({
-      name: 'metadata',
-      type: 'Json',
+      name: "metadata",
+      type: "Json",
       isRelation: false,
-    })
-  })
+    });
+  });
 
-  it('parses @nullable modifier', () => {
+  it("parses @nullable modifier", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Post { id: Int @id body: Text @nullable }
-    `)
-    const bodyField = ast.entities[0]?.fields[1]
-    expect(bodyField?.nullable).toBe(true)
-    expect(bodyField?.modifiers).toContain('nullable')
-  })
+    `);
+    const bodyField = ast.entities[0]?.fields[1];
+    expect(bodyField?.nullable).toBe(true);
+    expect(bodyField?.modifiers).toContain("nullable");
+  });
 
-  it('parses @updatedAt modifier', () => {
+  it("parses @updatedAt modifier", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Post { id: Int @id updatedAt: DateTime @updatedAt }
-    `)
-    const field = ast.entities[0]?.fields[1]
-    expect(field?.isUpdatedAt).toBe(true)
-    expect(field?.modifiers).toContain('updatedAt')
-  })
+    `);
+    const field = ast.entities[0]?.fields[1];
+    expect(field?.isUpdatedAt).toBe(true);
+    expect(field?.modifiers).toContain("updatedAt");
+  });
 
-  it('parses @default(now) modifier', () => {
+  it("parses @default(now) modifier", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Post { id: Int @id createdAt: DateTime @default(now) }
-    `)
-    const field = ast.entities[0]?.fields[1]
-    expect(field?.defaultValue).toBe('now')
-    expect(field?.modifiers).toContain('default_now')
-  })
+    `);
+    const field = ast.entities[0]?.fields[1];
+    expect(field?.defaultValue).toBe("now");
+    expect(field?.modifiers).toContain("default_now");
+  });
 
-  it('parses @default with a string value', () => {
+  it("parses @default with a string value", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Post { id: Int @id status: String @default("draft") }
-    `)
-    const field = ast.entities[0]?.fields[1]
-    expect(field?.defaultValue).toBe('draft')
-  })
-})
+    `);
+    const field = ast.entities[0]?.fields[1];
+    expect(field?.defaultValue).toBe("draft");
+  });
+});
 
-describe('Parser — snapshot: full-featured fixture', () => {
-  it('matches snapshot', () => {
-    const source = readFileSync(join(FIXTURES_DIR, 'full-featured.vasp'), 'utf8')
-    const ast = parse(source, 'full-featured.vasp')
+describe("Parser — snapshot: full-featured fixture", () => {
+  it("matches snapshot", () => {
+    const source = readFileSync(
+      join(FIXTURES_DIR, "full-featured.vasp"),
+      "utf8",
+    );
+    const ast = parse(source, "full-featured.vasp");
     // Remove loc data for cleaner snapshot comparison
-    const clean = JSON.parse(JSON.stringify(ast, (key, val) => key === 'loc' ? undefined : val))
-    expect(clean).toMatchSnapshot()
-  })
-})
+    const clean = JSON.parse(
+      JSON.stringify(ast, (key, val) => (key === "loc" ? undefined : val)),
+    );
+    expect(clean).toMatchSnapshot();
+  });
+});
 
-describe('Parser — snapshot: minimal fixture', () => {
-  it('matches snapshot', () => {
-    const source = readFileSync(join(FIXTURES_DIR, 'minimal.vasp'), 'utf8')
-    const ast = parse(source, 'minimal.vasp')
-    const clean = JSON.parse(JSON.stringify(ast, (key, val) => key === 'loc' ? undefined : val))
-    expect(clean).toMatchSnapshot()
-  })
-})
+describe("Parser — snapshot: minimal fixture", () => {
+  it("matches snapshot", () => {
+    const source = readFileSync(join(FIXTURES_DIR, "minimal.vasp"), "utf8");
+    const ast = parse(source, "minimal.vasp");
+    const clean = JSON.parse(
+      JSON.stringify(ast, (key, val) => (key === "loc" ? undefined : val)),
+    );
+    expect(clean).toMatchSnapshot();
+  });
+});
 
-describe('Parser — admin block', () => {
-  const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`
+describe("Parser — admin block", () => {
+  const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`;
 
-  it('parses admin block with entities list', () => {
+  it("parses admin block with entities list", () => {
     const ast = parse(`
       ${APP}
       entity Todo { id: Int @id title: String }
@@ -761,112 +829,125 @@ describe('Parser — admin block', () => {
       admin {
         entities: [Todo, User]
       }
-    `)
+    `);
     expect(ast.admin).toMatchObject({
-      type: 'Admin',
-      entities: ['Todo', 'User'],
-    })
-  })
+      type: "Admin",
+      entities: ["Todo", "User"],
+    });
+  });
 
-  it('parses admin block with a single entity', () => {
+  it("parses admin block with a single entity", () => {
     const ast = parse(`
       ${APP}
       entity Todo { id: Int @id title: String }
       admin {
         entities: [Todo]
       }
-    `)
-    expect(ast.admin).toBeDefined()
-    expect(ast.admin!.entities).toEqual(['Todo'])
-  })
+    `);
+    expect(ast.admin).toBeDefined();
+    expect(ast.admin!.entities).toEqual(["Todo"]);
+  });
 
-  it('admin is undefined when no admin block is present', () => {
-    const ast = parse(`${APP}`)
-    expect(ast.admin).toBeUndefined()
-  })
+  it("admin is undefined when no admin block is present", () => {
+    const ast = parse(`${APP}`);
+    expect(ast.admin).toBeUndefined();
+  });
 
-  it('throws on duplicate admin blocks (E046)', () => {
-    expect(() => parse(`
+  it("throws on duplicate admin blocks (E046)", () => {
+    expect(() =>
+      parse(`
       ${APP}
       entity Todo { id: Int @id title: String }
       admin { entities: [Todo] }
       admin { entities: [Todo] }
-    `)).toThrow('E046_DUPLICATE_ADMIN_BLOCK')
-  })
+    `),
+    ).toThrow("E046_DUPLICATE_ADMIN_BLOCK");
+  });
 
-  it('throws on unknown admin property', () => {
-    expect(() => parse(`
+  it("throws on unknown admin property", () => {
+    expect(() =>
+      parse(`
       ${APP}
       admin { unknown: foo }
-    `)).toThrow('E047_UNKNOWN_PROP')
-  })
-})
+    `),
+    ).toThrow("E047_UNKNOWN_PROP");
+  });
+});
 
-describe('Parser — @validate modifier (field-level validation)', () => {
-  it('parses @validate(email) on a String field', () => {
+describe("Parser — @validate modifier (field-level validation)", () => {
+  it("parses @validate(email) on a String field", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity User { id: Int @id email: String @validate(email) }
-    `)
-    const emailField = ast.entities[0]?.fields[1]
-    expect(emailField?.validation).toEqual({ email: true })
-  })
+    `);
+    const emailField = ast.entities[0]?.fields[1];
+    expect(emailField?.validation).toEqual({ email: true });
+  });
 
-  it('parses @validate(url) on a String field', () => {
+  it("parses @validate(url) on a String field", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Post { id: Int @id website: String @validate(url) }
-    `)
-    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ url: true })
-  })
+    `);
+    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ url: true });
+  });
 
-  it('parses @validate(uuid) on a String field', () => {
+  it("parses @validate(uuid) on a String field", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Post { id: Int @id externalId: String @validate(uuid) }
-    `)
-    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ uuid: true })
-  })
+    `);
+    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ uuid: true });
+  });
 
-  it('parses @validate(minLength: 3, maxLength: 30) on a String field', () => {
+  it("parses @validate(minLength: 3, maxLength: 30) on a String field", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity User { id: Int @id username: String @validate(minLength: 3, maxLength: 30) }
-    `)
-    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ minLength: 3, maxLength: 30 })
-  })
+    `);
+    expect(ast.entities[0]?.fields[1]?.validation).toEqual({
+      minLength: 3,
+      maxLength: 30,
+    });
+  });
 
-  it('parses @validate(min: 0, max: 100) on an Int field', () => {
+  it("parses @validate(min: 0, max: 100) on an Int field", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Product { id: Int @id stock: Int @validate(min: 0, max: 100) }
-    `)
-    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ min: 0, max: 100 })
-  })
+    `);
+    expect(ast.entities[0]?.fields[1]?.validation).toEqual({
+      min: 0,
+      max: 100,
+    });
+  });
 
-  it('parses combined @validate(email, minLength: 5) on a String field', () => {
+  it("parses combined @validate(email, minLength: 5) on a String field", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity User { id: Int @id email: String @validate(email, minLength: 5) }
-    `)
-    expect(ast.entities[0]?.fields[1]?.validation).toEqual({ email: true, minLength: 5 })
-  })
+    `);
+    expect(ast.entities[0]?.fields[1]?.validation).toEqual({
+      email: true,
+      minLength: 5,
+    });
+  });
 
-  it('leaves validation undefined when @validate is absent', () => {
+  it("leaves validation undefined when @validate is absent", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity Todo { id: Int @id title: String }
-    `)
-    expect(ast.entities[0]?.fields[1]?.validation).toBeUndefined()
-  })
+    `);
+    expect(ast.entities[0]?.fields[1]?.validation).toBeUndefined();
+  });
 
-  it('parses @validate together with other modifiers', () => {
+  it("parses @validate together with other modifiers", () => {
     const ast = parse(`
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       entity User { id: Int @id username: String @unique @validate(minLength: 3) }
-    `)
-    const field = ast.entities[0]?.fields[1]
-    expect(field?.modifiers).toContain('unique')
-    expect(field?.validation).toEqual({ minLength: 3 })
-  })
-})
+    `);
+    const field = ast.entities[0]?.fields[1];
+    expect(field?.modifiers).toContain("unique");
+    expect(field?.validation).toEqual({ minLength: 3 });
+  });
+});

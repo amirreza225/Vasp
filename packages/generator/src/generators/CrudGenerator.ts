@@ -1,24 +1,24 @@
-import { BaseGenerator } from './BaseGenerator.js'
-import { toCamelCase } from '../template/TemplateEngine.js'
+import { BaseGenerator } from "./BaseGenerator.js";
+import { toCamelCase } from "../template/TemplateEngine.js";
 
 export class CrudGenerator extends BaseGenerator {
   run(): void {
-    const { ast, ext } = this.ctx
-    if (ast.cruds.length === 0) return
+    const { ast, ext } = this.ctx;
+    if (ast.cruds.length === 0) return;
 
-    this.ctx.logger.info('Generating CRUD endpoints...')
+    this.ctx.logger.info("Generating CRUD endpoints...");
 
     // Build a map of entity → realtime block name for auto-publish
     const realtimeByEntity = new Map(
       ast.realtimes.map((rt) => [rt.entity, rt.name]),
-    )
+    );
 
     // Build entity map for relation resolution
-    const entityMap = new Map(ast.entities.map((e) => [e.name, e]))
+    const entityMap = new Map(ast.entities.map((e) => [e.name, e]));
 
     for (const crud of ast.cruds) {
-      const realtimeName = realtimeByEntity.get(crud.entity)
-      const entity = entityMap.get(crud.entity)
+      const realtimeName = realtimeByEntity.get(crud.entity);
+      const entity = entityMap.get(crud.entity);
 
       // Determine many-to-one relations for auto-join (with: {})
       const withRelations = (entity?.fields ?? [])
@@ -27,26 +27,26 @@ export class CrudGenerator extends BaseGenerator {
           name: f.name,
           relatedEntity: f.relatedEntity,
           relatedTable: `${toCamelCase(f.relatedEntity!)}s`,
-        }))
+        }));
 
-      const hasRelations = withRelations.length > 0
-      const listConfig = crud.listConfig
-      const paginate = listConfig?.paginate ?? false
-      const sortableFields = listConfig?.sortable ?? []
-      const filterableFields = listConfig?.filterable ?? []
-      const searchFields = listConfig?.search ?? []
-      const hasSortable = sortableFields.length > 0
-      const hasFilterable = filterableFields.length > 0
-      const hasSearch = searchFields.length > 0
-      const hasListConfig = !!listConfig
+      const hasRelations = withRelations.length > 0;
+      const listConfig = crud.listConfig;
+      const paginate = listConfig?.paginate ?? false;
+      const sortableFields = listConfig?.sortable ?? [];
+      const filterableFields = listConfig?.filterable ?? [];
+      const searchFields = listConfig?.search ?? [];
+      const hasSortable = sortableFields.length > 0;
+      const hasFilterable = filterableFields.length > 0;
+      const hasSearch = searchFields.length > 0;
+      const hasListConfig = !!listConfig;
 
       this.write(
         `server/routes/crud/${toCamelCase(crud.entity)}.${ext}`,
-        this.render('shared/server/routes/crud/_crud.hbs', {
+        this.render("shared/server/routes/crud/_crud.hbs", {
           entity: crud.entity,
           operations: crud.operations,
           hasRealtime: !!realtimeName,
-          realtimeName: realtimeName ?? '',
+          realtimeName: realtimeName ?? "",
           hasRelations,
           withRelations,
           hasListConfig,
@@ -58,7 +58,7 @@ export class CrudGenerator extends BaseGenerator {
           hasFilterable,
           hasSearch,
         }),
-      )
+      );
     }
 
     // Client SDK: crud helpers — SPA only (SSR uses $vasp composable via dual-transport plugin)
@@ -66,7 +66,7 @@ export class CrudGenerator extends BaseGenerator {
       this.write(
         `src/vasp/client/crud.${ext}`,
         this.render(`spa/${ext}/src/vasp/client/crud.${ext}.hbs`),
-      )
+      );
     }
   }
 }

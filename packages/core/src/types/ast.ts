@@ -6,58 +6,71 @@
 // ------ Location ------
 
 export interface SourceLocation {
-  line: number
-  col: number
-  offset: number
-  file?: string
+  line: number;
+  col: number;
+  offset: number;
+  file?: string;
 }
 
 // ------ Import Expressions ------
 
-export type EnvRequirement = 'required' | 'optional'
+export type EnvRequirement = "required" | "optional";
 
 export interface DefaultImportExpression {
-  kind: 'default'
-  defaultExport: string   // e.g. "Home" from `import Home from "@src/pages/Home.vue"`
-  source: string          // e.g. "@src/pages/Home.vue"
+  kind: "default";
+  defaultExport: string; // e.g. "Home" from `import Home from "@src/pages/Home.vue"`
+  source: string; // e.g. "@src/pages/Home.vue"
 }
 
 export interface NamedImportExpression {
-  kind: 'named'
-  namedExport: string     // e.g. "getTodos" from `import { getTodos } from "@src/queries.js"`
-  source: string          // e.g. "@src/queries.js"
+  kind: "named";
+  namedExport: string; // e.g. "getTodos" from `import { getTodos } from "@src/queries.js"`
+  source: string; // e.g. "@src/queries.js"
 }
 
-export type ImportExpression = DefaultImportExpression | NamedImportExpression
+export type ImportExpression = DefaultImportExpression | NamedImportExpression;
 
 // ------ Auth ------
 
-export type AuthMethod = 'usernameAndPassword' | 'google' | 'github'
+export type AuthMethod = "usernameAndPassword" | "google" | "github";
 
 // ------ CRUD ------
 
-export type CrudOperation = 'list' | 'create' | 'update' | 'delete'
+export type CrudOperation = "list" | "create" | "update" | "delete";
 
 export interface CrudListConfig {
-  paginate: boolean
-  sortable: string[]
-  filterable: string[]
-  search: string[]
+  paginate: boolean;
+  sortable: string[];
+  filterable: string[];
+  search: string[];
 }
 
 // ------ Realtime ------
 
-export type RealtimeEvent = 'created' | 'updated' | 'deleted'
+export type RealtimeEvent = "created" | "updated" | "deleted";
 
 // ------ Entity / Schema ------
 
 /** Scalar/primitive field types supported by Vasp */
-export type PrimitiveFieldType = 'String' | 'Int' | 'Boolean' | 'DateTime' | 'Float' | 'Text' | 'Json' | 'Enum'
+export type PrimitiveFieldType =
+  | "String"
+  | "Int"
+  | "Boolean"
+  | "DateTime"
+  | "Float"
+  | "Text"
+  | "Json"
+  | "Enum";
 
 /** Kept for backward compatibility — alias for PrimitiveFieldType */
-export type FieldType = PrimitiveFieldType
+export type FieldType = PrimitiveFieldType;
 
-export type FieldModifier = 'id' | 'unique' | 'default_now' | 'nullable' | 'updatedAt'
+export type FieldModifier =
+  | "id"
+  | "unique"
+  | "default_now"
+  | "nullable"
+  | "updatedAt";
 
 /**
  * DSL-declared validation constraints for a field, expressed via @validate(...).
@@ -75,183 +88,183 @@ export type FieldModifier = 'id' | 'unique' | 'default_now' | 'nullable' | 'upda
  *   max — maximum numeric value (inclusive)
  */
 export interface FieldValidation {
-  email?: boolean
-  url?: boolean
-  uuid?: boolean
-  minLength?: number
-  maxLength?: number
-  min?: number
-  max?: number
+  email?: boolean;
+  url?: boolean;
+  uuid?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
 }
 
-export type OnDeleteBehavior = 'cascade' | 'restrict' | 'set null'
+export type OnDeleteBehavior = "cascade" | "restrict" | "set null";
 
 export interface FieldNode {
-  name: string
+  name: string;
   /** Primitive type name (e.g. 'String') or entity name for relations (e.g. 'User') */
-  type: string
-  modifiers: FieldModifier[]
+  type: string;
+  modifiers: FieldModifier[];
   /** True when `type` is an entity name, not a primitive */
-  isRelation: boolean
+  isRelation: boolean;
   /** Entity name when isRelation=true */
-  relatedEntity?: string
+  relatedEntity?: string;
   /** True for Recipe[] — virtual one-to-many side, no DB column emitted */
-  isArray: boolean
+  isArray: boolean;
   /** True when @nullable modifier is present (column allows NULL) */
-  nullable: boolean
+  nullable: boolean;
   /** Value from @default("val") or @default(now) → 'now' */
-  defaultValue?: string
+  defaultValue?: string;
   /** Cascade behavior from @onDelete(cascade|restrict|setNull) */
-  onDelete?: OnDeleteBehavior
+  onDelete?: OnDeleteBehavior;
   /** True when @updatedAt modifier is present */
-  isUpdatedAt: boolean
+  isUpdatedAt: boolean;
   /** Enum variant values when type === 'Enum', e.g. ['active', 'inactive', 'archived'] */
-  enumValues?: string[]
+  enumValues?: string[];
   /** DSL-declared validation constraints from @validate(...) */
-  validation?: FieldValidation
+  validation?: FieldValidation;
   /** True when @manyToMany modifier is present — Vasp generates an implicit junction table */
-  isManyToMany?: boolean
+  isManyToMany?: boolean;
 }
 
 // ------ Job Executors ------
 
-export type JobExecutor = 'PgBoss'
+export type JobExecutor = "PgBoss";
 
 // ------ API ------
 
-export type ApiMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+export type ApiMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 // ------ Middleware ------
 
-export type MiddlewareScope = 'global' | 'route'
+export type MiddlewareScope = "global" | "route";
 
 // ------ Base Node ------
 
 export interface BaseNode {
-  name: string
-  loc: SourceLocation
+  name: string;
+  loc: SourceLocation;
 }
 
 // ------ Concrete AST Nodes ------
 
 export interface AppNode extends BaseNode {
-  type: 'App'
-  title: string
-  db: 'Drizzle'
-  ssr: boolean | 'ssg'   // false = SPA (default), true = SSR, 'ssg' = Static Site Generation
-  typescript: boolean
-  env?: Record<string, EnvRequirement>
+  type: "App";
+  title: string;
+  db: "Drizzle";
+  ssr: boolean | "ssg"; // false = SPA (default), true = SSR, 'ssg' = Static Site Generation
+  typescript: boolean;
+  env?: Record<string, EnvRequirement>;
 }
 
 export interface AuthNode extends BaseNode {
-  type: 'Auth'
-  userEntity: string     // name of the entity used for users (e.g. "User")
-  methods: AuthMethod[]
-  roles?: string[]
+  type: "Auth";
+  userEntity: string; // name of the entity used for users (e.g. "User")
+  methods: AuthMethod[];
+  roles?: string[];
 }
 
 export interface RouteNode extends BaseNode {
-  type: 'Route'
-  path: string           // URL path, e.g. "/"
-  to: string             // name of the target PageNode
-  params: string[]       // extracted route params, e.g. [":id"] → ["id"]
+  type: "Route";
+  path: string; // URL path, e.g. "/"
+  to: string; // name of the target PageNode
+  params: string[]; // extracted route params, e.g. [":id"] → ["id"]
 }
 
 export interface PageNode extends BaseNode {
-  type: 'Page'
-  component: ImportExpression
+  type: "Page";
+  component: ImportExpression;
 }
 
 export interface QueryNode extends BaseNode {
-  type: 'Query'
-  fn: ImportExpression
-  entities: string[]     // entity names this query accesses
-  auth: boolean          // true = requires authentication
-  roles?: string[]
+  type: "Query";
+  fn: ImportExpression;
+  entities: string[]; // entity names this query accesses
+  auth: boolean; // true = requires authentication
+  roles?: string[];
 }
 
 export interface ActionNode extends BaseNode {
-  type: 'Action'
-  fn: ImportExpression
-  entities: string[]
-  auth: boolean
-  roles?: string[]
+  type: "Action";
+  fn: ImportExpression;
+  entities: string[];
+  auth: boolean;
+  roles?: string[];
 }
 
 export interface CrudNode extends BaseNode {
-  type: 'Crud'
-  entity: string
-  operations: CrudOperation[]
-  listConfig?: CrudListConfig
+  type: "Crud";
+  entity: string;
+  operations: CrudOperation[];
+  listConfig?: CrudListConfig;
 }
 
 export interface RealtimeNode extends BaseNode {
-  type: 'Realtime'
-  entity: string
-  events: RealtimeEvent[]
+  type: "Realtime";
+  entity: string;
+  events: RealtimeEvent[];
 }
 
 export interface JobPerform {
-  fn: ImportExpression
+  fn: ImportExpression;
 }
 
 export interface JobNode extends BaseNode {
-  type: 'Job'
-  executor: JobExecutor
-  perform: JobPerform
-  schedule?: string      // optional cron expression
+  type: "Job";
+  executor: JobExecutor;
+  perform: JobPerform;
+  schedule?: string; // optional cron expression
 }
 
 export interface SeedNode {
-  type: 'Seed'
-  fn: ImportExpression
-  loc: SourceLocation
+  type: "Seed";
+  fn: ImportExpression;
+  loc: SourceLocation;
 }
 
 export interface ApiNode extends BaseNode {
-  type: 'Api'
-  method: ApiMethod
-  path: string
-  fn: ImportExpression
-  auth: boolean
-  roles?: string[]
+  type: "Api";
+  method: ApiMethod;
+  path: string;
+  fn: ImportExpression;
+  auth: boolean;
+  roles?: string[];
 }
 
 export interface MiddlewareNode extends BaseNode {
-  type: 'Middleware'
-  fn: ImportExpression
-  scope: MiddlewareScope
+  type: "Middleware";
+  fn: ImportExpression;
+  scope: MiddlewareScope;
 }
 
 export interface EntityNode extends BaseNode {
-  type: 'Entity'
-  fields: FieldNode[]
+  type: "Entity";
+  fields: FieldNode[];
 }
 
 export interface AdminNode {
-  type: 'Admin'
+  type: "Admin";
   /** Entity names to expose in the admin panel */
-  entities: string[]
-  loc: SourceLocation
+  entities: string[];
+  loc: SourceLocation;
 }
 
 // ------ Top-level AST ------
 
 export interface VaspAST {
-  app: AppNode
-  auth?: AuthNode
-  entities: EntityNode[]
-  routes: RouteNode[]
-  pages: PageNode[]
-  queries: QueryNode[]
-  actions: ActionNode[]
-  apis?: ApiNode[]
-  middlewares?: MiddlewareNode[]
-  cruds: CrudNode[]
-  realtimes: RealtimeNode[]
-  jobs: JobNode[]
-  seed?: SeedNode
-  admin?: AdminNode
+  app: AppNode;
+  auth?: AuthNode;
+  entities: EntityNode[];
+  routes: RouteNode[];
+  pages: PageNode[];
+  queries: QueryNode[];
+  actions: ActionNode[];
+  apis?: ApiNode[];
+  middlewares?: MiddlewareNode[];
+  cruds: CrudNode[];
+  realtimes: RealtimeNode[];
+  jobs: JobNode[];
+  seed?: SeedNode;
+  admin?: AdminNode;
 }
 
 // ------ Union of all node types ------
@@ -270,6 +283,6 @@ export type VaspNode =
   | RealtimeNode
   | JobNode
   | SeedNode
-  | AdminNode
+  | AdminNode;
 
-export type NodeType = VaspNode['type']
+export type NodeType = VaspNode["type"];

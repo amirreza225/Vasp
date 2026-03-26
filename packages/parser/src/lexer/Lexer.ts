@@ -1,274 +1,323 @@
-import { ParseError } from '@vasp-framework/core'
-import type { Token } from './Token.js'
-import { ALL_KEYWORDS, BLOCK_KEYWORDS, TokenType } from './TokenType.js'
+import { ParseError } from "@vasp-framework/core";
+import type { Token } from "./Token.js";
+import { ALL_KEYWORDS, BLOCK_KEYWORDS, TokenType } from "./TokenType.js";
 
 export class Lexer {
-  private pos = 0
-  private line = 1
-  private col = 1
-  private readonly tokens: Token[] = []
+  private pos = 0;
+  private line = 1;
+  private col = 1;
+  private readonly tokens: Token[] = [];
 
   constructor(
     private readonly source: string,
-    private readonly filename: string = 'main.vasp',
+    private readonly filename: string = "main.vasp",
   ) {}
 
   tokenize(): Token[] {
     while (this.pos < this.source.length) {
-      this.skipWhitespaceAndComments()
-      if (this.pos >= this.source.length) break
-      this.scanToken()
+      this.skipWhitespaceAndComments();
+      if (this.pos >= this.source.length) break;
+      this.scanToken();
     }
     this.tokens.push({
       type: TokenType.EOF,
-      value: '',
-      loc: { line: this.line, col: this.col, offset: this.pos, file: this.filename },
-    })
-    return this.tokens
+      value: "",
+      loc: {
+        line: this.line,
+        col: this.col,
+        offset: this.pos,
+        file: this.filename,
+      },
+    });
+    return this.tokens;
   }
 
   // ---- private helpers ----
 
   private loc() {
-    return { line: this.line, col: this.col, offset: this.pos, file: this.filename }
+    return {
+      line: this.line,
+      col: this.col,
+      offset: this.pos,
+      file: this.filename,
+    };
   }
 
   private peek(offset = 0): string {
-    return this.source[this.pos + offset] ?? ''
+    return this.source[this.pos + offset] ?? "";
   }
 
   private advance(): string {
-    const ch = this.source[this.pos++] ?? ''
-    if (ch === '\n') {
-      this.line++
-      this.col = 1
+    const ch = this.source[this.pos++] ?? "";
+    if (ch === "\n") {
+      this.line++;
+      this.col = 1;
     } else {
-      this.col++
+      this.col++;
     }
-    return ch
+    return ch;
   }
 
   private skipWhitespaceAndComments(): void {
     while (this.pos < this.source.length) {
-      const ch = this.peek()
+      const ch = this.peek();
 
       // Whitespace
-      if (ch === ' ' || ch === '\t' || ch === '\r' || ch === '\n') {
-        this.advance()
-        continue
+      if (ch === " " || ch === "\t" || ch === "\r" || ch === "\n") {
+        this.advance();
+        continue;
       }
 
       // Line comment: //
-      if (ch === '/' && this.peek(1) === '/') {
-        while (this.pos < this.source.length && this.peek() !== '\n') {
-          this.advance()
+      if (ch === "/" && this.peek(1) === "/") {
+        while (this.pos < this.source.length && this.peek() !== "\n") {
+          this.advance();
         }
-        continue
+        continue;
       }
 
       // Block comment: /* ... */
-      if (ch === '/' && this.peek(1) === '*') {
-        const startLoc = this.loc()
-        this.advance() // /
-        this.advance() // *
-        let closed = false
+      if (ch === "/" && this.peek(1) === "*") {
+        const startLoc = this.loc();
+        this.advance(); // /
+        this.advance(); // *
+        let closed = false;
         while (this.pos < this.source.length) {
-          if (this.peek() === '*' && this.peek(1) === '/') {
-            this.advance() // *
-            this.advance() // /
-            closed = true
-            break
+          if (this.peek() === "*" && this.peek(1) === "/") {
+            this.advance(); // *
+            this.advance(); // /
+            closed = true;
+            break;
           }
-          this.advance()
+          this.advance();
         }
         if (!closed) {
-          throw new ParseError([{
-            code: 'E001_UNCLOSED_BLOCK_COMMENT',
-            message: 'Unclosed block comment',
-            hint: 'Add */ to close the block comment',
-            loc: startLoc,
-          }])
+          throw new ParseError([
+            {
+              code: "E001_UNCLOSED_BLOCK_COMMENT",
+              message: "Unclosed block comment",
+              hint: "Add */ to close the block comment",
+              loc: startLoc,
+            },
+          ]);
         }
-        continue
+        continue;
       }
 
-      break
+      break;
     }
   }
 
   private scanToken(): void {
-    const ch = this.peek()
+    const ch = this.peek();
 
     // Single-char punctuation
     const punctuation: Partial<Record<string, TokenType>> = {
-      '{': TokenType.LBRACE,
-      '}': TokenType.RBRACE,
-      '[': TokenType.LBRACKET,
-      ']': TokenType.RBRACKET,
-      '(': TokenType.LPAREN,
-      ')': TokenType.RPAREN,
-      ':': TokenType.COLON,
-      ',': TokenType.COMMA,
-    }
+      "{": TokenType.LBRACE,
+      "}": TokenType.RBRACE,
+      "[": TokenType.LBRACKET,
+      "]": TokenType.RBRACKET,
+      "(": TokenType.LPAREN,
+      ")": TokenType.RPAREN,
+      ":": TokenType.COLON,
+      ",": TokenType.COMMA,
+    };
 
-    const punc = punctuation[ch]
+    const punc = punctuation[ch];
     if (punc !== undefined) {
-      const loc = this.loc()
-      this.advance()
-      this.tokens.push({ type: punc, value: ch, loc })
-      return
+      const loc = this.loc();
+      this.advance();
+      this.tokens.push({ type: punc, value: ch, loc });
+      return;
     }
 
     // Field modifier: @id, @unique, @default(now)
-    if (ch === '@') {
-      this.scanModifier()
-      return
+    if (ch === "@") {
+      this.scanModifier();
+      return;
     }
 
     // String literal: "..." or '...'
     if (ch === '"' || ch === "'") {
-      this.scanString(ch)
-      return
+      this.scanString(ch);
+      return;
     }
 
     // Number
-    if (ch >= '0' && ch <= '9') {
-      this.scanNumber()
-      return
+    if (ch >= "0" && ch <= "9") {
+      this.scanNumber();
+      return;
     }
 
     // Identifier or keyword (including @src/... paths treated as identifiers)
-    if (ch === '_' || (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
-      this.scanIdentifierOrKeyword()
-      return
+    if (ch === "_" || (ch >= "a" && ch <= "z") || (ch >= "A" && ch <= "Z")) {
+      this.scanIdentifierOrKeyword();
+      return;
     }
 
     // Unknown character
-    throw new ParseError([{
-      code: 'E002_UNEXPECTED_CHAR',
-      message: `Unexpected character: '${ch}'`,
-      hint: 'Check for typos or unsupported syntax in your .vasp file',
-      loc: this.loc(),
-    }])
+    throw new ParseError([
+      {
+        code: "E002_UNEXPECTED_CHAR",
+        message: `Unexpected character: '${ch}'`,
+        hint: "Check for typos or unsupported syntax in your .vasp file",
+        loc: this.loc(),
+      },
+    ]);
   }
 
   private scanModifier(): void {
-    const loc = this.loc()
-    this.advance() // consume '@'
-    let name = ''
+    const loc = this.loc();
+    this.advance(); // consume '@'
+    let name = "";
     while (this.pos < this.source.length) {
-      const c = this.peek()
-      if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_') {
-        name += this.advance()
+      const c = this.peek();
+      if ((c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c === "_") {
+        name += this.advance();
       } else {
-        break
+        break;
       }
     }
     // Handle modifiers with parenthetical args: @default(now), @default("val"), @onDelete(cascade), @validate(...)
-    let modifier = name
-    if ((name === 'default' || name === 'onDelete' || name === 'validate') && this.peek() === '(') {
-      const parenLoc = this.loc() // capture opening '(' location for error reporting
-      this.advance() // (
-      let arg = ''
-      while (this.pos < this.source.length && this.peek() !== ')') {
+    let modifier = name;
+    if (
+      (name === "default" || name === "onDelete" || name === "validate") &&
+      this.peek() === "("
+    ) {
+      const parenLoc = this.loc(); // capture opening '(' location for error reporting
+      this.advance(); // (
+      let arg = "";
+      while (this.pos < this.source.length && this.peek() !== ")") {
         // Preserve quoted string content (strip surrounding quotes)
-        const c = this.peek()
+        const c = this.peek();
         if (c === '"' || c === "'") {
-          this.advance() // opening quote
-          while (this.pos < this.source.length && this.peek() !== c && this.peek() !== ')') {
-            arg += this.advance()
+          this.advance(); // opening quote
+          while (
+            this.pos < this.source.length &&
+            this.peek() !== c &&
+            this.peek() !== ")"
+          ) {
+            arg += this.advance();
           }
-          if (this.peek() === c) this.advance() // closing quote
+          if (this.peek() === c) this.advance(); // closing quote
         } else {
-          arg += this.advance()
+          arg += this.advance();
         }
       }
-      if (this.peek() !== ')') {
-        throw new ParseError([{
-          code: 'E004_UNCLOSED_MODIFIER_ARG',
-          message: `Unclosed '(' in @${name} modifier — expected ')'`,
-          hint: `Add a closing ')' to complete the @${name}(...) modifier`,
-          loc: parenLoc,
-        }])
+      if (this.peek() !== ")") {
+        throw new ParseError([
+          {
+            code: "E004_UNCLOSED_MODIFIER_ARG",
+            message: `Unclosed '(' in @${name} modifier — expected ')'`,
+            hint: `Add a closing ')' to complete the @${name}(...) modifier`,
+            loc: parenLoc,
+          },
+        ]);
       }
-      this.advance() // )
-      const argTrimmed = arg.trim()
-      if (name === 'default') {
-        modifier = argTrimmed === 'now' ? 'default_now' : `default_${argTrimmed}`
-      } else if (name === 'onDelete') {
+      this.advance(); // )
+      const argTrimmed = arg.trim();
+      if (name === "default") {
+        modifier =
+          argTrimmed === "now" ? "default_now" : `default_${argTrimmed}`;
+      } else if (name === "onDelete") {
         // onDelete: cascade | restrict | setNull
-        modifier = `onDelete_${argTrimmed}`
+        modifier = `onDelete_${argTrimmed}`;
       } else {
         // validate: raw key-value content preserved for the Parser to decode
-        modifier = `validate_${argTrimmed}`
+        modifier = `validate_${argTrimmed}`;
       }
     }
-    this.tokens.push({ type: TokenType.AT_MODIFIER, value: modifier, loc })
+    this.tokens.push({ type: TokenType.AT_MODIFIER, value: modifier, loc });
   }
 
   private scanString(quote: string): void {
-    const loc = this.loc()
-    this.advance() // opening quote
-    let value = ''
+    const loc = this.loc();
+    this.advance(); // opening quote
+    let value = "";
     while (this.pos < this.source.length && this.peek() !== quote) {
-      if (this.peek() === '\n') {
-        throw new ParseError([{
-          code: 'E003_UNTERMINATED_STRING',
-          message: 'Unterminated string literal',
-          hint: 'Close the string with a matching quote on the same line',
-          loc,
-        }])
+      if (this.peek() === "\n") {
+        throw new ParseError([
+          {
+            code: "E003_UNTERMINATED_STRING",
+            message: "Unterminated string literal",
+            hint: "Close the string with a matching quote on the same line",
+            loc,
+          },
+        ]);
       }
-      if (this.peek() === '\\') {
-        this.advance() // backslash
-        const escaped = this.advance()
-        value += this.unescape(escaped)
+      if (this.peek() === "\\") {
+        this.advance(); // backslash
+        const escaped = this.advance();
+        value += this.unescape(escaped);
       } else {
-        value += this.advance()
+        value += this.advance();
       }
     }
     if (this.pos >= this.source.length) {
-      throw new ParseError([{
-        code: 'E003_UNTERMINATED_STRING',
-        message: 'Unterminated string literal',
-        hint: 'Close the string with a matching quote',
-        loc,
-      }])
+      throw new ParseError([
+        {
+          code: "E003_UNTERMINATED_STRING",
+          message: "Unterminated string literal",
+          hint: "Close the string with a matching quote",
+          loc,
+        },
+      ]);
     }
-    this.advance() // closing quote
-    this.tokens.push({ type: TokenType.STRING, value, loc })
+    this.advance(); // closing quote
+    this.tokens.push({ type: TokenType.STRING, value, loc });
   }
 
   private unescape(ch: string): string {
-    const map: Record<string, string> = { n: '\n', t: '\t', r: '\r', '"': '"', "'": "'", '\\': '\\' }
-    return map[ch] ?? ch
+    const map: Record<string, string> = {
+      n: "\n",
+      t: "\t",
+      r: "\r",
+      '"': '"',
+      "'": "'",
+      "\\": "\\",
+    };
+    return map[ch] ?? ch;
   }
 
   private scanNumber(): void {
-    const loc = this.loc()
-    let value = ''
-    while (this.pos < this.source.length && this.peek() >= '0' && this.peek() <= '9') {
-      value += this.advance()
+    const loc = this.loc();
+    let value = "";
+    while (
+      this.pos < this.source.length &&
+      this.peek() >= "0" &&
+      this.peek() <= "9"
+    ) {
+      value += this.advance();
     }
-    if (this.peek() === '.' && this.peek(1) >= '0' && this.peek(1) <= '9') {
-      value += this.advance() // .
-      while (this.pos < this.source.length && this.peek() >= '0' && this.peek() <= '9') {
-        value += this.advance()
+    if (this.peek() === "." && this.peek(1) >= "0" && this.peek(1) <= "9") {
+      value += this.advance(); // .
+      while (
+        this.pos < this.source.length &&
+        this.peek() >= "0" &&
+        this.peek() <= "9"
+      ) {
+        value += this.advance();
       }
     }
-    this.tokens.push({ type: TokenType.NUMBER, value, loc })
+    this.tokens.push({ type: TokenType.NUMBER, value, loc });
   }
 
   private scanIdentifierOrKeyword(): void {
-    const loc = this.loc()
-    let value = ''
+    const loc = this.loc();
+    let value = "";
     while (this.pos < this.source.length) {
-      const c = this.peek()
+      const c = this.peek();
       // Allow alphanumeric, underscore, hyphen (for kebab-case names)
-      if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c === '_' || c === '-') {
-        value += this.advance()
+      if (
+        (c >= "a" && c <= "z") ||
+        (c >= "A" && c <= "Z") ||
+        (c >= "0" && c <= "9") ||
+        c === "_" ||
+        c === "-"
+      ) {
+        value += this.advance();
       } else {
-        break
+        break;
       }
     }
 
@@ -276,23 +325,23 @@ export class Lexer {
     if (ALL_KEYWORDS.has(value)) {
       if (BLOCK_KEYWORDS.has(value)) {
         // Map to specific KW_ token type
-        this.tokens.push({ type: value as TokenType, value, loc })
-      } else if (value === 'import') {
-        this.tokens.push({ type: TokenType.KW_IMPORT, value, loc })
-      } else if (value === 'from') {
-        this.tokens.push({ type: TokenType.KW_FROM, value, loc })
+        this.tokens.push({ type: value as TokenType, value, loc });
+      } else if (value === "import") {
+        this.tokens.push({ type: TokenType.KW_IMPORT, value, loc });
+      } else if (value === "from") {
+        this.tokens.push({ type: TokenType.KW_FROM, value, loc });
       } else {
-        this.tokens.push({ type: TokenType.IDENTIFIER, value, loc })
+        this.tokens.push({ type: TokenType.IDENTIFIER, value, loc });
       }
-      return
+      return;
     }
 
     // Boolean literals
-    if (value === 'true' || value === 'false') {
-      this.tokens.push({ type: TokenType.BOOLEAN, value, loc })
-      return
+    if (value === "true" || value === "false") {
+      this.tokens.push({ type: TokenType.BOOLEAN, value, loc });
+      return;
     }
 
-    this.tokens.push({ type: TokenType.IDENTIFIER, value, loc })
+    this.tokens.push({ type: TokenType.IDENTIFIER, value, loc });
   }
 }

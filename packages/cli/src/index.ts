@@ -1,76 +1,76 @@
-import { log } from './utils/logger.js'
-import { newCommand } from './commands/new.js'
-import { generateCommand } from './commands/generate.js'
-import { migrateToTsCommand } from './commands/migrate-to-ts.js'
-import { enableSsrCommand } from './commands/enable-ssr.js'
-import { startCommand } from './commands/start.js'
-import { buildCommand } from './commands/build.js'
-import { deployCommand } from './commands/deploy.js'
-import { ejectCommand } from './commands/eject.js'
-import { dbCommand } from './commands/db.js'
-import { addCommand } from './commands/add.js'
-import { VASP_VERSION } from '@vasp-framework/core'
+import { log } from "./utils/logger.js";
+import { newCommand } from "./commands/new.js";
+import { generateCommand } from "./commands/generate.js";
+import { migrateToTsCommand } from "./commands/migrate-to-ts.js";
+import { enableSsrCommand } from "./commands/enable-ssr.js";
+import { startCommand } from "./commands/start.js";
+import { buildCommand } from "./commands/build.js";
+import { deployCommand } from "./commands/deploy.js";
+import { ejectCommand } from "./commands/eject.js";
+import { dbCommand } from "./commands/db.js";
+import { addCommand } from "./commands/add.js";
+import { VASP_VERSION } from "@vasp-framework/core";
 
 export async function run(args: string[]): Promise<void> {
-  const command = args[0]
+  const command = args[0];
 
   switch (command) {
-    case 'new':
-      await newCommand(args.slice(1))
-      break
+    case "new":
+      await newCommand(args.slice(1));
+      break;
 
-    case 'generate':
-    case 'gen':
-      await generateCommand(args.slice(1))
-      break
+    case "generate":
+    case "gen":
+      await generateCommand(args.slice(1));
+      break;
 
-    case '--version':
-    case '-v':
-      console.log(VASP_VERSION)
-      break
+    case "--version":
+    case "-v":
+      console.log(VASP_VERSION);
+      break;
 
-    case '--help':
-    case '-h':
+    case "--help":
+    case "-h":
     case undefined:
-      printHelp()
-      break
+      printHelp();
+      break;
 
-    case 'start':
-      await startCommand()
-      break
+    case "start":
+      await startCommand();
+      break;
 
-    case 'build':
-      await buildCommand()
-      break
+    case "build":
+      await buildCommand();
+      break;
 
-    case 'migrate-to-ts':
-      await migrateToTsCommand()
-      break
+    case "migrate-to-ts":
+      await migrateToTsCommand();
+      break;
 
-    case 'enable-ssr':
-      await enableSsrCommand()
-      break
+    case "enable-ssr":
+      await enableSsrCommand();
+      break;
 
-    case 'deploy':
-      await deployCommand(args.slice(1))
-      break
+    case "deploy":
+      await deployCommand(args.slice(1));
+      break;
 
-    case 'eject':
-      await ejectCommand(args.slice(1))
-      break
+    case "eject":
+      await ejectCommand(args.slice(1));
+      break;
 
-    case 'db':
-      await dbCommand(args.slice(1))
-      break
+    case "db":
+      await dbCommand(args.slice(1));
+      break;
 
-    case 'add':
-      await addCommand(args.slice(1))
-      break
+    case "add":
+      await addCommand(args.slice(1));
+      break;
 
     default:
-      log.error(`Unknown command: ${command}`)
-      printHelp()
-      process.exit(1)
+      log.error(`Unknown command: ${command}`);
+      printHelp();
+      process.exit(1);
   }
 }
 
@@ -125,5 +125,5 @@ function printHelp(): void {
     vasp add auth
     vasp generate
     vasp generate --dry-run
-  `)
+  `);
 }

@@ -1,94 +1,109 @@
-import type { GeneratorOptions, GeneratorResult, VaspAST } from '@vasp-framework/core'
-import { VASP_VERSION } from '@vasp-framework/core'
-import { createConsoleLogger, createContext } from './GeneratorContext.js'
-import { AdminGenerator } from './generators/AdminGenerator.js'
-import { AuthGenerator } from './generators/AuthGenerator.js'
-import { ApiGenerator } from './generators/ApiGenerator.js'
-import { BackendGenerator } from './generators/BackendGenerator.js'
-import { CrudGenerator } from './generators/CrudGenerator.js'
-import { DrizzleSchemaGenerator } from './generators/DrizzleSchemaGenerator.js'
-import { FrontendGenerator } from './generators/FrontendGenerator.js'
-import { JobGenerator } from './generators/JobGenerator.js'
-import { MiddlewareGenerator } from './generators/MiddlewareGenerator.js'
-import { QueryActionGenerator } from './generators/QueryActionGenerator.js'
-import { RealtimeGenerator } from './generators/RealtimeGenerator.js'
-import { ScaffoldGenerator } from './generators/ScaffoldGenerator.js'
-import { SeedGenerator } from './generators/SeedGenerator.js'
-import { Manifest } from './manifest/Manifest.js'
-import { TemplateEngine } from './template/TemplateEngine.js'
-import { cleanupDir, commitStagedFiles } from './utils/fs.js'
-import { dirname, join } from 'node:path'
-import { mkdirSync, existsSync, rmSync } from 'node:fs'
+import type {
+  GeneratorOptions,
+  GeneratorResult,
+  VaspAST,
+} from "@vasp-framework/core";
+import { VASP_VERSION } from "@vasp-framework/core";
+import { createConsoleLogger, createContext } from "./GeneratorContext.js";
+import { AdminGenerator } from "./generators/AdminGenerator.js";
+import { AuthGenerator } from "./generators/AuthGenerator.js";
+import { ApiGenerator } from "./generators/ApiGenerator.js";
+import { BackendGenerator } from "./generators/BackendGenerator.js";
+import { CrudGenerator } from "./generators/CrudGenerator.js";
+import { DrizzleSchemaGenerator } from "./generators/DrizzleSchemaGenerator.js";
+import { FrontendGenerator } from "./generators/FrontendGenerator.js";
+import { JobGenerator } from "./generators/JobGenerator.js";
+import { MiddlewareGenerator } from "./generators/MiddlewareGenerator.js";
+import { QueryActionGenerator } from "./generators/QueryActionGenerator.js";
+import { RealtimeGenerator } from "./generators/RealtimeGenerator.js";
+import { ScaffoldGenerator } from "./generators/ScaffoldGenerator.js";
+import { SeedGenerator } from "./generators/SeedGenerator.js";
+import { Manifest } from "./manifest/Manifest.js";
+import { TemplateEngine } from "./template/TemplateEngine.js";
+import { cleanupDir, commitStagedFiles } from "./utils/fs.js";
+import { dirname, join } from "node:path";
+import { mkdirSync, existsSync, rmSync } from "node:fs";
 
-export function generate(ast: VaspAST, opts: GeneratorOptions): GeneratorResult {
-  const logger = createConsoleLogger(opts.logLevel ?? 'info')
-  const realOutputDir = opts.outputDir
-  const stagingDir = join(dirname(realOutputDir), `.vasp-staging-${Date.now()}`)
+export function generate(
+  ast: VaspAST,
+  opts: GeneratorOptions,
+): GeneratorResult {
+  const logger = createConsoleLogger(opts.logLevel ?? "info");
+  const realOutputDir = opts.outputDir;
+  const stagingDir = join(
+    dirname(realOutputDir),
+    `.vasp-staging-${Date.now()}`,
+  );
 
-  mkdirSync(stagingDir, { recursive: true })
+  mkdirSync(stagingDir, { recursive: true });
 
   const ctx = createContext(ast, stagingDir, {
     projectDir: realOutputDir,
-    ...(opts.templateDir !== undefined ? { templateDir: opts.templateDir } : {}),
+    ...(opts.templateDir !== undefined
+      ? { templateDir: opts.templateDir }
+      : {}),
     logger,
-  })
+  });
 
-  let engine: TemplateEngine
+  let engine: TemplateEngine;
   if (opts.engine instanceof TemplateEngine) {
-    engine = opts.engine
+    engine = opts.engine;
   } else {
-    engine = new TemplateEngine()
-    engine.loadDirectory(ctx.templateDir)
+    engine = new TemplateEngine();
+    engine.loadDirectory(ctx.templateDir);
   }
 
-  const filesWritten: string[] = []
-  const warnings: string[] = []
-  const manifest = new Manifest(VASP_VERSION)
+  const filesWritten: string[] = [];
+  const warnings: string[] = [];
+  const manifest = new Manifest(VASP_VERSION);
 
   try {
     // Execute generators in dependency order (all writes go to staging dir)
-    new ScaffoldGenerator(ctx, engine, filesWritten, manifest).run()
-    new DrizzleSchemaGenerator(ctx, engine, filesWritten, manifest).run()
-    new BackendGenerator(ctx, engine, filesWritten, manifest).run()
-    new AuthGenerator(ctx, engine, filesWritten, manifest).run()
-    new MiddlewareGenerator(ctx, engine, filesWritten, manifest).run()
-    new QueryActionGenerator(ctx, engine, filesWritten, manifest).run()
-    new ApiGenerator(ctx, engine, filesWritten, manifest).run()
-    new CrudGenerator(ctx, engine, filesWritten, manifest).run()
-    new RealtimeGenerator(ctx, engine, filesWritten, manifest).run()
-    new JobGenerator(ctx, engine, filesWritten, manifest).run()
-    new SeedGenerator(ctx, engine, filesWritten, manifest).run()
-    new FrontendGenerator(ctx, engine, filesWritten, manifest).run()
-    new AdminGenerator(ctx, engine, filesWritten, manifest).run()
+    new ScaffoldGenerator(ctx, engine, filesWritten, manifest).run();
+    new DrizzleSchemaGenerator(ctx, engine, filesWritten, manifest).run();
+    new BackendGenerator(ctx, engine, filesWritten, manifest).run();
+    new AuthGenerator(ctx, engine, filesWritten, manifest).run();
+    new MiddlewareGenerator(ctx, engine, filesWritten, manifest).run();
+    new QueryActionGenerator(ctx, engine, filesWritten, manifest).run();
+    new ApiGenerator(ctx, engine, filesWritten, manifest).run();
+    new CrudGenerator(ctx, engine, filesWritten, manifest).run();
+    new RealtimeGenerator(ctx, engine, filesWritten, manifest).run();
+    new JobGenerator(ctx, engine, filesWritten, manifest).run();
+    new SeedGenerator(ctx, engine, filesWritten, manifest).run();
+    new FrontendGenerator(ctx, engine, filesWritten, manifest).run();
+    new AdminGenerator(ctx, engine, filesWritten, manifest).run();
 
     // All generators succeeded — commit staged files to real output dir.
     // .env is preserved if the existing one has non-placeholder values.
-    commitStagedFiles(stagingDir, realOutputDir, { preserveEnv: true })
+    commitStagedFiles(stagingDir, realOutputDir, { preserveEnv: true });
 
     // Remove stale counterpart router file from the real output dir.
     // Vite resolves '.js' imports literally, so if both index.js and index.ts
     // exist, the explicit .js import in main.ts wins and the generated file is ignored.
-    const ext = ast.app.typescript ? 'ts' : 'js'
-    const staleRouterExt = ext === 'ts' ? 'js' : 'ts'
-    const staleRouterPath = join(realOutputDir, `src/router/index.${staleRouterExt}`)
+    const ext = ast.app.typescript ? "ts" : "js";
+    const staleRouterExt = ext === "ts" ? "js" : "ts";
+    const staleRouterPath = join(
+      realOutputDir,
+      `src/router/index.${staleRouterExt}`,
+    );
     if (existsSync(staleRouterPath)) {
-      rmSync(staleRouterPath)
+      rmSync(staleRouterPath);
     }
 
     // Persist manifest to real output dir
-    manifest.save(realOutputDir)
+    manifest.save(realOutputDir);
 
     // Clean up staging dir
-    cleanupDir(stagingDir)
+    cleanupDir(stagingDir);
 
-    logger.info(`✓ Generated ${filesWritten.length} files`)
+    logger.info(`✓ Generated ${filesWritten.length} files`);
 
-    return { success: true, filesWritten, errors: [], warnings }
+    return { success: true, filesWritten, errors: [], warnings };
   } catch (err) {
     // Clean up staging dir on failure — real output dir is untouched
-    cleanupDir(stagingDir)
-    const message = err instanceof Error ? err.message : String(err)
-    logger.error(message)
-    return { success: false, filesWritten, errors: [message], warnings }
+    cleanupDir(stagingDir);
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error(message);
+    return { success: false, filesWritten, errors: [message], warnings };
   }
 }
