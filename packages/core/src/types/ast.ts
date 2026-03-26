@@ -38,6 +38,13 @@ export type AuthMethod = 'usernameAndPassword' | 'google' | 'github'
 
 export type CrudOperation = 'list' | 'create' | 'update' | 'delete'
 
+export interface CrudListConfig {
+  paginate: boolean
+  sortable: string[]
+  filterable: string[]
+  search: string[]
+}
+
 // ------ Realtime ------
 
 export type RealtimeEvent = 'created' | 'updated' | 'deleted'
@@ -175,6 +182,7 @@ export interface CrudNode extends BaseNode {
   type: 'Crud'
   entity: string
   operations: CrudOperation[]
+  listConfig?: CrudListConfig
 }
 
 export interface RealtimeNode extends BaseNode {

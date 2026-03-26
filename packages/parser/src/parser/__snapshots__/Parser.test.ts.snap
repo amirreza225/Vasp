@@ -51,6 +51,20 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
   "cruds": [
     {
       "entity": "Todo",
+      "listConfig": {
+        "filterable": [
+          "status",
+          "done",
+        ],
+        "paginate": true,
+        "search": [
+          "title",
+        ],
+        "sortable": [
+          "createdAt",
+          "title",
+        ],
+      },
       "name": "Todo",
       "operations": [
         "list",

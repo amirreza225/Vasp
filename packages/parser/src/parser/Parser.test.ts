@@ -352,6 +352,75 @@ describe('Parser — crud', () => {
       operations: ['list', 'create', 'update', 'delete'],
     })
   })
+
+  it('parses crud with full list config (paginate, sortable, filterable, search)', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Task {
+        entity: Task
+        operations: [list, create, update, delete]
+        list: {
+          paginate: true
+          sortable: [createdAt, priority, title]
+          filterable: [status, assigneeId]
+          search: [title, description]
+        }
+      }
+    `)
+    expect(ast.cruds[0]).toMatchObject({
+      type: 'Crud',
+      name: 'Task',
+      entity: 'Task',
+      operations: ['list', 'create', 'update', 'delete'],
+      listConfig: {
+        paginate: true,
+        sortable: ['createdAt', 'priority', 'title'],
+        filterable: ['status', 'assigneeId'],
+        search: ['title', 'description'],
+      },
+    })
+  })
+
+  it('parses crud with list config paginate: false and empty arrays', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Todo {
+        entity: Todo
+        operations: [list]
+        list: {
+          paginate: false
+          sortable: [createdAt]
+          filterable: []
+          search: []
+        }
+      }
+    `)
+    expect(ast.cruds[0].listConfig).toMatchObject({
+      paginate: false,
+      sortable: ['createdAt'],
+      filterable: [],
+      search: [],
+    })
+  })
+
+  it('parses crud without list config — listConfig is undefined', () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Todo { entity: Todo operations: [list] }
+    `)
+    expect(ast.cruds[0].listConfig).toBeUndefined()
+  })
+
+  it('rejects unknown list sub-block property', () => {
+    expect(() => parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Todo {
+        entity: Todo
+        operations: [list]
+        list: { unknown: true }
+      }
+    `)).toThrow('E021_UNKNOWN_PROP')
+  })
 })
 
 describe('Parser — realtime', () => {

@@ -30,6 +30,15 @@ export class CrudGenerator extends BaseGenerator {
         }))
 
       const hasRelations = withRelations.length > 0
+      const listConfig = crud.listConfig
+      const paginate = listConfig?.paginate ?? false
+      const sortableFields = listConfig?.sortable ?? []
+      const filterableFields = listConfig?.filterable ?? []
+      const searchFields = listConfig?.search ?? []
+      const hasSortable = sortableFields.length > 0
+      const hasFilterable = filterableFields.length > 0
+      const hasSearch = searchFields.length > 0
+      const hasListConfig = !!listConfig
 
       this.write(
         `server/routes/crud/${toCamelCase(crud.entity)}.${ext}`,
@@ -40,6 +49,14 @@ export class CrudGenerator extends BaseGenerator {
           realtimeName: realtimeName ?? '',
           hasRelations,
           withRelations,
+          hasListConfig,
+          paginate,
+          sortableFields,
+          filterableFields,
+          searchFields,
+          hasSortable,
+          hasFilterable,
+          hasSearch,
         }),
       )
     }
