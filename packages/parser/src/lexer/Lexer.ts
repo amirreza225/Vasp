@@ -181,7 +181,7 @@ export class Lexer {
     // Handle modifiers with parenthetical args: @default(now), @default("val"), @onDelete(cascade), @validate(...)
     let modifier = name;
     if (
-      (name === "default" || name === "onDelete" || name === "validate") &&
+      (name === "default" || name === "onDelete" || name === "validate" || name === "storage") &&
       this.peek() === "("
     ) {
       const parenLoc = this.loc(); // capture opening '(' location for error reporting
@@ -222,6 +222,9 @@ export class Lexer {
       } else if (name === "onDelete") {
         // onDelete: cascade | restrict | setNull
         modifier = `onDelete_${argTrimmed}`;
+      } else if (name === "storage") {
+        // storage: StorageBlockName
+        modifier = `storage_${argTrimmed}`;
       } else {
         // validate: raw key-value content preserved for the Parser to decode
         modifier = `validate_${argTrimmed}`;

@@ -26,6 +26,8 @@ import type {
   RouteNode,
   SeedNode,
   SourceLocation,
+  StorageNode,
+  StorageProvider,
   VaspAST,
 } from "@vasp-framework/core";
 import {
@@ -197,11 +199,14 @@ class Parser {
             }
             ast.admin = this.parseAdmin();
             break;
+          case TokenType.KW_STORAGE:
+            (ast.storages ??= []).push(this.parseStorage());
+            break;
           default:
             throw this.error(
               "E010_UNEXPECTED_TOKEN",
               `Unexpected token '${kw.value}' at top level`,
-              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, or admin",
+              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, or storage",
               kw.loc,
             );
         }
@@ -420,6 +425,7 @@ class Parser {
       "Text",
       "Json",
       "Enum",
+      "File",
     ]);
 
     const fields: FieldNode[] = [];
@@ -471,7 +477,7 @@ class Parser {
 
       const isRelation = !primitiveTypes.has(fieldTypeStr);
 
-      // Parse modifiers (@id, @unique, @default(...), @nullable, @updatedAt, @onDelete(...), @validate(...), @manyToMany)
+      // Parse modifiers (@id, @unique, @default(...), @nullable, @updatedAt, @onDelete(...), @validate(...), @manyToMany, @storage(...))
       const modifiers: FieldModifier[] = [];
       let nullable = false;
       let defaultValue: string | undefined;
@@ -479,6 +485,7 @@ class Parser {
       let isUpdatedAt = false;
       let fieldValidation: FieldValidation | undefined;
       let isManyToMany = false;
+      let storageBlock: string | undefined;
 
       while (this.check(TokenType.AT_MODIFIER)) {
         const mod = this.consume(TokenType.AT_MODIFIER);
@@ -506,6 +513,8 @@ class Parser {
           onDelete = (raw === "setNull" ? "set null" : raw) as OnDeleteBehavior;
         } else if (modVal.startsWith("validate_")) {
           fieldValidation = parseValidateArgs(modVal.slice("validate_".length));
+        } else if (modVal.startsWith("storage_")) {
+          storageBlock = modVal.slice("storage_".length);
         }
         // Unknown modifiers are silently ignored (forward-compat)
       }
@@ -525,6 +534,7 @@ class Parser {
       if (enumValues !== undefined) field.enumValues = enumValues;
       if (fieldValidation !== undefined) field.validation = fieldValidation;
       if (isManyToMany) field.isManyToMany = true;
+      if (storageBlock !== undefined) field.storageBlock = storageBlock;
 
       fields.push(field);
     }
@@ -1103,6 +1113,70 @@ class Parser {
     return { type: "Admin", entities, loc };
   }
 
+  private parseStorage(): StorageNode {
+    const loc = this.consume(TokenType.KW_STORAGE).loc;
+    const name = this.consumeIdentifier();
+    this.consume(TokenType.LBRACE);
+
+    let provider: StorageProvider | null = null;
+    let bucket: string | undefined;
+    let maxSize: string | undefined;
+    let allowedTypes: string[] | undefined;
+    let publicPath: string | undefined;
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier();
+      this.consume(TokenType.COLON);
+
+      switch (key.value) {
+        case "provider":
+          provider = this.consumeIdentifier().value as StorageProvider;
+          break;
+        case "bucket":
+          bucket = this.consumeString();
+          break;
+        case "maxSize":
+          maxSize = this.consumeString();
+          break;
+        case "allowedTypes":
+          allowedTypes = this.parseStringArray();
+          break;
+        case "publicPath":
+          publicPath = this.consumeString();
+          break;
+        default:
+          throw this.error(
+            "E055_UNKNOWN_PROP",
+            `Unknown storage property '${key.value}'`,
+            "Valid properties: provider, bucket, maxSize, allowedTypes, publicPath",
+            key.loc,
+          );
+      }
+    }
+
+    this.consume(TokenType.RBRACE);
+
+    if (!provider) {
+      throw this.error(
+        "E056_MISSING_STORAGE_PROVIDER",
+        `Storage block '${name.value}' is missing a provider`,
+        "Add: provider: local (or s3, r2, gcs)",
+        loc,
+      );
+    }
+
+    return {
+      type: "Storage",
+      name: name.value,
+      loc,
+      provider,
+      ...(bucket !== undefined ? { bucket } : {}),
+      ...(maxSize !== undefined ? { maxSize } : {}),
+      ...(allowedTypes !== undefined ? { allowedTypes } : {}),
+      ...(publicPath !== undefined ? { publicPath } : {}),
+    };
+  }
+
   // ---- Value parsers ----
 
   /**
@@ -1148,6 +1222,22 @@ class Parser {
       }
       seen.add(tok.value);
       items.push(tok.value);
+      if (this.check(TokenType.COMMA)) {
+        this.consume(TokenType.COMMA);
+      }
+    }
+
+    this.consume(TokenType.RBRACKET);
+    return items;
+  }
+
+  /** Parses: ["foo", "bar", "baz"] */
+  private parseStringArray(): string[] {
+    this.consume(TokenType.LBRACKET);
+    const items: string[] = [];
+
+    while (!this.check(TokenType.RBRACKET)) {
+      items.push(this.consumeString());
       if (this.check(TokenType.COMMA)) {
         this.consume(TokenType.COMMA);
       }

@@ -38,6 +38,14 @@ export const SUPPORTED_FIELD_TYPES = [
   "Text",
   "Json",
   "Enum",
+  "File",
+] as const;
+
+export const SUPPORTED_STORAGE_PROVIDERS = [
+  "local",
+  "s3",
+  "r2",
+  "gcs",
 ] as const;
 
 export const DEFAULT_BACKEND_PORT = 3001;

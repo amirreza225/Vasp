@@ -60,7 +60,8 @@ export type PrimitiveFieldType =
   | "Float"
   | "Text"
   | "Json"
-  | "Enum";
+  | "Enum"
+  | "File";
 
 /** Kept for backward compatibility — alias for PrimitiveFieldType */
 export type FieldType = PrimitiveFieldType;
@@ -124,6 +125,21 @@ export interface FieldNode {
   validation?: FieldValidation;
   /** True when @manyToMany modifier is present — Vasp generates an implicit junction table */
   isManyToMany?: boolean;
+  /** Storage block name from @storage(StorageName) modifier — only for File fields */
+  storageBlock?: string;
+}
+
+// ------ Storage ------
+
+export type StorageProvider = "local" | "s3" | "r2" | "gcs";
+
+export interface StorageNode extends BaseNode {
+  type: "Storage";
+  provider: StorageProvider;
+  bucket?: string;
+  maxSize?: string;
+  allowedTypes?: string[];
+  publicPath?: string;
 }
 
 // ------ Job Executors ------
@@ -265,6 +281,7 @@ export interface VaspAST {
   jobs: JobNode[];
   seed?: SeedNode;
   admin?: AdminNode;
+  storages?: StorageNode[];
 }
 
 // ------ Union of all node types ------
@@ -283,6 +300,7 @@ export type VaspNode =
   | RealtimeNode
   | JobNode
   | SeedNode
-  | AdminNode;
+  | AdminNode
+  | StorageNode;
 
 export type NodeType = VaspNode["type"];

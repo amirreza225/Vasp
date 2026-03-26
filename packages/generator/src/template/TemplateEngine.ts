@@ -128,6 +128,7 @@ export class TemplateEngine {
           Boolean: "boolean",
           DateTime: "Date",
           Json: "unknown",
+          File: "string",
         };
         return tsMap[fieldType] ?? fieldType;
       },
@@ -243,6 +244,7 @@ export class TemplateEngine {
           DateTime: "timestamp",
           Float: "doublePrecision",
           Json: "jsonb",
+          File: "text",
         };
         const drizzleFn = typeMap[fieldType] ?? "text";
         let col = `${drizzleFn}('${toCamelCase(fieldName)}')`;

@@ -60,6 +60,8 @@ export abstract class BaseGenerator {
       ),
       hasRealtime: ast.realtimes.length > 0,
       hasJobs: ast.jobs.length > 0,
+      hasStorage: (ast.storages?.length ?? 0) > 0,
+      storages: ast.storages ?? [],
       routes: ast.routes,
       pages: ast.pages,
       queries: ast.queries,

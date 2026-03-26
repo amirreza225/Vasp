@@ -14,6 +14,7 @@ export enum TokenType {
   KW_JOB = "job",
   KW_SEED = "seed",
   KW_ADMIN = "admin",
+  KW_STORAGE = "storage",
 
   // Value-position keywords
   KW_IMPORT = "import",
@@ -58,6 +59,7 @@ export const BLOCK_KEYWORDS = new Set<string>([
   TokenType.KW_JOB,
   TokenType.KW_SEED,
   TokenType.KW_ADMIN,
+  TokenType.KW_STORAGE,
 ]);
 
 /** All reserved keywords (cannot be used as identifiers in value position) */

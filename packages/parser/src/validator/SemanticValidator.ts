@@ -11,6 +11,7 @@ import {
   SUPPORTED_MIDDLEWARE_SCOPES,
   SUPPORTED_REALTIME_EVENTS,
   SUPPORTED_FIELD_TYPES,
+  SUPPORTED_STORAGE_PROVIDERS,
 } from "@vasp-framework/core";
 
 export class SemanticValidator {
@@ -37,6 +38,8 @@ export class SemanticValidator {
     this.checkModifierTypeConstraints(ast);
     this.checkFieldValidation(ast);
     this.checkAdminEntities(ast);
+    this.checkStorageBlocks(ast);
+    this.checkStorageFieldRefs(ast);
 
     const hasErrors = this.diagnostics.some((d) => d.code.startsWith("E"));
     if (hasErrors) {
@@ -565,7 +568,7 @@ export class SemanticValidator {
       "maxLength",
     ]);
     const numericRules = new Set(["min", "max"]);
-    const noValidationTypes = new Set(["Boolean", "DateTime", "Json", "Enum"]);
+    const noValidationTypes = new Set(["Boolean", "DateTime", "Json", "Enum", "File"]);
 
     for (const entity of ast.entities) {
       for (const field of entity.fields) {
@@ -688,6 +691,67 @@ export class SemanticValidator {
           hint: `Add an entity block for '${entityName}', or remove it from the admin entities list`,
           loc: ast.admin.loc,
         });
+      }
+    }
+  }
+
+  private checkStorageBlocks(ast: VaspAST): void {
+    const seen = new Set<string>();
+    for (const storage of ast.storages ?? []) {
+      // Duplicate storage block names
+      if (seen.has(storage.name)) {
+        this.diagnostics.push({
+          code: "E160_DUPLICATE_STORAGE",
+          message: `Duplicate storage block '${storage.name}'`,
+          hint: "Each storage block name must be unique",
+          loc: storage.loc,
+        });
+      }
+      seen.add(storage.name);
+
+      // Validate provider
+      if (
+        !(SUPPORTED_STORAGE_PROVIDERS as readonly string[]).includes(
+          storage.provider,
+        )
+      ) {
+        this.diagnostics.push({
+          code: "E161_UNKNOWN_STORAGE_PROVIDER",
+          message: `Unknown storage provider '${storage.provider}' in '${storage.name}'`,
+          hint: `Supported providers: ${SUPPORTED_STORAGE_PROVIDERS.join(", ")}`,
+          loc: storage.loc,
+        });
+      }
+
+      // Cloud providers require a bucket
+      const cloudProviders = ["s3", "r2", "gcs"];
+      if (cloudProviders.includes(storage.provider) && !storage.bucket) {
+        this.diagnostics.push({
+          code: "E162_STORAGE_REQUIRES_BUCKET",
+          message: `Storage block '${storage.name}' uses provider '${storage.provider}' but has no bucket`,
+          hint: `Add: bucket: "my-bucket-name"`,
+          loc: storage.loc,
+        });
+      }
+    }
+  }
+
+  private checkStorageFieldRefs(ast: VaspAST): void {
+    const storageNames = new Set((ast.storages ?? []).map((s) => s.name));
+
+    for (const entity of ast.entities) {
+      for (const field of entity.fields) {
+        if (field.type !== "File") continue;
+
+        // File fields should reference a declared storage block
+        if (field.storageBlock && !storageNames.has(field.storageBlock)) {
+          this.diagnostics.push({
+            code: "E163_UNKNOWN_STORAGE_REF",
+            message: `Field '${field.name}' in entity '${entity.name}' references undefined storage block '${field.storageBlock}'`,
+            hint: `Add a storage block named '${field.storageBlock}', or fix the @storage() modifier`,
+            loc: entity.loc,
+          });
+        }
       }
     }
   }
