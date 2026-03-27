@@ -1,5 +1,5 @@
 import { BaseGenerator } from "./BaseGenerator.js";
-import { toCamelCase } from "../template/TemplateEngine.js";
+import { toCamelCase, toPascalCase } from "../template/TemplateEngine.js";
 
 export class CrudGenerator extends BaseGenerator {
   run(): void {
@@ -7,6 +7,25 @@ export class CrudGenerator extends BaseGenerator {
     if (ast.cruds.length === 0) return;
 
     this.ctx.logger.info("Generating CRUD endpoints...");
+
+    // Build a map from "Entity:operation" → list of {camelStore, key} to invalidate
+    type InvalidationEntry = { store: string; camelStore: string; pascalStore: string; key: string };
+    const invalidationMap = new Map<string, InvalidationEntry[]>();
+    for (const query of ast.queries) {
+      if (!query.cache) continue;
+      const camelStore = toCamelCase(query.cache.store);
+      const pascalStore = toPascalCase(query.cache.store);
+      const key = query.cache.key ?? toCamelCase(query.name);
+      for (const entry of query.cache.invalidateOn ?? []) {
+        if (!invalidationMap.has(entry)) invalidationMap.set(entry, []);
+        invalidationMap.get(entry)!.push({
+          store: query.cache.store,
+          camelStore,
+          pascalStore,
+          key,
+        });
+      }
+    }
 
     // Build a map of entity → realtime block name for auto-publish
     const realtimeByEntity = new Map(
@@ -62,6 +81,33 @@ export class CrudGenerator extends BaseGenerator {
       // requireAuth is needed when auth is globally configured OR when tenant filtering is on
       const needsAuth = !!ast.auth || applyTenantFilter;
 
+      // Collect unique cache stores needed for invalidation for this entity's CRUD ops
+      type CacheImport = { store: string; camelStore: string; pascalStore: string };
+      const cacheImportMap = new Map<string, CacheImport>();
+      const createCacheInvalidations: { camelStore: string; pascalStore: string; key: string }[] = [];
+      const updateCacheInvalidations: { camelStore: string; pascalStore: string; key: string }[] = [];
+      const deleteCacheInvalidations: { camelStore: string; pascalStore: string; key: string }[] = [];
+
+      for (const op of ["create", "update", "delete"] as const) {
+        const mapKey = `${crud.entity}:${op}`;
+        for (const inv of invalidationMap.get(mapKey) ?? []) {
+          if (!cacheImportMap.has(inv.camelStore)) {
+            cacheImportMap.set(inv.camelStore, {
+              store: inv.store,
+              camelStore: inv.camelStore,
+              pascalStore: inv.pascalStore,
+            });
+          }
+          const entry = { camelStore: inv.camelStore, pascalStore: inv.pascalStore, key: inv.key };
+          if (op === "create") createCacheInvalidations.push(entry);
+          else if (op === "update") updateCacheInvalidations.push(entry);
+          else deleteCacheInvalidations.push(entry);
+        }
+      }
+
+      const cacheImports = [...cacheImportMap.values()];
+      const hasCacheInvalidation = cacheImports.length > 0;
+
       this.write(
         `server/routes/crud/${toCamelCase(crud.entity)}.${ext}`,
         this.render("shared/server/routes/crud/_crud.hbs", {
@@ -87,6 +133,11 @@ export class CrudGenerator extends BaseGenerator {
           needsAuth,
           applyTenantFilter,
           tenantField,
+          hasCacheInvalidation,
+          cacheImports,
+          createCacheInvalidations,
+          updateCacheInvalidations,
+          deleteCacheInvalidations,
         }),
       );
     }

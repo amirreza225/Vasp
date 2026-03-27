@@ -9,6 +9,7 @@ import { AdminGenerator } from "./generators/AdminGenerator.js";
 import { AuthGenerator } from "./generators/AuthGenerator.js";
 import { ApiGenerator } from "./generators/ApiGenerator.js";
 import { BackendGenerator } from "./generators/BackendGenerator.js";
+import { CacheGenerator } from "./generators/CacheGenerator.js";
 import { CrudGenerator } from "./generators/CrudGenerator.js";
 import { DrizzleSchemaGenerator } from "./generators/DrizzleSchemaGenerator.js";
 import { EmailGenerator } from "./generators/EmailGenerator.js";
@@ -66,6 +67,7 @@ export function generate(
     new BackendGenerator(ctx, engine, filesWritten, manifest).run();
     new AuthGenerator(ctx, engine, filesWritten, manifest).run();
     new MiddlewareGenerator(ctx, engine, filesWritten, manifest).run();
+    new CacheGenerator(ctx, engine, filesWritten, manifest).run();
     new QueryActionGenerator(ctx, engine, filesWritten, manifest).run();
     new ApiGenerator(ctx, engine, filesWritten, manifest).run();
     new CrudGenerator(ctx, engine, filesWritten, manifest).run();

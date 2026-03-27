@@ -11,6 +11,11 @@ import { requireAuth{{#if hasPermissions}}, PERMISSIONS{{/if}} } from '../../aut
 {{#if hasRealtime}}
 import { publish{{pascalCase realtimeName}} } from '../realtime/{{camelCase realtimeName}}.{{ext}}'
 {{/if}}
+{{#if hasCacheInvalidation}}
+{{#each cacheImports}}
+import { invalidateCached as _invalidate{{pascalStore}} } from '../../cache/{{camelStore}}.{{ext}}'
+{{/each}}
+{{/if}}
 
 export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{camelCase entity}}' })
 {{#if needsAuth}}
@@ -146,6 +151,11 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{#if hasRealtime}}
     publish{{pascalCase realtimeName}}('created', created)
 {{/if}}
+{{#if createCacheInvalidations}}
+{{#each createCacheInvalidations}}
+    await _invalidate{{pascalStore}}('{{key}}')
+{{/each}}
+{{/if}}
     set.status = 201
     return created
   }{{#if createPermission}}, {
@@ -198,6 +208,11 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{#if hasRealtime}}
     publish{{pascalCase realtimeName}}('updated', updated)
 {{/if}}
+{{#if updateCacheInvalidations}}
+{{#each updateCacheInvalidations}}
+    await _invalidate{{pascalStore}}('{{key}}')
+{{/each}}
+{{/if}}
     return updated
   }{{#if updatePermission}}, {
     beforeHandle: ({ user }{{#if isTypeScript}}: { user: { role?: unknown } | null }{{/if}}) => {
@@ -218,6 +233,11 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     if (!deleted) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
 {{#if hasRealtime}}
     publish{{pascalCase realtimeName}}('deleted', deleted)
+{{/if}}
+{{#if deleteCacheInvalidations}}
+{{#each deleteCacheInvalidations}}
+    await _invalidate{{pascalStore}}('{{key}}')
+{{/each}}
 {{/if}}
     return { ok: true }
   }{{#if deletePermission}}, {

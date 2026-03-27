@@ -1,0 +1,51 @@
+/**
+ * In-memory cache store: {{name}}
+ * Uses a simple Map with TTL-based expiry. Entries are evicted lazily on read.
+ * Default TTL: {{defaultTtl}} seconds
+ */
+const _store = new Map()
+
+function _getCached(key) {
+  const entry = _store.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.expiresAt) {
+    _store.delete(key)
+    return null
+  }
+  return entry.value
+}
+
+function _setCached(key, value, ttl) {
+  _store.set(key, { value, expiresAt: Date.now() + ttl * 1000 })
+}
+
+function _invalidateCached(key) {
+  _store.delete(key)
+}
+
+function _invalidateCachedByPattern(pattern) {
+  for (const k of _store.keys()) {
+    if (k.startsWith(pattern)) _store.delete(k)
+  }
+}
+
+export const DEFAULT_TTL = {{defaultTtl}}
+
+export function getCached(key) {
+  return Promise.resolve(_getCached(key))
+}
+
+export function setCached(key, value, ttl) {
+  _setCached(key, value, ttl)
+  return Promise.resolve()
+}
+
+export function invalidateCached(key) {
+  _invalidateCached(key)
+  return Promise.resolve()
+}
+
+export function invalidateCachedByPattern(pattern) {
+  _invalidateCachedByPattern(pattern)
+  return Promise.resolve()
+}

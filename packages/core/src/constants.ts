@@ -54,6 +54,12 @@ export const SUPPORTED_EMAIL_PROVIDERS = [
   "smtp",
 ] as const;
 
+export const SUPPORTED_CACHE_PROVIDERS = [
+  "memory",
+  "redis",
+  "valkey",
+] as const;
+
 export const SUPPORTED_MULTI_TENANT_STRATEGIES = [
   "row-level",
   "schema-level",

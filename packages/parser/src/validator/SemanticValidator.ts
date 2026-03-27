@@ -12,6 +12,7 @@ import {
   ParseError,
   SUPPORTED_API_METHODS,
   SUPPORTED_AUTH_METHODS,
+  SUPPORTED_CACHE_PROVIDERS,
   SUPPORTED_CRUD_OPERATIONS,
   SUPPORTED_EMAIL_PROVIDERS,
   SUPPORTED_MIDDLEWARE_SCOPES,
@@ -59,6 +60,7 @@ export class SemanticValidator {
     this.checkEmailProviders(ast);
     this.checkEmailOnSuccess(ast);
     this.checkMultiTenantConfig(ast);
+    this.checkCacheBlocks(ast);
     return [...this.diagnostics];
   }
 
@@ -1067,6 +1069,101 @@ export class SemanticValidator {
             message: `multiTenant.tenantEntity '${mt.tenantEntity}' has no @id field`,
             hint: "Add an id field with @id modifier to the tenant entity",
             loc: ast.app.loc,
+          });
+        }
+      }
+    }
+  }
+
+  private checkCacheBlocks(ast: VaspAST): void {
+    const caches = ast.caches ?? [];
+    const cacheNames = new Set<string>();
+    const entityNames = new Set([
+      ...ast.entities.map((e) => e.name),
+      ...ast.cruds.map((c) => c.entity),
+    ]);
+    const validCrudOps = new Set(["list", "create", "update", "delete"]);
+
+    for (const cache of caches) {
+      // E190: duplicate cache store names
+      if (cacheNames.has(cache.name)) {
+        this.diagnostics.push({
+          code: "E190_DUPLICATE_CACHE",
+          message: `Duplicate cache block '${cache.name}'`,
+          hint: "Each cache block must have a unique name",
+          loc: cache.loc,
+        });
+      }
+      cacheNames.add(cache.name);
+
+      // E191: unknown provider
+      if (!(SUPPORTED_CACHE_PROVIDERS as readonly string[]).includes(cache.provider)) {
+        this.diagnostics.push({
+          code: "E191_UNKNOWN_CACHE_PROVIDER",
+          message: `Unknown cache provider '${cache.provider}' in '${cache.name}'`,
+          hint: `Supported providers: ${SUPPORTED_CACHE_PROVIDERS.join(", ")}`,
+          loc: cache.loc,
+        });
+      }
+
+      // E192: redis/valkey provider requires redis.url
+      if (
+        (cache.provider === "redis" || cache.provider === "valkey") &&
+        !cache.redis?.url
+      ) {
+        this.diagnostics.push({
+          code: "E192_CACHE_MISSING_REDIS_URL",
+          message: `Cache '${cache.name}' uses provider '${cache.provider}' but is missing redis.url`,
+          hint: "Add: redis: { url: env(REDIS_URL) }",
+          loc: cache.loc,
+        });
+      }
+    }
+
+    // Validate query cache references
+    for (const query of ast.queries) {
+      if (!query.cache) continue;
+
+      // E193: store must reference a declared cache block
+      if (!cacheNames.has(query.cache.store)) {
+        this.diagnostics.push({
+          code: "E193_UNKNOWN_CACHE_STORE_REF",
+          message: `Query '${query.name}' cache references undeclared store '${query.cache.store}'`,
+          hint: `Declare a cache block named '${query.cache.store}'`,
+          loc: query.loc,
+        });
+      }
+
+      // E194: invalidateOn entries must reference known entities and valid CRUD operations
+      for (const entry of query.cache.invalidateOn ?? []) {
+        const colonIdx = entry.indexOf(":");
+        if (colonIdx === -1) {
+          this.diagnostics.push({
+            code: "E194_INVALID_INVALIDATEON_ENTRY",
+            message: `Invalid invalidateOn entry '${entry}' in query '${query.name}'`,
+            hint: "Use the format Entity:operation (e.g. Post:create)",
+            loc: query.loc,
+          });
+          continue;
+        }
+        const entityName = entry.slice(0, colonIdx);
+        const operation = entry.slice(colonIdx + 1);
+
+        if (entityNames.size > 0 && !entityNames.has(entityName)) {
+          this.diagnostics.push({
+            code: "E195_INVALIDATEON_UNKNOWN_ENTITY",
+            message: `invalidateOn '${entry}' in query '${query.name}' references unknown entity '${entityName}'`,
+            hint: `Declare an entity or crud block for '${entityName}'`,
+            loc: query.loc,
+          });
+        }
+
+        if (!validCrudOps.has(operation)) {
+          this.diagnostics.push({
+            code: "E196_INVALIDATEON_UNKNOWN_OPERATION",
+            message: `invalidateOn '${entry}' in query '${query.name}' references unknown operation '${operation}'`,
+            hint: "Valid operations: create, update, delete, list",
+            loc: query.loc,
           });
         }
       }

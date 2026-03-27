@@ -187,6 +187,26 @@ export interface ActionOnSuccess {
   sendEmail?: string; // template name (e.g. "welcome")
 }
 
+// ------ Cache ------
+
+export type CacheProvider = "memory" | "redis" | "valkey";
+
+export interface CacheRedisConfig {
+  /** Env var name that holds the Redis/Valkey connection URL, e.g. "REDIS_URL" */
+  url: string;
+}
+
+export interface QueryCacheConfig {
+  /** Name of the declared cache block to use as the backing store */
+  store: string;
+  /** TTL override in seconds for this specific query (overrides the store default) */
+  ttl?: number;
+  /** Static cache key string (e.g. "public-posts") */
+  key?: string;
+  /** CRUD entity:operation pairs that should invalidate this cache entry (e.g. "Post:create") */
+  invalidateOn?: string[];
+}
+
 // ------ Job Executors ------
 
 export type JobExecutor = "PgBoss";
@@ -257,6 +277,8 @@ export interface QueryNode extends BaseNode {
   entities: string[]; // entity names this query accesses
   auth: boolean; // true = requires authentication
   roles?: string[];
+  /** Optional cache configuration for this query */
+  cache?: QueryCacheConfig;
 }
 
 export interface ActionNode extends BaseNode {
@@ -352,6 +374,15 @@ export interface AdminNode {
   loc: SourceLocation;
 }
 
+export interface CacheNode extends BaseNode {
+  type: "Cache";
+  provider: CacheProvider;
+  /** Default TTL in seconds for all queries using this store (default: 60) */
+  ttl?: number;
+  /** Connection config — only used when provider is "redis" or "valkey" */
+  redis?: CacheRedisConfig;
+}
+
 // ------ Top-level AST ------
 
 export interface VaspAST {
@@ -371,6 +402,7 @@ export interface VaspAST {
   admin?: AdminNode;
   storages?: StorageNode[];
   emails?: EmailNode[];
+  caches?: CacheNode[];
 }
 
 // ------ Union of all node types ------
@@ -391,6 +423,7 @@ export type VaspNode =
   | SeedNode
   | AdminNode
   | StorageNode
-  | EmailNode;
+  | EmailNode
+  | CacheNode;
 
 export type NodeType = VaspNode["type"];

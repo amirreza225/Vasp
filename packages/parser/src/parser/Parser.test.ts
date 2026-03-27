@@ -1610,3 +1610,243 @@ describe("Parser — app multiTenant block", () => {
     ).toThrow("E012_UNKNOWN_PROP");
   });
 });
+
+const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`;
+
+describe("Parser — cache block", () => {
+  it("parses a memory cache block with default ttl", () => {
+    const ast = parse(`
+      ${APP}
+      cache QueryCache {
+        provider: memory
+        ttl: 60
+      }
+    `);
+    expect(ast.caches).toHaveLength(1);
+    expect(ast.caches![0]).toMatchObject({
+      type: "Cache",
+      name: "QueryCache",
+      provider: "memory",
+      ttl: 60,
+    });
+  });
+
+  it("parses a redis cache block with redis.url", () => {
+    const ast = parse(`
+      ${APP}
+      cache RedisCache {
+        provider: redis
+        ttl: 120
+        redis: {
+          url: env(REDIS_URL)
+        }
+      }
+    `);
+    expect(ast.caches![0]).toMatchObject({
+      type: "Cache",
+      name: "RedisCache",
+      provider: "redis",
+      ttl: 120,
+      redis: { url: "REDIS_URL" },
+    });
+  });
+
+  it("parses a valkey cache block", () => {
+    const ast = parse(`
+      ${APP}
+      cache ValkeyCache {
+        provider: valkey
+        redis: {
+          url: env(VALKEY_URL)
+        }
+      }
+    `);
+    expect(ast.caches![0]).toMatchObject({
+      type: "Cache",
+      name: "ValkeyCache",
+      provider: "valkey",
+      redis: { url: "VALKEY_URL" },
+    });
+    expect(ast.caches![0]?.ttl).toBeUndefined();
+  });
+
+  it("parses multiple cache blocks", () => {
+    const ast = parse(`
+      ${APP}
+      cache MemCache { provider: memory }
+      cache RCache { provider: redis redis: { url: env(REDIS_URL) } }
+    `);
+    expect(ast.caches).toHaveLength(2);
+    expect(ast.caches![0]?.name).toBe("MemCache");
+    expect(ast.caches![1]?.name).toBe("RCache");
+  });
+
+  it("caches is undefined when no cache block is present", () => {
+    const ast = parse(`${APP}`);
+    expect(ast.caches).toBeUndefined();
+  });
+
+  it("throws on missing provider (E070)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      cache QueryCache {
+        ttl: 60
+      }
+    `),
+    ).toThrow("E070_MISSING_CACHE_PROVIDER");
+  });
+
+  it("throws on unknown cache property (E071)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      cache QueryCache {
+        provider: memory
+        unknown: foo
+      }
+    `),
+    ).toThrow("E071_UNKNOWN_PROP");
+  });
+
+  it("throws on unknown redis property (E072)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      cache RedisCache {
+        provider: redis
+        redis: {
+          unknown: foo
+        }
+      }
+    `),
+    ).toThrow("E072_UNKNOWN_PROP");
+  });
+
+  it("throws on missing redis.url when redis block has no url (E073)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      cache RedisCache {
+        provider: redis
+        redis: {
+        }
+      }
+    `),
+    ).toThrow("E073_MISSING_REDIS_URL");
+  });
+
+  it("throws when env() is not used for redis.url (E076)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      cache RedisCache {
+        provider: redis
+        redis: {
+          url: notEnv(REDIS_URL)
+        }
+      }
+    `),
+    ).toThrow("E076_EXPECTED_ENV_REF");
+  });
+});
+
+describe("Parser — query cache config", () => {
+  it("parses a query with full cache config", () => {
+    const ast = parse(`
+      ${APP}
+      cache QueryCache { provider: memory ttl: 60 }
+      query getPublicPosts {
+        fn: import { getPublicPosts } from "@src/queries.js"
+        entities: [Post]
+        cache: {
+          store: QueryCache
+          ttl: 300
+          key: "public-posts"
+          invalidateOn: [Post:create, Post:update, Post:delete]
+        }
+      }
+    `);
+    const query = ast.queries[0];
+    expect(query?.cache).toMatchObject({
+      store: "QueryCache",
+      ttl: 300,
+      key: "public-posts",
+      invalidateOn: ["Post:create", "Post:update", "Post:delete"],
+    });
+  });
+
+  it("parses a query with minimal cache config (store only)", () => {
+    const ast = parse(`
+      ${APP}
+      cache QueryCache { provider: memory }
+      query getUsers {
+        fn: import { getUsers } from "@src/queries.js"
+        cache: {
+          store: QueryCache
+        }
+      }
+    `);
+    expect(ast.queries[0]?.cache).toMatchObject({ store: "QueryCache" });
+    expect(ast.queries[0]?.cache?.ttl).toBeUndefined();
+    expect(ast.queries[0]?.cache?.key).toBeUndefined();
+  });
+
+  it("parses a query without cache config", () => {
+    const ast = parse(`
+      ${APP}
+      query getUsers {
+        fn: import { getUsers } from "@src/queries.js"
+      }
+    `);
+    expect(ast.queries[0]?.cache).toBeUndefined();
+  });
+
+  it("throws on missing cache store (E075)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      query getUsers {
+        fn: import { getUsers } from "@src/queries.js"
+        cache: {
+          ttl: 60
+        }
+      }
+    `),
+    ).toThrow("E075_MISSING_CACHE_STORE");
+  });
+
+  it("throws on unknown query cache property (E074)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      query getUsers {
+        fn: import { getUsers } from "@src/queries.js"
+        cache: {
+          store: QueryCache
+          unknown: foo
+        }
+      }
+    `),
+    ).toThrow("E074_UNKNOWN_PROP");
+  });
+
+  it("parses invalidateOn with multiple entries", () => {
+    const ast = parse(`
+      ${APP}
+      cache C { provider: memory }
+      query getPosts {
+        fn: import { getPosts } from "@src/queries.js"
+        cache: {
+          store: C
+          invalidateOn: [Post:create, Comment:create, Post:delete]
+        }
+      }
+    `);
+    expect(ast.queries[0]?.cache?.invalidateOn).toEqual([
+      "Post:create",
+      "Comment:create",
+      "Post:delete",
+    ]);
+  });
+});

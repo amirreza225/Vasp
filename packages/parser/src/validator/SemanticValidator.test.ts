@@ -1029,3 +1029,152 @@ describe("SemanticValidator — multiTenant", () => {
     ).toThrow("E181_MULTITENANT_ENTITY_NOT_DECLARED");
   });
 });
+
+describe("SemanticValidator — cache blocks", () => {
+  it("passes with a valid memory cache block", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      cache QueryCache {
+        provider: memory
+        ttl: 60
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes with a valid redis cache block", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      cache RedisCache {
+        provider: redis
+        redis: {
+          url: env(REDIS_URL)
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes with a valid valkey cache block", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      cache ValkeyCache {
+        provider: valkey
+        redis: {
+          url: env(VALKEY_URL)
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails on duplicate cache store names (E190)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      cache QueryCache { provider: memory }
+      cache QueryCache { provider: redis redis: { url: env(REDIS_URL) } }
+    `),
+    ).toThrow("E190_DUPLICATE_CACHE");
+  });
+
+  it("fails on unknown cache provider (E191)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      cache QueryCache { provider: memcached }
+    `),
+    ).toThrow("E191_UNKNOWN_CACHE_PROVIDER");
+  });
+
+  it("fails when redis provider is missing redis.url (E192)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      cache RedisCache { provider: redis }
+    `),
+    ).toThrow("E192_CACHE_MISSING_REDIS_URL");
+  });
+
+  it("fails when valkey provider is missing redis.url (E192)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      cache ValkeyCache { provider: valkey }
+    `),
+    ).toThrow("E192_CACHE_MISSING_REDIS_URL");
+  });
+
+  it("passes when query references a valid cache store", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Post { id: Int @id title: String }
+      cache QueryCache { provider: memory ttl: 60 }
+      query getPublicPosts {
+        fn: import { getPublicPosts } from "@src/queries.js"
+        entities: [Post]
+        cache: {
+          store: QueryCache
+          ttl: 300
+          key: "public-posts"
+          invalidateOn: [Post:create, Post:update, Post:delete]
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails when query cache store is not declared (E193)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      query getPublicPosts {
+        fn: import { getPublicPosts } from "@src/queries.js"
+        cache: {
+          store: UndeclaredCache
+        }
+      }
+    `),
+    ).toThrow("E193_UNKNOWN_CACHE_STORE_REF");
+  });
+
+  it("fails when invalidateOn references an unknown entity (E195)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Post { id: Int @id title: String }
+      cache QueryCache { provider: memory }
+      query getPosts {
+        fn: import { getPosts } from "@src/queries.js"
+        entities: [Post]
+        cache: {
+          store: QueryCache
+          invalidateOn: [Ghost:create]
+        }
+      }
+    `),
+    ).toThrow("E195_INVALIDATEON_UNKNOWN_ENTITY");
+  });
+
+  it("fails when invalidateOn references an invalid operation (E196)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Post { id: Int @id title: String }
+      cache QueryCache { provider: memory }
+      query getPosts {
+        fn: import { getPosts } from "@src/queries.js"
+        entities: [Post]
+        cache: {
+          store: QueryCache
+          invalidateOn: [Post:publish]
+        }
+      }
+    `),
+    ).toThrow("E196_INVALIDATEON_UNKNOWN_OPERATION");
+  });
+});

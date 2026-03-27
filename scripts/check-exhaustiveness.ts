@@ -57,6 +57,7 @@ const VASP_NODE_TYPES: ReadonlySet<string> = new Set([
   "Admin",
   "Storage",
   "Email",
+  "Cache",
 ])
 
 // ---------------------------------------------------------------------------
