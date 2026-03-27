@@ -42,6 +42,7 @@ export class SemanticValidator {
     this.checkRouteTargets(ast);
     this.checkCrudEntities(ast);
     this.checkCrudOperations(ast);
+    this.checkCrudOwnership(ast);
     this.checkRealtimeEntities(ast);
     this.checkAuthMethods(ast);
     this.checkRoleConfiguration(ast);
@@ -134,6 +135,36 @@ export class SemanticValidator {
             loc: crud.loc,
           });
         }
+      }
+    }
+  }
+
+  private checkCrudOwnership(ast: VaspAST): void {
+    const entityMap = new Map(ast.entities.map((e) => [e.name, e]));
+    for (const crud of ast.cruds) {
+      if (!crud.ownership) continue;
+
+      // ownership requires an auth block so that requireAuth middleware exists
+      if (!ast.auth) {
+        this.diagnostics.push({
+          code: "E202_CRUD_OWNERSHIP_REQUIRES_AUTH",
+          message: `crud '${crud.name}' uses 'ownership' but no auth block is defined`,
+          hint: "Add an auth block so that the requireAuth middleware is generated",
+          loc: crud.loc,
+        });
+      }
+
+      // ownership field must exist on the referenced entity
+      const entity = entityMap.get(crud.entity);
+      if (!entity) continue; // entity absence is already caught by checkCrudEntities
+      const fieldNames = new Set(entity.fields.map((f) => f.name));
+      if (!fieldNames.has(crud.ownership)) {
+        this.diagnostics.push({
+          code: "E203_CRUD_OWNERSHIP_FIELD_NOT_FOUND",
+          message: `crud '${crud.name}' ownership field '${crud.ownership}' does not exist on entity '${crud.entity}'`,
+          hint: `Add a field named '${crud.ownership}' to the '${crud.entity}' entity, or fix the ownership value`,
+          loc: crud.loc,
+        });
       }
     }
   }

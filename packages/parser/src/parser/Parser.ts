@@ -1036,6 +1036,7 @@ class Parser {
     let operations: CrudOperation[] = [];
     let listConfig: CrudListConfig | undefined;
     let permissions: CrudPermissions | undefined;
+    let ownership: string | undefined;
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -1054,11 +1055,14 @@ class Parser {
         case "permissions":
           permissions = this.parseCrudPermissionsMap();
           break;
+        case "ownership":
+          ownership = this.consumeIdentifier().value;
+          break;
         default:
           throw this.error(
             "E021_UNKNOWN_PROP",
             `Unknown crud property '${key.value}'`,
-            "Valid properties: entity, operations, list, permissions",
+            "Valid properties: entity, operations, list, permissions, ownership",
             key.loc,
           );
       }
@@ -1073,6 +1077,7 @@ class Parser {
       operations,
       ...(listConfig !== undefined ? { listConfig } : {}),
       ...(permissions !== undefined ? { permissions } : {}),
+      ...(ownership !== undefined ? { ownership } : {}),
     };
   }
 

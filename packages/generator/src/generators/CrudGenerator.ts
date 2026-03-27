@@ -94,8 +94,17 @@ export class CrudGenerator extends BaseGenerator {
       const updatePermission = crudPerms["update"] ?? "";
       const deletePermission = crudPerms["delete"] ?? "";
 
-      // requireAuth is needed when auth is globally configured OR when tenant filtering is on
-      const needsAuth = !!ast.auth || applyTenantFilter;
+      // Ownership-based resource-level access control (IDOR prevention)
+      const ownershipField = crud.ownership ?? "";
+      const hasOwnership = !!crud.ownership;
+      // hasAnyRecordFilter: when true, single-record endpoints (GET/:id, PUT/:id,
+      // DELETE/:id) append an extra AND condition to scope the query to the
+      // current tenant/owner so arbitrary IDs cannot be accessed.
+      const hasAnyRecordFilter = applyTenantFilter || hasOwnership;
+
+      // requireAuth is needed when auth is globally configured, tenant filtering
+      // is on, or ownership checking is required
+      const needsAuth = !!ast.auth || applyTenantFilter || hasOwnership;
 
       // Collect unique cache stores needed for invalidation for this entity's CRUD ops
       type CacheImport = {
@@ -181,6 +190,9 @@ export class CrudGenerator extends BaseGenerator {
           needsAuth,
           applyTenantFilter,
           tenantField,
+          ownershipField,
+          hasOwnership,
+          hasAnyRecordFilter,
           hasCacheInvalidation,
           cacheImports,
           createCacheInvalidations,

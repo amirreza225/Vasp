@@ -630,6 +630,45 @@ describe("Parser — crud", () => {
     `),
     ).toThrow("E021_UNKNOWN_PROP");
   });
+
+  it("parses crud with ownership field", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Order {
+        entity: Order
+        operations: [list, create, update, delete]
+        ownership: ownerId
+      }
+    `);
+    expect(ast.cruds[0]).toMatchObject({
+      type: "Crud",
+      name: "Order",
+      entity: "Order",
+      operations: ["list", "create", "update", "delete"],
+      ownership: "ownerId",
+    });
+  });
+
+  it("parses crud without ownership — ownership is undefined", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Todo { entity: Todo operations: [list] }
+    `);
+    expect(ast.cruds[0].ownership).toBeUndefined();
+  });
+
+  it("rejects unknown crud property", () => {
+    expect(() =>
+      parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Todo {
+        entity: Todo
+        operations: [list]
+        unknown: field
+      }
+    `),
+    ).toThrow("E021_UNKNOWN_PROP");
+  });
 });
 
 describe("Parser — realtime", () => {
