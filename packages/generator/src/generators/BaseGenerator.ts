@@ -79,6 +79,9 @@ export abstract class BaseGenerator {
       jobs: ast.jobs,
       seed: ast.seed,
       auth: ast.auth,
+      multiTenant: ast.app?.multiTenant ?? null,
+      hasMultiTenant: !!ast.app?.multiTenant,
+      isRowLevelTenant: ast.app?.multiTenant?.strategy === "row-level",
     };
   }
 

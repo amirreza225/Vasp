@@ -29,6 +29,8 @@ import type {
   JobNode,
   MiddlewareNode,
   MiddlewareScope,
+  MultiTenantConfig,
+  MultiTenantStrategy,
   OnDeleteBehavior,
   PageNode,
   PermissionMap,
@@ -278,6 +280,7 @@ class Parser {
     let ssr: boolean | "ssg" = false;
     let typescript = false;
     const env: Record<string, EnvVarDefinition> = {};
+    let multiTenant: MultiTenantConfig | undefined;
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -440,11 +443,44 @@ class Parser {
           this.consume(TokenType.RBRACE);
           break;
         }
+        case "multiTenant": {
+          this.consume(TokenType.LBRACE);
+          let strategy: MultiTenantStrategy = "row-level";
+          let tenantEntity = "";
+          let tenantField = "";
+          while (!this.check(TokenType.RBRACE)) {
+            const mtKey = this.consumeIdentifier();
+            this.consume(TokenType.COLON);
+            switch (mtKey.value) {
+              case "strategy": {
+                const stratVal = this.consumeString();
+                strategy = stratVal as MultiTenantStrategy;
+                break;
+              }
+              case "tenantEntity":
+                tenantEntity = this.consumeIdentifier().value;
+                break;
+              case "tenantField":
+                tenantField = this.consumeIdentifier().value;
+                break;
+              default:
+                throw this.error(
+                  "E047_UNKNOWN_MULTITENANT_PROP",
+                  `Unknown multiTenant property '${mtKey.value}'`,
+                  "Valid properties: strategy, tenantEntity, tenantField",
+                  mtKey.loc,
+                );
+            }
+          }
+          this.consume(TokenType.RBRACE);
+          multiTenant = { strategy, tenantEntity, tenantField };
+          break;
+        }
         default:
           throw this.error(
             "E012_UNKNOWN_PROP",
             `Unknown app property '${key.value}'`,
-            "Valid properties: title, db, ssr, typescript, env",
+            "Valid properties: title, db, ssr, typescript, env, multiTenant",
             key.loc,
           );
       }
@@ -460,6 +496,7 @@ class Parser {
       ssr,
       typescript,
       ...(Object.keys(env).length > 0 ? { env } : {}),
+      ...(multiTenant !== undefined ? { multiTenant } : {}),
     };
   }
 

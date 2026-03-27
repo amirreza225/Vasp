@@ -15,6 +15,7 @@ import {
   SUPPORTED_CRUD_OPERATIONS,
   SUPPORTED_EMAIL_PROVIDERS,
   SUPPORTED_MIDDLEWARE_SCOPES,
+  SUPPORTED_MULTI_TENANT_STRATEGIES,
   SUPPORTED_REALTIME_EVENTS,
   SUPPORTED_FIELD_TYPES,
   SUPPORTED_STORAGE_PROVIDERS,
@@ -57,6 +58,7 @@ export class SemanticValidator {
     this.checkStorageFieldRefs(ast);
     this.checkEmailProviders(ast);
     this.checkEmailOnSuccess(ast);
+    this.checkMultiTenantConfig(ast);
     return [...this.diagnostics];
   }
 
@@ -1020,6 +1022,53 @@ export class SemanticValidator {
           hint: `Define a template named '${templateName}' in an email block`,
           loc: action.loc,
         });
+      }
+    }
+  }
+
+  private checkMultiTenantConfig(ast: VaspAST): void {
+    const mt = ast.app?.multiTenant;
+    if (!mt) return;
+
+    // Validate strategy value
+    if (!(SUPPORTED_MULTI_TENANT_STRATEGIES as readonly string[]).includes(mt.strategy)) {
+      this.diagnostics.push({
+        code: "E180_INVALID_MULTITENANT_STRATEGY",
+        message: `Invalid multiTenant strategy '${mt.strategy}'`,
+        hint: `Supported strategies: ${SUPPORTED_MULTI_TENANT_STRATEGIES.join(", ")}`,
+        loc: ast.app.loc,
+      });
+    }
+
+    // Validate tenantEntity references a declared entity
+    if (mt.tenantEntity) {
+      const entityNames = new Set(ast.entities.map((e) => e.name));
+      if (!entityNames.has(mt.tenantEntity)) {
+        this.diagnostics.push({
+          code: "E181_MULTITENANT_ENTITY_NOT_DECLARED",
+          message: `multiTenant.tenantEntity '${mt.tenantEntity}' has no entity block`,
+          hint: `Add an entity block for '${mt.tenantEntity}', or fix the tenantEntity value`,
+          loc: ast.app.loc,
+        });
+      }
+    }
+
+    // Validate tenantField exists on at least one entity (only for row-level strategy)
+    if (mt.strategy === "row-level" && mt.tenantField && mt.tenantEntity) {
+      const tenantEntityNode = ast.entities.find((e) => e.name === mt.tenantEntity);
+      if (tenantEntityNode) {
+        // The tenantField should be a field on the tenant entity itself (it is the PK)
+        const hasTenantPk = tenantEntityNode.fields.some(
+          (f) => f.name === "id" || f.modifiers.includes("id"),
+        );
+        if (!hasTenantPk) {
+          this.diagnostics.push({
+            code: "E182_MULTITENANT_ENTITY_NO_ID",
+            message: `multiTenant.tenantEntity '${mt.tenantEntity}' has no @id field`,
+            hint: "Add an id field with @id modifier to the tenant entity",
+            loc: ast.app.loc,
+          });
+        }
       }
     }
   }

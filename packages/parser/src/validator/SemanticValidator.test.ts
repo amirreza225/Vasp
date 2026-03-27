@@ -968,3 +968,64 @@ describe("SemanticValidator — @@index and @@unique (E170, E171)", () => {
     ).not.toThrow();
   });
 });
+
+describe("SemanticValidator — multiTenant", () => {
+  it("passes with a valid row-level multiTenant config", () => {
+    expect(() =>
+      validate(`
+      app MySaas {
+        title: "My SaaS"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        multiTenant: {
+          strategy: "row-level"
+          tenantEntity: Workspace
+          tenantField: workspaceId
+        }
+      }
+      entity Workspace {
+        id: Int @id
+        name: String
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails when multiTenant.strategy is invalid (E180)", () => {
+    expect(() =>
+      validate(`
+      app MySaas {
+        title: "My SaaS"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        multiTenant: {
+          strategy: "invalid-strategy"
+          tenantEntity: Workspace
+          tenantField: workspaceId
+        }
+      }
+      entity Workspace { id: Int @id name: String }
+    `),
+    ).toThrow("E180_INVALID_MULTITENANT_STRATEGY");
+  });
+
+  it("fails when multiTenant.tenantEntity is not declared (E181)", () => {
+    expect(() =>
+      validate(`
+      app MySaas {
+        title: "My SaaS"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        multiTenant: {
+          strategy: "row-level"
+          tenantEntity: Workspace
+          tenantField: workspaceId
+        }
+      }
+    `),
+    ).toThrow("E181_MULTITENANT_ENTITY_NOT_DECLARED");
+  });
+});
