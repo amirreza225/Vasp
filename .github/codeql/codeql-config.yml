@@ -7,8 +7,11 @@ queries:
   - uses: ./.github/codeql/queries
 
 paths-ignore:
-  - "**/node_modules"
-  - "**/dist"
+  - "**/node_modules/**"
+  - "**/.bun/**"
+  - "**/dist/**"
   - "**/*.test.ts"
   - "**/*.spec.ts"
+  - "**/*.hbs"
   - "templates/**"
+  - "e2e/fixtures/**"
