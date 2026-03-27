@@ -1033,7 +1033,11 @@ export class SemanticValidator {
     if (!mt) return;
 
     // Validate strategy value
-    if (!(SUPPORTED_MULTI_TENANT_STRATEGIES as readonly string[]).includes(mt.strategy)) {
+    if (
+      !(SUPPORTED_MULTI_TENANT_STRATEGIES as readonly string[]).includes(
+        mt.strategy,
+      )
+    ) {
       this.diagnostics.push({
         code: "E180_INVALID_MULTITENANT_STRATEGY",
         message: `Invalid multiTenant strategy '${mt.strategy}'`,
@@ -1057,7 +1061,9 @@ export class SemanticValidator {
 
     // Validate tenantField exists on at least one entity (only for row-level strategy)
     if (mt.strategy === "row-level" && mt.tenantField && mt.tenantEntity) {
-      const tenantEntityNode = ast.entities.find((e) => e.name === mt.tenantEntity);
+      const tenantEntityNode = ast.entities.find(
+        (e) => e.name === mt.tenantEntity,
+      );
       if (tenantEntityNode) {
         // The tenantField should be a field on the tenant entity itself (it is the PK)
         const hasTenantPk = tenantEntityNode.fields.some(
@@ -1097,7 +1103,11 @@ export class SemanticValidator {
       cacheNames.add(cache.name);
 
       // E191: unknown provider
-      if (!(SUPPORTED_CACHE_PROVIDERS as readonly string[]).includes(cache.provider)) {
+      if (
+        !(SUPPORTED_CACHE_PROVIDERS as readonly string[]).includes(
+          cache.provider,
+        )
+      ) {
         this.diagnostics.push({
           code: "E191_UNKNOWN_CACHE_PROVIDER",
           message: `Unknown cache provider '${cache.provider}' in '${cache.name}'`,

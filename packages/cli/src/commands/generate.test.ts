@@ -6,10 +6,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import {
-  fileMatchesOnlyFilters,
-  computeUnifiedDiff,
-} from "./generate.js";
+import { fileMatchesOnlyFilters, computeUnifiedDiff } from "./generate.js";
 import type { OnlyFilter } from "./generate.js";
 
 // ---------------------------------------------------------------------------
@@ -28,12 +25,18 @@ describe("fileMatchesOnlyFilters", () => {
     it("matches schema file", () => {
       expect(fileMatchesOnlyFilters("server/db/schema.ts", filters)).toBe(true);
       expect(fileMatchesOnlyFilters("server/db/schema.js", filters)).toBe(true);
-      expect(fileMatchesOnlyFilters("server/db/drizzle.config.ts", filters)).toBe(true);
+      expect(
+        fileMatchesOnlyFilters("server/db/drizzle.config.ts", filters),
+      ).toBe(true);
     });
 
     it("does not match unrelated files", () => {
-      expect(fileMatchesOnlyFilters("server/routes/crud/task.ts", filters)).toBe(false);
-      expect(fileMatchesOnlyFilters("src/vasp/client/crud.ts", filters)).toBe(false);
+      expect(
+        fileMatchesOnlyFilters("server/routes/crud/task.ts", filters),
+      ).toBe(false);
+      expect(fileMatchesOnlyFilters("src/vasp/client/crud.ts", filters)).toBe(
+        false,
+      );
     });
   });
 
@@ -41,20 +44,30 @@ describe("fileMatchesOnlyFilters", () => {
     const filters: OnlyFilter[] = [{ type: "crud", name: "Task" }];
 
     it("matches the camelCase CRUD route file", () => {
-      expect(fileMatchesOnlyFilters("server/routes/crud/task.ts", filters)).toBe(true);
-      expect(fileMatchesOnlyFilters("server/routes/crud/task.js", filters)).toBe(true);
+      expect(
+        fileMatchesOnlyFilters("server/routes/crud/task.ts", filters),
+      ).toBe(true);
+      expect(
+        fileMatchesOnlyFilters("server/routes/crud/task.js", filters),
+      ).toBe(true);
     });
 
     it("matches the client SDK crud file", () => {
-      expect(fileMatchesOnlyFilters("src/vasp/client/crud.ts", filters)).toBe(true);
+      expect(fileMatchesOnlyFilters("src/vasp/client/crud.ts", filters)).toBe(
+        true,
+      );
     });
 
     it("does not match a different entity's CRUD file", () => {
-      expect(fileMatchesOnlyFilters("server/routes/crud/user.ts", filters)).toBe(false);
+      expect(
+        fileMatchesOnlyFilters("server/routes/crud/user.ts", filters),
+      ).toBe(false);
     });
 
     it("does not match unrelated paths", () => {
-      expect(fileMatchesOnlyFilters("server/db/schema.ts", filters)).toBe(false);
+      expect(fileMatchesOnlyFilters("server/db/schema.ts", filters)).toBe(
+        false,
+      );
     });
   });
 
@@ -62,12 +75,18 @@ describe("fileMatchesOnlyFilters", () => {
     const filters: OnlyFilter[] = [{ type: "crud", name: null }];
 
     it("matches any CRUD route file", () => {
-      expect(fileMatchesOnlyFilters("server/routes/crud/task.ts", filters)).toBe(true);
-      expect(fileMatchesOnlyFilters("server/routes/crud/user.js", filters)).toBe(true);
+      expect(
+        fileMatchesOnlyFilters("server/routes/crud/task.ts", filters),
+      ).toBe(true);
+      expect(
+        fileMatchesOnlyFilters("server/routes/crud/user.js", filters),
+      ).toBe(true);
     });
 
     it("matches client SDK crud file", () => {
-      expect(fileMatchesOnlyFilters("src/vasp/client/crud.ts", filters)).toBe(true);
+      expect(fileMatchesOnlyFilters("src/vasp/client/crud.ts", filters)).toBe(
+        true,
+      );
     });
   });
 
@@ -107,27 +126,39 @@ describe("fileMatchesOnlyFilters", () => {
     const filters: OnlyFilter[] = [{ type: "job", name: "sendEmail" }];
 
     it("matches the camelCase job file", () => {
-      expect(fileMatchesOnlyFilters("server/jobs/sendEmail.ts", filters)).toBe(true);
+      expect(fileMatchesOnlyFilters("server/jobs/sendEmail.ts", filters)).toBe(
+        true,
+      );
     });
 
     it("does not match a different job", () => {
-      expect(fileMatchesOnlyFilters("server/jobs/cleanup.ts", filters)).toBe(false);
+      expect(fileMatchesOnlyFilters("server/jobs/cleanup.ts", filters)).toBe(
+        false,
+      );
     });
   });
 
   describe("storage filter", () => {
-    const filtersWithName: OnlyFilter[] = [{ type: "storage", name: "Uploads" }];
+    const filtersWithName: OnlyFilter[] = [
+      { type: "storage", name: "Uploads" },
+    ];
     const filtersNoName: OnlyFilter[] = [{ type: "storage", name: null }];
 
     it("matches storage route file by name", () => {
       expect(
-        fileMatchesOnlyFilters("server/routes/storage/uploads.ts", filtersWithName),
+        fileMatchesOnlyFilters(
+          "server/routes/storage/uploads.ts",
+          filtersWithName,
+        ),
       ).toBe(true);
     });
 
     it("matches any storage route file without name filter", () => {
       expect(
-        fileMatchesOnlyFilters("server/routes/storage/profile.ts", filtersNoName),
+        fileMatchesOnlyFilters(
+          "server/routes/storage/profile.ts",
+          filtersNoName,
+        ),
       ).toBe(true);
       expect(
         fileMatchesOnlyFilters("server/storage/provider.ts", filtersNoName),
@@ -139,16 +170,22 @@ describe("fileMatchesOnlyFilters", () => {
     const filters: OnlyFilter[] = [{ type: "email", name: null }];
 
     it("matches email files", () => {
-      expect(fileMatchesOnlyFilters("server/email/mailer.ts", filters)).toBe(true);
+      expect(fileMatchesOnlyFilters("server/email/mailer.ts", filters)).toBe(
+        true,
+      );
     });
 
     it("does not match non-email files", () => {
-      expect(fileMatchesOnlyFilters("server/jobs/sendEmail.ts", filters)).toBe(false);
+      expect(fileMatchesOnlyFilters("server/jobs/sendEmail.ts", filters)).toBe(
+        false,
+      );
     });
   });
 
   describe("realtime filter", () => {
-    const filtersWithName: OnlyFilter[] = [{ type: "realtime", name: "TaskChannel" }];
+    const filtersWithName: OnlyFilter[] = [
+      { type: "realtime", name: "TaskChannel" },
+    ];
 
     it("matches realtime channel file by camelCase name", () => {
       expect(
@@ -161,7 +198,10 @@ describe("fileMatchesOnlyFilters", () => {
 
     it("does not match a different channel", () => {
       expect(
-        fileMatchesOnlyFilters("server/routes/realtime/userChannel.ts", filtersWithName),
+        fileMatchesOnlyFilters(
+          "server/routes/realtime/userChannel.ts",
+          filtersWithName,
+        ),
       ).toBe(false);
     });
   });
@@ -170,14 +210,18 @@ describe("fileMatchesOnlyFilters", () => {
     const filters: OnlyFilter[] = [{ type: "auth", name: null }];
 
     it("matches auth server files", () => {
-      expect(fileMatchesOnlyFilters("server/auth/index.ts", filters)).toBe(true);
-      expect(fileMatchesOnlyFilters("server/auth/middleware.ts", filters)).toBe(true);
+      expect(fileMatchesOnlyFilters("server/auth/index.ts", filters)).toBe(
+        true,
+      );
+      expect(fileMatchesOnlyFilters("server/auth/middleware.ts", filters)).toBe(
+        true,
+      );
     });
 
     it("matches Login/Register components", () => {
-      expect(
-        fileMatchesOnlyFilters("src/components/Login.vue", filters),
-      ).toBe(true);
+      expect(fileMatchesOnlyFilters("src/components/Login.vue", filters)).toBe(
+        true,
+      );
       expect(
         fileMatchesOnlyFilters("src/components/Register.vue", filters),
       ).toBe(true);
@@ -192,7 +236,9 @@ describe("fileMatchesOnlyFilters", () => {
     const filters: OnlyFilter[] = [{ type: "admin", name: null }];
 
     it("matches admin panel files", () => {
-      expect(fileMatchesOnlyFilters("admin/src/views/task/index.vue", filters)).toBe(true);
+      expect(
+        fileMatchesOnlyFilters("admin/src/views/task/index.vue", filters),
+      ).toBe(true);
     });
 
     it("does not match non-admin files", () => {
@@ -206,7 +252,9 @@ describe("fileMatchesOnlyFilters", () => {
 
     it("matches src/ files for route filter", () => {
       expect(fileMatchesOnlyFilters("src/App.vue", routeFilters)).toBe(true);
-      expect(fileMatchesOnlyFilters("src/router/index.ts", routeFilters)).toBe(true);
+      expect(fileMatchesOnlyFilters("src/router/index.ts", routeFilters)).toBe(
+        true,
+      );
     });
 
     it("matches src/ files for page filter", () => {
@@ -218,7 +266,9 @@ describe("fileMatchesOnlyFilters", () => {
     const filters: OnlyFilter[] = [{ type: "unknown", name: null }];
 
     it("returns false for unknown block types", () => {
-      expect(fileMatchesOnlyFilters("server/db/schema.ts", filters)).toBe(false);
+      expect(fileMatchesOnlyFilters("server/db/schema.ts", filters)).toBe(
+        false,
+      );
     });
   });
 
@@ -230,11 +280,15 @@ describe("fileMatchesOnlyFilters", () => {
 
     it("matches file that satisfies any filter", () => {
       expect(fileMatchesOnlyFilters("server/db/schema.ts", filters)).toBe(true);
-      expect(fileMatchesOnlyFilters("server/routes/crud/task.ts", filters)).toBe(true);
+      expect(
+        fileMatchesOnlyFilters("server/routes/crud/task.ts", filters),
+      ).toBe(true);
     });
 
     it("does not match file that satisfies none", () => {
-      expect(fileMatchesOnlyFilters("server/routes/actions/createTask.ts", filters)).toBe(false);
+      expect(
+        fileMatchesOnlyFilters("server/routes/actions/createTask.ts", filters),
+      ).toBe(false);
     });
   });
 });
@@ -266,8 +320,24 @@ describe("computeUnifiedDiff", () => {
   });
 
   it("shows context lines with space prefix", () => {
-    const oldText = ["ctx1", "ctx2", "ctx3", "old", "ctx4", "ctx5", "ctx6"].join("\n");
-    const newText = ["ctx1", "ctx2", "ctx3", "new", "ctx4", "ctx5", "ctx6"].join("\n");
+    const oldText = [
+      "ctx1",
+      "ctx2",
+      "ctx3",
+      "old",
+      "ctx4",
+      "ctx5",
+      "ctx6",
+    ].join("\n");
+    const newText = [
+      "ctx1",
+      "ctx2",
+      "ctx3",
+      "new",
+      "ctx4",
+      "ctx5",
+      "ctx6",
+    ].join("\n");
     const diff = computeUnifiedDiff(oldText, newText, "file.ts");
     expect(diff).toContain(" ctx1");
     expect(diff).toContain("-old");
@@ -301,7 +371,11 @@ describe("computeUnifiedDiff", () => {
     // Two changes within 6 lines of each other (default context=3)
     const oldLines = ["a", "b", "c", "old1", "e", "f", "g", "old2", "i"];
     const newLines = ["a", "b", "c", "new1", "e", "f", "g", "new2", "i"];
-    const diff = computeUnifiedDiff(oldLines.join("\n"), newLines.join("\n"), "f.ts");
+    const diff = computeUnifiedDiff(
+      oldLines.join("\n"),
+      newLines.join("\n"),
+      "f.ts",
+    );
     // Should produce one hunk header, not two
     const hunkCount = (diff.match(/^@@/gm) ?? []).length;
     expect(hunkCount).toBe(1);
@@ -313,7 +387,11 @@ describe("computeUnifiedDiff", () => {
     const newLines = [...oldLines];
     newLines[1] = "changed-early";
     newLines[18] = "changed-late";
-    const diff = computeUnifiedDiff(oldLines.join("\n"), newLines.join("\n"), "f.ts");
+    const diff = computeUnifiedDiff(
+      oldLines.join("\n"),
+      newLines.join("\n"),
+      "f.ts",
+    );
     const hunkCount = (diff.match(/^@@/gm) ?? []).length;
     expect(hunkCount).toBe(2);
   });

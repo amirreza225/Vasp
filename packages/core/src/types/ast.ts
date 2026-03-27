@@ -221,7 +221,10 @@ export type MiddlewareScope = "global" | "route";
 
 // ------ Multi-Tenancy ------
 
-export type MultiTenantStrategy = "row-level" | "schema-level" | "database-level";
+export type MultiTenantStrategy =
+  | "row-level"
+  | "schema-level"
+  | "database-level";
 
 export interface MultiTenantConfig {
   strategy: MultiTenantStrategy;

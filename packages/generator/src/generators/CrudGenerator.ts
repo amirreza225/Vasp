@@ -9,7 +9,12 @@ export class CrudGenerator extends BaseGenerator {
     this.ctx.logger.info("Generating CRUD endpoints...");
 
     // Build a map from "Entity:operation" → list of {camelStore, key} to invalidate
-    type InvalidationEntry = { store: string; camelStore: string; pascalStore: string; key: string };
+    type InvalidationEntry = {
+      store: string;
+      camelStore: string;
+      pascalStore: string;
+      key: string;
+    };
     const invalidationMap = new Map<string, InvalidationEntry[]>();
     for (const query of ast.queries) {
       if (!query.cache) continue;
@@ -46,9 +51,7 @@ export class CrudGenerator extends BaseGenerator {
       const tenantEntity = isRowLevelTenant ? (mt?.tenantEntity ?? "") : "";
       // Skip tenant injection for the tenant entity itself
       const applyTenantFilter =
-        isRowLevelTenant &&
-        !!tenantField &&
-        crud.entity !== tenantEntity;
+        isRowLevelTenant && !!tenantField && crud.entity !== tenantEntity;
 
       // Determine many-to-one relations for auto-join (with: {})
       const withRelations = (entity?.fields ?? [])
@@ -82,11 +85,27 @@ export class CrudGenerator extends BaseGenerator {
       const needsAuth = !!ast.auth || applyTenantFilter;
 
       // Collect unique cache stores needed for invalidation for this entity's CRUD ops
-      type CacheImport = { store: string; camelStore: string; pascalStore: string };
+      type CacheImport = {
+        store: string;
+        camelStore: string;
+        pascalStore: string;
+      };
       const cacheImportMap = new Map<string, CacheImport>();
-      const createCacheInvalidations: { camelStore: string; pascalStore: string; key: string }[] = [];
-      const updateCacheInvalidations: { camelStore: string; pascalStore: string; key: string }[] = [];
-      const deleteCacheInvalidations: { camelStore: string; pascalStore: string; key: string }[] = [];
+      const createCacheInvalidations: {
+        camelStore: string;
+        pascalStore: string;
+        key: string;
+      }[] = [];
+      const updateCacheInvalidations: {
+        camelStore: string;
+        pascalStore: string;
+        key: string;
+      }[] = [];
+      const deleteCacheInvalidations: {
+        camelStore: string;
+        pascalStore: string;
+        key: string;
+      }[] = [];
 
       for (const op of ["create", "update", "delete"] as const) {
         const mapKey = `${crud.entity}:${op}`;
@@ -98,7 +117,11 @@ export class CrudGenerator extends BaseGenerator {
               pascalStore: inv.pascalStore,
             });
           }
-          const entry = { camelStore: inv.camelStore, pascalStore: inv.pascalStore, key: inv.key };
+          const entry = {
+            camelStore: inv.camelStore,
+            pascalStore: inv.pascalStore,
+            key: inv.key,
+          };
           if (op === "create") createCacheInvalidations.push(entry);
           else if (op === "update") updateCacheInvalidations.push(entry);
           else deleteCacheInvalidations.push(entry);

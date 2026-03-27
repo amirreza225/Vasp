@@ -928,9 +928,9 @@ describe("generate()", () => {
     expect(result.success).toBe(true);
 
     // Cache store file must be generated
-    expect(
-      existsSync(join(outputDir, "server/cache/queryCache.js")),
-    ).toBe(true);
+    expect(existsSync(join(outputDir, "server/cache/queryCache.js"))).toBe(
+      true,
+    );
     const store = readFileSync(
       join(outputDir, "server/cache/queryCache.js"),
       "utf8",
@@ -949,7 +949,9 @@ describe("generate()", () => {
     expect(queryRoute).toContain("_CACHE_KEY = 'public-posts'");
     expect(queryRoute).toContain("_CACHE_TTL = 300");
     expect(queryRoute).toContain("await getCached(_CACHE_KEY)");
-    expect(queryRoute).toContain("await setCached(_CACHE_KEY, result, _CACHE_TTL)");
+    expect(queryRoute).toContain(
+      "await setCached(_CACHE_KEY, result, _CACHE_TTL)",
+    );
   });
 
   it("generates a redis cache store file", () => {
@@ -1026,7 +1028,9 @@ describe("generate()", () => {
       "utf8",
     );
     // Cache import
-    expect(crud).toContain("import { invalidateCached as _invalidateQueryCache }");
+    expect(crud).toContain(
+      "import { invalidateCached as _invalidateQueryCache }",
+    );
     expect(crud).toContain("from '../../cache/queryCache.js'");
     // Invalidation calls after create, update, delete
     expect(crud).toContain("await _invalidateQueryCache('public-posts')");
@@ -1058,6 +1062,8 @@ describe("generate()", () => {
     expect(queryRoute).not.toContain("setCached");
     expect(queryRoute).not.toContain("cache");
   });
+
+  it("TypeScript CRUD: generates typed crud.ts with entity types", () => {
     const ast = parse(TS_VASP);
     const outputDir = join(TMP_DIR, "ts-crud");
     generate(ast, {

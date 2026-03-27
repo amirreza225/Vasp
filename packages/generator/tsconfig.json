@@ -7,5 +7,5 @@
   },
   "references": [{ "path": "../core" }, { "path": "../parser" }],
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "src/__test_output__"]
 }

@@ -13,7 +13,7 @@ import { publish{{pascalCase realtimeName}} } from '../realtime/{{camelCase real
 {{/if}}
 {{#if hasCacheInvalidation}}
 {{#each cacheImports}}
-import { invalidateCached as _invalidate{{pascalStore}} } from '../../cache/{{camelStore}}.{{ext}}'
+import { invalidateCached as _invalidate{{pascalStore}} } from '../../cache/{{camelStore}}.{{../ext}}'
 {{/each}}
 {{/if}}
 

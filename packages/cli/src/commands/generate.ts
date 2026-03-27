@@ -414,9 +414,7 @@ async function runOnly(
     return;
   }
 
-  log.step(
-    `Regenerating ${matched.length} file(s) matching: ${filterDesc}`,
-  );
+  log.step(`Regenerating ${matched.length} file(s) matching: ${filterDesc}`);
 
   let copied = 0;
   let skipped = 0;
@@ -430,7 +428,9 @@ async function runOnly(
       const diskHash = computeHash(onDisk);
       const prevEntry = previousManifest.getEntry(relPath);
       if (prevEntry && diskHash !== prevEntry.hash) {
-        log.warn(`  ~ ${relPath} (user-modified — skipping; use --force to overwrite)`);
+        log.warn(
+          `  ~ ${relPath} (user-modified — skipping; use --force to overwrite)`,
+        );
         skipped++;
         continue;
       }
@@ -463,7 +463,9 @@ async function runOnly(
   );
 
   if (skipped > 0 && !force) {
-    log.dim(`  ${skipped} user-modified file(s) preserved — use --force to overwrite`);
+    log.dim(
+      `  ${skipped} user-modified file(s) preserved — use --force to overwrite`,
+    );
   }
 
   // Cleanup
@@ -541,9 +543,7 @@ export function fileMatchesOnlyFilters(
       case "realtime":
         // RealtimeGenerator writes server/routes/realtime/*
         if (pathName) {
-          return relPath.startsWith(
-            `server/routes/realtime/${pathName}.`,
-          );
+          return relPath.startsWith(`server/routes/realtime/${pathName}.`);
         }
         return relPath.startsWith("server/routes/realtime/");
 
@@ -616,10 +616,7 @@ export function computeUnifiedDiff(
 
   if (hunks.length === 0) return "";
 
-  const output: string[] = [
-    `--- a/${filePath}`,
-    `+++ b/${filePath}`,
-  ];
+  const output: string[] = [`--- a/${filePath}`, `+++ b/${filePath}`];
 
   for (const hunk of hunks) {
     const oldCount = hunk.lines.filter((l) => l[0] !== "+").length;
@@ -691,7 +688,7 @@ function lcsDiff(oldLines: string[], newLines: string[]): Edit[] {
     } else if (
       j > 0 &&
       (i === 0 ||
-        (dp[i] as number[])[j - 1] as number >=
+        ((dp[i] as number[])[j - 1] as number) >=
           ((dp[i - 1] as number[])[j] as number))
     ) {
       edits.push({ op: "insert", line: newLines[j - 1] as string });
@@ -718,7 +715,10 @@ function buildHunks(edits: Edit[], context: number): DiffHunk[] {
   // Group change indices into contiguous ranges (merging nearby changes)
   const ranges: [number, number][] = [];
   let rangeStart = Math.max(0, (changeIndices[0] as number) - context);
-  let rangeEnd = Math.min(edits.length - 1, (changeIndices[0] as number) + context);
+  let rangeEnd = Math.min(
+    edits.length - 1,
+    (changeIndices[0] as number) + context,
+  );
 
   for (let k = 1; k < changeIndices.length; k++) {
     const ci = changeIndices[k] as number;

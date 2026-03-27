@@ -92,8 +92,7 @@ function runValidation(vaspFile: string, opts: ValidateOptions): boolean {
 }
 
 function parseOptions(args: string[]): ValidateOptions {
-  const file =
-    args.find((a) => !a.startsWith("-")) ?? "main.vasp";
+  const file = args.find((a) => !a.startsWith("-")) ?? "main.vasp";
   return {
     watch: args.includes("--watch") || args.includes("-w"),
     strict: args.includes("--strict"),
