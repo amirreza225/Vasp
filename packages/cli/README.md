@@ -157,6 +157,16 @@ cd my-app && vasp enable-ssr
 - Patches `ssr: false` → `ssr: true` in `main.vasp`
 - Regenerates the Nuxt 4 frontend files
 
+### `vasp validate`
+
+Parse and semantically validate `main.vasp` without generating any files. Prints structured error messages with line/column information.
+
+```bash
+cd my-app && vasp validate
+# → ✓ main.vasp is valid  (on success)
+# → [E101_UNKNOWN_PAGE_REF] (line 12, col 7): Route "HomeRoute" references undefined page "HomePage"  (on error)
+```
+
 ## Health Check
 
 Every generated server exposes `GET /api/health` returning `{ status: "ok", version: "..." }`. Deployment targets (Docker, Fly, Railway) use this endpoint for health probes automatically.

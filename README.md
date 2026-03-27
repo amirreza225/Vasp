@@ -163,6 +163,219 @@ vasp enable-ssr
 
 ---
 
+## Advanced DSL Features
+
+### Field Modifiers
+
+```vasp
+entity Post {
+  id:        Int      @id
+  slug:      String   @unique
+  title:     String   @validate(minLength: 1, maxLength: 255)
+  email:     String   @validate(email)
+  website:   String   @validate(url)
+  score:     Float    @validate(min: 0, max: 100)
+  body:      Text     @nullable
+  meta:      Json     @nullable
+  status:    Enum(draft, published, archived)
+  avatar:    File     @storage(UserFiles)   // requires a storage block named UserFiles
+  author:    User     @onDelete(cascade)    // cascade | restrict | setNull
+  createdAt: DateTime @default(now)
+  updatedAt: DateTime @updatedAt
+}
+```
+
+### Entity-Level Indexes
+
+```vasp
+entity Product {
+  id:    Int    @id
+  sku:   String
+  name:  String
+  price: Float
+
+  @@index([sku])                    // single-column index
+  @@unique([sku])                   // single-column unique constraint
+  @@index([name], type: fulltext)   // GIN full-text search index
+}
+```
+
+### CRUD List Configuration
+
+```vasp
+crud Post {
+  entity: Post
+  operations: [list, create, update, delete]
+  list: {
+    paginate: true
+    sortable: [createdAt, title]
+    filterable: [status]
+    search: [title, body]
+  }
+}
+```
+
+### Custom API Endpoints
+
+```vasp
+api webhookReceiver {
+  method: POST
+  path: "/api/webhooks/stripe"
+  fn: import { handleStripeWebhook } from "@src/webhooks.js"
+}
+
+api adminStats {
+  method: GET
+  path: "/api/admin/stats"
+  fn: import { getStats } from "@src/admin.js"
+  auth: true
+  roles: [admin]
+}
+```
+
+### Custom Middleware
+
+```vasp
+middleware requestLogger {
+  fn: import { logRequest } from "@src/middleware.js"
+  scope: global   // global | route
+}
+```
+
+### Query Caching
+
+```vasp
+cache QueryCache {
+  provider: redis   // memory | redis | valkey
+  ttl: 300          // default TTL in seconds
+  redis: {
+    url: REDIS_URL  // env var name holding the connection URL
+  }
+}
+
+query getPublicPosts {
+  fn: import { getPublicPosts } from "@src/queries.js"
+  entities: [Post]
+  cache: {
+    store: QueryCache
+    ttl: 600
+    key: "public-posts"
+    invalidateOn: ["Post:create", "Post:update", "Post:delete"]
+  }
+}
+```
+
+### Email
+
+```vasp
+email Mailer {
+  provider: resend   // resend | sendgrid | smtp
+  from: "noreply@myapp.com"
+  templates: [
+    { name: welcome; fn: import { welcomeEmail } from "@src/emails.js" }
+  ]
+}
+
+action registerUser {
+  fn: import { registerUser } from "@src/actions.js"
+  entities: [User]
+  onSuccess: {
+    sendEmail: welcome
+  }
+}
+```
+
+### File Storage
+
+```vasp
+storage UserFiles {
+  provider: s3     // local | s3 | r2 | gcs
+  bucket: my-bucket
+  maxSize: "10mb"
+  allowedTypes: ["image/jpeg", "image/png"]
+  publicPath: "/uploads"
+}
+```
+
+### Database Seeding
+
+```vasp
+seed {
+  fn: import { seed } from "@src/seed.js"
+}
+```
+
+Run with `vasp db seed`.
+
+### Typed Environment Variables
+
+```vasp
+app MyApp {
+  title: "My App"
+  db: Drizzle
+  ssr: false
+  typescript: true
+  env: {
+    DATABASE_URL:    required String
+    JWT_SECRET:      required String @minLength(32)
+    PORT:            optional Int    @default(3001)
+    NODE_ENV:        optional Enum(development, production, test) @default(development)
+    ALLOWED_ORIGINS: optional String @startsWith("https://")
+  }
+}
+```
+
+### Multi-Tenancy
+
+```vasp
+app MyApp {
+  title: "SaaS App"
+  db: Drizzle
+  ssr: false
+  typescript: true
+  multiTenant: {
+    strategy: row-level       // row-level | schema-level | database-level
+    tenantEntity: Workspace
+    tenantField: workspaceId
+  }
+}
+```
+
+### Role-Based Access Control
+
+```vasp
+auth UserAuth {
+  userEntity: User
+  methods: [usernameAndPassword]
+  roles: [admin, editor, viewer]
+  permissions: {
+    "post:create": [admin, editor]
+    "post:delete": [admin]
+    "post:read":   [admin, editor, viewer]
+  }
+}
+
+query getPosts {
+  fn: import { getPosts } from "@src/queries.js"
+  entities: [Post]
+  auth: true
+  roles: [admin, editor]
+}
+
+crud Post {
+  entity: Post
+  operations: [list, create, update, delete]
+  permissions: {
+    list:   "post:read"
+    create: "post:create"
+    update: "post:create"
+    delete: "post:delete"
+  }
+}
+```
+
+---
+
 ## The `$vasp` Composable
 
 All data access goes through a single isomorphic composable powered by **ofetch**:
@@ -265,6 +478,7 @@ vasp migrate-to-ts    # Upgrade an existing JS project to TypeScript
 vasp enable-ssr       # Switch a SPA project to SSR/SSG
 vasp deploy --target=<docker|fly|railway>   # Generate deployment config files
 vasp eject            # Remove Vasp framework dependency (one-way)
+vasp validate         # Parse and validate main.vasp, show any errors
 vasp --version
 ```
 
@@ -313,6 +527,16 @@ vasp --version
 | Structured error envelope (`{ ok, data, error }`) | Done |
 | Request tracing + dev logger | Done |
 | Test scaffold generation (Vitest) | Done |
+| File storage (`storage` block — S3, R2, GCS, local) | Done |
+| Email (`email` block — Resend, SendGrid, SMTP) | Done |
+| Query caching (`cache` block — memory, Redis, Valkey) | Done |
+| Custom API endpoints (`api` block) | Done |
+| Custom middleware (`middleware` block — global/route scope) | Done |
+| Database seeding (`seed` block) | Done |
+| Multi-tenancy (row-level, schema-level, database-level) | Done |
+| Role-based access control (roles + permissions on auth/query/action/crud) | Done |
+| Field validation (`@validate` — email, url, uuid, minLength, maxLength, min, max) | Done |
+| Entity-level indexes (`@@index`, `@@unique`, fulltext) | Done |
 
 ---
 
@@ -362,17 +586,23 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
 
 2. **Generate** — The `generate()` function walks the AST and runs a pipeline of specialized generators in dependency order:
    - `ScaffoldGenerator` → project skeleton and config files
-   - `DrizzleSchemaGenerator` → Drizzle schema from entity declarations (typed columns from `entity` blocks)
-   - `BackendGenerator` → Elysia server entry point
-   - `AuthGenerator` → auth middleware and login/register routes
+   - `DrizzleSchemaGenerator` → Drizzle schema from entity declarations (typed columns, enums, relations)
+   - `BackendGenerator` → Elysia server entry point, rate-limit/CSRF middleware, startup env validation
+   - `AuthGenerator` → JWT auth middleware, login/register routes, Login/Register Vue components
+   - `MiddlewareGenerator` → custom middleware blocks (global or route-scoped)
+   - `CacheGenerator` → cache store setup (memory, Redis, Valkey)
    - `QueryActionGenerator` → typed query and action endpoints
-   - `CrudGenerator` → REST CRUD endpoints
-   - `RealtimeGenerator` → WebSocket channels
-   - `JobGenerator` → PgBoss background job wiring
+   - `ApiGenerator` → custom API endpoints
+   - `CrudGenerator` → REST CRUD endpoints with pagination, sorting, filtering
+   - `RealtimeGenerator` → WebSocket channels with auth and room broadcasting
+   - `JobGenerator` → PgBoss background job wiring and cron scheduling
+   - `EmailGenerator` → email provider setup (Resend, SendGrid, SMTP)
+   - `SeedGenerator` → database seed script
+   - `StorageGenerator` → file upload endpoints (S3, R2, GCS, local)
    - `FrontendGenerator` → Vue 3 SPA (Vite) **or** Nuxt 4 SSR/SSG
    - `AdminGenerator` → standalone Ant Design Vue admin panel (when `admin` block is present)
 
-   All output files are produced from [Handlebars](https://handlebarsjs.com) templates under `templates/`. There are four template trees: SPA+JS, SPA+TS, SSR+JS, SSR+TS.
+   All output files are produced from [Handlebars](https://handlebarsjs.com) templates under `templates/`. There are four frontend template trees (SPA+JS, SPA+TS, SSR+JS, SSR+TS) plus a shared backend tree and an admin tree.
 
 3. **Run** — `bun` runs the generated backend and frontend simultaneously with hot reload.
 
@@ -383,9 +613,11 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
 Generated applications include production-grade defaults out of the box:
 - **CORS** — Configurable cross-origin resource sharing via `@elysiajs/cors`
 - **Rate limiting** — IP-based sliding-window limiter (configurable via `RATE_LIMIT_MAX` and `RATE_LIMIT_WINDOW_MS` env vars, defaults to 100 requests per 60 seconds)
+- **CSRF protection** — CSRF middleware generated in `server/middleware/csrf.{js|ts}`
 - **Password hashing** — Argon2id via `Bun.password.hash()` for auth password storage
 - **Auth middleware** — JWT-based authentication with cookie transport
 - **Input validation** — Elysia type-safe body/query validation on CRUD endpoints
+- **Startup env validation** — typed `app.env` declarations checked at server startup with clear error messages
 
 ---
 

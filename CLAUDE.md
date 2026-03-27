@@ -36,7 +36,7 @@ A stop hook (`.claude/hooks/stop-check.sh`) runs automatically on session end: T
 ### Three-Phase Pipeline
 
 1. **Parse** — `.vasp` source → `Lexer` → `Parser` → AST → `SemanticValidator`
-2. **Generate** — AST walk → 15 generators in order → Handlebars template rendering → staging dir
+2. **Generate** — AST walk → 16 generators in order → Handlebars template rendering → staging dir
 3. **Commit** — Staged files committed to real output dir (preserves `.env`, removes stale files)
 
 ### Monorepo Packages
@@ -45,7 +45,7 @@ A stop hook (`.claude/hooks/stop-check.sh`) runs automatically on session end: T
 |---------|----------|---------|
 | `packages/core` | `@vasp-framework/core` | `VaspAST` types, errors, constants — source of truth |
 | `packages/parser` | `@vasp-framework/parser` | `Lexer`, `Parser`, `SemanticValidator` |
-| `packages/generator` | `@vasp-framework/generator` | 15 generators + `TemplateEngine` (Handlebars) |
+| `packages/generator` | `@vasp-framework/generator` | 16 generators + `TemplateEngine` (Handlebars) |
 | `packages/runtime` | `@vasp-framework/runtime` | `$vasp`/`useQuery`/`useAction`/`useAuth` composables shipped into generated apps |
 | `packages/cli` | `vasp-cli` | CLI commands (`vasp new`, `vasp generate`, `vasp start`, etc.) |
 
@@ -58,18 +58,19 @@ Defined in `packages/generator/src/generate.ts`:
 3. `BackendGenerator` — Elysia server entry, DB client, middleware, Swagger
 4. `AuthGenerator` — auth routes + Login/Register Vue components
 5. `MiddlewareGenerator` — custom middleware blocks
-6. `QueryActionGenerator` — query/action server handlers
-7. `ApiGenerator` — custom API endpoints
-8. `CrudGenerator` — REST CRUD endpoints
-9. `RealtimeGenerator` — WebSocket channels
-10. `JobGenerator` — PgBoss background jobs
-11. `SeedGenerator` — DB seed script
-12. `StorageGenerator` — file upload endpoints
-13. `EmailGenerator` — email provider setup
-14. `AdminGenerator` — standalone Vue 3 + Ant Design admin panel
+6. `CacheGenerator` — cache store setup (memory/Redis/Valkey)
+7. `QueryActionGenerator` — query/action server handlers
+8. `ApiGenerator` — custom API endpoints
+9. `CrudGenerator` — REST CRUD endpoints
+10. `RealtimeGenerator` — WebSocket channels
+11. `JobGenerator` — PgBoss background jobs
+12. `EmailGenerator` — email provider setup
+13. `SeedGenerator` — DB seed script
+14. `StorageGenerator` — file upload endpoints
 15. `FrontendGenerator` — Vue SPA (Vite) or Nuxt 4 SSR/SSG
+16. `AdminGenerator` — standalone Vue 3 + Ant Design admin panel
 
-All generators extend `BaseGenerator`. `baseData()` exposes `appName`, `routes`, `queries`, `actions`, `auth`, `crud`, `realtime`, `jobs` to every template. `GeneratorContext` carries `{ ast, outputDir, templateDir, isTypeScript, isSsr, isSpa, mode, ext }`.
+All generators extend `BaseGenerator`. `baseData()` exposes the following to every template: `appName`, `appTitle`, `isTypeScript`, `isSsr`, `isSsg`, `isSpa`, `ext`, `mode`, `hasAuth`, `hasAdmin`, `adminEntities`, `hasAnyRelations`, `hasRealtime`, `hasJobs`, `hasStorage`, `storages`, `hasEmail`, `hasEmailResend`, `hasEmailSendgrid`, `hasEmailSmtp`, `emails`, `hasCache`, `caches`, `routes`, `pages`, `queries`, `actions`, `apis`, `middlewares`, `cruds`, `realtimes`, `jobs`, `seed`, `auth`, `multiTenant`, `hasMultiTenant`, `isRowLevelTenant`. `GeneratorContext` carries `{ ast, outputDir, templateDir, isTypeScript, isSsr, isSsg, isSpa, mode, ext, logger }`.
 
 ### Template System
 
@@ -126,26 +127,32 @@ import { Parser } from './Parser'      // ❌ breaks ESM resolution
 
 **Rate limiting** — every generated server includes `server/middleware/rateLimit.{ext}`, an IP-based sliding-window limiter. Configurable via `RATE_LIMIT_MAX` (default 100) and `RATE_LIMIT_WINDOW_MS` (default 60000) env vars.
 
-## DSL Block Types (13 total)
+## DSL Block Types (17 total)
 
 Full reference: `e2e/fixtures/full-featured.vasp`
 
 | Block | Required | Key constraints |
 |-------|----------|----------------|
-| `app` | Yes (exactly 1) | `ssr: false\|true\|"ssg"`, `typescript: false\|true`; optional `env:` sub-block — see below |
-| `auth` | No | `userEntity`, `methods: [usernameAndPassword, google, github]` |
-| `entity` | No | Field modifiers: `@id`, `@unique`, `@default(now)`, `@nullable`, `@updatedAt`, `@manyToMany`, `@storage(Name)` |
+| `app` | Yes (exactly 1) | `ssr: false\|true\|"ssg"`, `typescript: false\|true`; optional `env:` sub-block and `multiTenant:` sub-block — see below |
+| `auth` | No | `userEntity`, `methods: [usernameAndPassword, google, github]`, optional `roles`, `permissions` |
+| `entity` | No | Field modifiers: `@id`, `@unique`, `@default(now)`, `@nullable`, `@updatedAt`, `@manyToMany`, `@storage(Name)`, `@validate(…)`, `@onDelete(cascade\|restrict\|setNull)`; table-level: `@@index([fields])`, `@@unique([fields])` |
 | `route` | No | `path`, `to: <PageName>` — page must be declared |
 | `page` | No | `component: import X from "@src/…"` |
-| `query` / `action` | No | `fn: import …`, `entities: […]`, optional `auth: true` |
-| `crud` | No | `entity`, `operations: [list, create, update, delete]` |
+| `query` / `action` | No | `fn: import …`, `entities: […]`, optional `auth: true`, `roles: […]`, `cache: { store, ttl?, key?, invalidateOn? }` |
+| `crud` | No | `entity`, `operations: [list, create, update, delete]`, optional `list: { paginate, sortable, filterable, search }`, optional `permissions` map |
 | `realtime` | No | Requires matching `crud` block with same entity |
 | `job` | No | `executor: PgBoss`, optional `schedule` (cron) |
-| `storage` | No | `provider: local\|s3\|r2\|gcs` |
-| `email` | No | `provider: resend\|sendgrid\|smtp` |
+| `api` | No | `method: GET\|POST\|PUT\|PATCH\|DELETE`, `path`, `fn: import …`, optional `auth: true`, `roles: […]` |
+| `middleware` | No | `fn: import …`, `scope: global\|route` |
+| `storage` | No | `provider: local\|s3\|r2\|gcs`, optional `bucket`, `maxSize`, `allowedTypes`, `publicPath` |
+| `email` | No | `provider: resend\|sendgrid\|smtp`, `from`, `templates: [{ name, fn }]` |
+| `cache` | No | `provider: memory\|redis\|valkey`, optional `ttl` (seconds, default 60), optional `redis: { url: ENV_VAR_NAME }` |
+| `seed` | No | `fn: import { seedFn } from "@src/…"` — runs via `vasp db seed` |
 | `admin` | No | `entities: [EntityName, …]` |
 
 **`app.env` sub-block** — declares typed env vars with startup validation. Each entry: `VAR_NAME: required|optional Type`. Supported types: `String`, `Int`, `Boolean`, `Enum(val1, val2, …)`. Optional modifiers: `@default(value)`, `@minLength(n)`, `@maxLength(n)`, `@startsWith("prefix")`, `@endsWith("suffix")`, `@min(n)`, `@max(n)`. The AST type is `Record<string, EnvVarDefinition>` in `packages/core/src/types/ast.ts`. `BackendGenerator` renders these into startup validation code in `templates/shared/server/index.hbs`.
+
+**`app.multiTenant` sub-block** — opt-in multi-tenancy: `strategy: row-level|schema-level|database-level`, `tenantEntity: <EntityName>`, `tenantField: <fieldName>`. Exposed to templates via `multiTenant`, `hasMultiTenant`, `isRowLevelTenant` in `baseData()`.
 
 Semantic errors E100–E115 are in `packages/parser/src/validator/SemanticValidator.ts`.
 
@@ -200,6 +207,9 @@ Every step is required — missing any causes TypeScript errors or silent runtim
 | Fix generated frontend output | `generator/src/generators/FrontendGenerator.ts` | `templates/spa/` or `templates/ssr/` |
 | Fix auth behavior | `templates/shared/auth/server/middleware.hbs`, `plugin.hbs` | Same templates + `AuthGenerator.ts` |
 | Fix Drizzle schema output | `generator/src/generators/DrizzleSchemaGenerator.ts` | `templates/shared/drizzle/schema.hbs` |
+| Fix cache generation | `generator/src/generators/CacheGenerator.ts` | Generator + `templates/shared/cache/**/*.hbs` |
+| Fix storage generation | `generator/src/generators/StorageGenerator.ts` | Generator + `templates/shared/storage/**/*.hbs` |
+| Fix email generation | `generator/src/generators/EmailGenerator.ts` | Generator + `templates/shared/email/**/*.hbs` |
 | Fix admin panel | `generator/src/generators/AdminGenerator.ts` | `templates/admin/**/*.hbs` |
 | Fix CLI command | `cli/src/commands/<command>.ts` | Same file |
 | Fix runtime composable | `runtime/src/client/composables/use<Name>.ts` | Same file |

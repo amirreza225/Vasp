@@ -27,27 +27,38 @@ console.log(result.errors)         // [] on success
 
 ## Generator Pipeline
 
-Generators run in dependency order:
+16 generators run in dependency order (defined in `generate.ts`):
 
-| Generator | Output |
-|---|---|
-| `ScaffoldGenerator` | `package.json`, `.gitignore`, `.env`, `.env.example`, `bunfig.toml`, `tsconfig.json` |
-| `DrizzleSchemaGenerator` | `drizzle/schema.js\|ts` — entity-aware typed columns when `entity` blocks exist |
-| `BackendGenerator` | `server/index.js\|ts` (+ `/api/health` endpoint), `server/middleware/rateLimit.js\|ts`, DB client, startup env checks for required `app.env` keys |
-| `AuthGenerator` | Auth routes, JWT middleware, `Login.vue`, `Register.vue` |
-| `QueryActionGenerator` | `server/routes/queries/`, `server/routes/actions/` |
-| `CrudGenerator` | `server/routes/crud/` + client CRUD helpers |
-| `RealtimeGenerator` | `server/routes/realtime/` + `useRealtime` composable |
-| `JobGenerator` | `server/jobs/` (PgBoss workers) + schedule endpoints |
-| `FrontendGenerator` | Vue 3 + Vite (SPA) **or** Nuxt 4 (SSR/SSG) frontend |
+| # | Generator | Output |
+|---|---|---|
+| 1 | `ScaffoldGenerator` | `package.json`, `.gitignore`, `.env`, `.env.example`, `bunfig.toml`, `tsconfig.json` |
+| 2 | `DrizzleSchemaGenerator` | `drizzle/schema.{js\|ts}` — typed columns, enums, relations, indexes from `entity` blocks |
+| 3 | `BackendGenerator` | `server/index.{js\|ts}` (Elysia entry + `/api/health`), `server/middleware/` (rateLimit, CSRF, errorHandler, logger), DB client, startup env validation for `app.env` |
+| 4 | `AuthGenerator` | Auth routes, JWT middleware plugin, `Login.vue`, `Register.vue` |
+| 5 | `MiddlewareGenerator` | `server/middleware/custom/` — one file per `middleware` block |
+| 6 | `CacheGenerator` | `server/cache/` — cache store setup (memory / Redis / Valkey) |
+| 7 | `QueryActionGenerator` | `server/routes/queries/`, `server/routes/actions/` |
+| 8 | `ApiGenerator` | `server/routes/api/` — one file per `api` block |
+| 9 | `CrudGenerator` | `server/routes/crud/` + client CRUD helpers |
+| 10 | `RealtimeGenerator` | `server/routes/realtime/` + `useRealtime` composable |
+| 11 | `JobGenerator` | `server/jobs/` (PgBoss workers) + schedule endpoints |
+| 12 | `EmailGenerator` | `server/email/` — provider setup (Resend, SendGrid, SMTP) + mailer helpers |
+| 13 | `SeedGenerator` | `server/db/seed.{js\|ts}` — wraps the user-supplied seed function |
+| 14 | `StorageGenerator` | `server/routes/storage/` — file upload endpoints (S3, R2, GCS, local) |
+| 15 | `FrontendGenerator` | Vue 3 + Vite (SPA) **or** Nuxt 4 (SSR/SSG) frontend |
+| 16 | `AdminGenerator` | `admin/` — standalone Ant Design Vue admin panel (only when `admin` block present) |
+
+A failure in any generator aborts the pipeline and leaves the real output directory untouched (see Safe Regeneration below).
 
 ## Template Trees
 
-Four separate template trees — no unified template with `{{#if isSsr}}` blocks:
+Six separate template trees — no unified template with `{{#if isSsr}}` blocks:
 
 ```
 templates/
-├── shared/          # Backend, auth, CRUD, realtime, jobs (mode-agnostic)
+├── shared/          # Backend, auth, CRUD, realtime, jobs, cache, storage, email (mode-agnostic)
+├── admin/           # Standalone Ant Design Vue admin panel
+├── starters/        # Pre-built example .vasp files (minimal, todo, recipe, todo-auth-ssr)
 ├── spa/
 │   ├── js/          # Vue 3 + Vite, JavaScript
 │   └── ts/          # Vue 3 + Vite, TypeScript
@@ -55,6 +66,19 @@ templates/
     ├── js/          # Nuxt 4, JavaScript
     └── ts/          # Nuxt 4, TypeScript
 ```
+
+**Note:** `packages/cli/templates/` is a **build artifact** (`cp -r ../../templates` during `bun run build`). Always edit templates in `templates/` at the monorepo root.
+
+## Safe Regeneration
+
+`generate()` writes to a temporary `.vasp-staging-<timestamp>` directory first, then atomically commits to the real output directory only on full success. On any error the staging directory is deleted and the real output directory is untouched.
+
+The `Manifest` class tracks which generator wrote each file and a content hash. On regeneration:
+- Files modified by the user (hash mismatch + not from Vasp generator) are preserved
+- `.env` is preserved if it contains non-placeholder values
+- Stale generated files (from removed DSL blocks) are deleted
+
+When a generator silently fails (e.g. early `BackendGenerator` error prevents later generators from running), check `result.errors` — tests pass `logLevel: 'silent'` so errors are not printed to stdout.
 
 ## License
 
