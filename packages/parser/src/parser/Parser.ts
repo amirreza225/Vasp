@@ -355,7 +355,12 @@ class Parser {
             // Parse type (String, Int, Boolean, Enum)
             const typeToken = this.consumeIdentifier();
             const envType = typeToken.value as EnvVarType;
-            const validEnvTypes = new Set<string>(["String", "Int", "Boolean", "Enum"]);
+            const validEnvTypes = new Set<string>([
+              "String",
+              "Int",
+              "Boolean",
+              "Enum",
+            ]);
             if (!validEnvTypes.has(envType)) {
               throw this.error(
                 "E040_INVALID_ENV_TYPE",
@@ -405,9 +410,13 @@ class Parser {
               if (modVal.startsWith("default_")) {
                 defaultValue = modVal.slice("default_".length);
               } else if (modVal.startsWith("minLength_")) {
-                validation.minLength = Number(modVal.slice("minLength_".length));
+                validation.minLength = Number(
+                  modVal.slice("minLength_".length),
+                );
               } else if (modVal.startsWith("maxLength_")) {
-                validation.maxLength = Number(modVal.slice("maxLength_".length));
+                validation.maxLength = Number(
+                  modVal.slice("maxLength_".length),
+                );
               } else if (modVal.startsWith("startsWith_")) {
                 validation.startsWith = modVal.slice("startsWith_".length);
               } else if (modVal.startsWith("endsWith_")) {

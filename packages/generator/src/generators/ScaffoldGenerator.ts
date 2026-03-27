@@ -167,17 +167,22 @@ export class ScaffoldGenerator extends BaseGenerator {
                 line += `(${def.enumValues.join(", ")})`;
               }
               if (def.defaultValue !== undefined) {
-                const needsQuotes = def.type === "String" || def.type === "Enum";
+                const needsQuotes =
+                  def.type === "String" || def.type === "Enum";
                 line += needsQuotes
                   ? ` @default("${def.defaultValue}")`
                   : ` @default(${def.defaultValue})`;
               }
               if (def.validation) {
                 const v = def.validation;
-                if (v.minLength !== undefined) line += ` @minLength(${v.minLength})`;
-                if (v.maxLength !== undefined) line += ` @maxLength(${v.maxLength})`;
-                if (v.startsWith !== undefined) line += ` @startsWith("${v.startsWith}")`;
-                if (v.endsWith !== undefined) line += ` @endsWith("${v.endsWith}")`;
+                if (v.minLength !== undefined)
+                  line += ` @minLength(${v.minLength})`;
+                if (v.maxLength !== undefined)
+                  line += ` @maxLength(${v.maxLength})`;
+                if (v.startsWith !== undefined)
+                  line += ` @startsWith("${v.startsWith}")`;
+                if (v.endsWith !== undefined)
+                  line += ` @endsWith("${v.endsWith}")`;
                 if (v.min !== undefined) line += ` @min(${v.min})`;
                 if (v.max !== undefined) line += ` @max(${v.max})`;
               }

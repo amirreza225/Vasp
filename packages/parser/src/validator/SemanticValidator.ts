@@ -422,7 +422,12 @@ export class SemanticValidator {
     const envSchema = ast.app?.env ?? {};
     const envKeyPattern = /^[A-Z][A-Z0-9_]*$/;
     const numericOnlyTypes = new Set(["Int", "Boolean"]);
-    const stringOnlyValidators = new Set(["minLength", "maxLength", "startsWith", "endsWith"]);
+    const stringOnlyValidators = new Set([
+      "minLength",
+      "maxLength",
+      "startsWith",
+      "endsWith",
+    ]);
     const numericValidators = new Set(["min", "max"]);
 
     for (const [envKey, def] of Object.entries(envSchema)) {
@@ -436,7 +441,11 @@ export class SemanticValidator {
       }
 
       // @default value for Enum must be one of the declared variants
-      if (def.type === "Enum" && def.defaultValue !== undefined && def.enumValues) {
+      if (
+        def.type === "Enum" &&
+        def.defaultValue !== undefined &&
+        def.enumValues
+      ) {
         if (!def.enumValues.includes(def.defaultValue)) {
           this.diagnostics.push({
             code: "E123_INVALID_ENV_DEFAULT",

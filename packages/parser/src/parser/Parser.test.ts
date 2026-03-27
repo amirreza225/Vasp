@@ -69,11 +69,27 @@ describe("Parser — minimal app", () => {
     expect(ast.app.env).toEqual({
       DATABASE_URL: { requirement: "required", type: "String" },
       GOOGLE_CLIENT_ID: { requirement: "optional", type: "String" },
-      JWT_SECRET: { requirement: "required", type: "String", validation: { minLength: 32 } },
-      STRIPE_KEY: { requirement: "required", type: "String", validation: { startsWith: "sk_" } },
+      JWT_SECRET: {
+        requirement: "required",
+        type: "String",
+        validation: { minLength: 32 },
+      },
+      STRIPE_KEY: {
+        requirement: "required",
+        type: "String",
+        validation: { startsWith: "sk_" },
+      },
       MAX_SIZE: { requirement: "optional", type: "Int", defaultValue: "1024" },
-      NODE_ENV: { requirement: "required", type: "Enum", enumValues: ["development", "production"] },
-      FEATURE_FLAG: { requirement: "optional", type: "Boolean", defaultValue: "false" },
+      NODE_ENV: {
+        requirement: "required",
+        type: "Enum",
+        enumValues: ["development", "production"],
+      },
+      FEATURE_FLAG: {
+        requirement: "optional",
+        type: "Boolean",
+        defaultValue: "false",
+      },
     });
   });
 
