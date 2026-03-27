@@ -1,0 +1,53 @@
+// Multi-tenant Vasp fixture — demonstrates row-level tenant isolation
+
+app MySaas {
+  title: "My SaaS"
+  db: Drizzle
+  ssr: false
+  typescript: true
+  multiTenant: {
+    strategy: "row-level"
+    tenantEntity: Workspace
+    tenantField: workspaceId
+  }
+}
+
+auth User {
+  userEntity: User
+  methods: [ usernameAndPassword ]
+}
+
+entity Workspace {
+  id: Int @id
+  name: String @unique
+  members: User[]
+}
+
+entity User {
+  id: Int @id
+  email: String @unique @validate(email)
+  workspace: Workspace @onDelete(cascade)
+  workspaceId: Int
+}
+
+entity Task {
+  id: Int @id
+  title: String @validate(minLength: 1, maxLength: 255)
+  done: Boolean
+  workspace: Workspace @onDelete(cascade)
+  workspaceId: Int
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+crud Task {
+  entity: Task
+  operations: [list, create, update, delete]
+}

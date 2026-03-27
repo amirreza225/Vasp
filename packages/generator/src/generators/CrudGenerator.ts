@@ -20,6 +20,17 @@ export class CrudGenerator extends BaseGenerator {
       const realtimeName = realtimeByEntity.get(crud.entity);
       const entity = entityMap.get(crud.entity);
 
+      // Multi-tenancy config for row-level isolation
+      const mt = ast.app.multiTenant;
+      const isRowLevelTenant = mt?.strategy === "row-level";
+      const tenantField = isRowLevelTenant ? (mt?.tenantField ?? "") : "";
+      const tenantEntity = isRowLevelTenant ? (mt?.tenantEntity ?? "") : "";
+      // Skip tenant injection for the tenant entity itself
+      const applyTenantFilter =
+        isRowLevelTenant &&
+        !!tenantField &&
+        crud.entity !== tenantEntity;
+
       // Determine many-to-one relations for auto-join (with: {})
       const withRelations = (entity?.fields ?? [])
         .filter((f) => f.isRelation && !f.isArray)
@@ -48,6 +59,9 @@ export class CrudGenerator extends BaseGenerator {
       const updatePermission = crudPerms["update"] ?? "";
       const deletePermission = crudPerms["delete"] ?? "";
 
+      // requireAuth is needed when auth is globally configured OR when tenant filtering is on
+      const needsAuth = !!ast.auth || applyTenantFilter;
+
       this.write(
         `server/routes/crud/${toCamelCase(crud.entity)}.${ext}`,
         this.render("shared/server/routes/crud/_crud.hbs", {
@@ -70,6 +84,9 @@ export class CrudGenerator extends BaseGenerator {
           createPermission,
           updatePermission,
           deletePermission,
+          needsAuth,
+          applyTenantFilter,
+          tenantField,
         }),
       );
     }

@@ -199,6 +199,18 @@ export type ApiMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type MiddlewareScope = "global" | "route";
 
+// ------ Multi-Tenancy ------
+
+export type MultiTenantStrategy = "row-level" | "schema-level" | "database-level";
+
+export interface MultiTenantConfig {
+  strategy: MultiTenantStrategy;
+  /** Name of the entity that represents a tenant (e.g. "Workspace") */
+  tenantEntity: string;
+  /** Field name on every entity that holds the tenant FK (e.g. "workspaceId") */
+  tenantField: string;
+}
+
 // ------ Base Node ------
 
 export interface BaseNode {
@@ -215,6 +227,7 @@ export interface AppNode extends BaseNode {
   ssr: boolean | "ssg"; // false = SPA (default), true = SSR, 'ssg' = Static Site Generation
   typescript: boolean;
   env?: Record<string, EnvVarDefinition>;
+  multiTenant?: MultiTenantConfig;
 }
 
 export interface AuthNode extends BaseNode {

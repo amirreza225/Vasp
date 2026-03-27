@@ -1522,3 +1522,91 @@ describe("Parser — action onSuccess", () => {
     ).toThrow("E019_UNKNOWN_PROP");
   });
 });
+
+describe("Parser — app multiTenant block", () => {
+  it("parses multiTenant with row-level strategy", () => {
+    const ast = parse(`
+      app MySaas {
+        title: "My SaaS"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        multiTenant: {
+          strategy: "row-level"
+          tenantEntity: Workspace
+          tenantField: workspaceId
+        }
+      }
+    `);
+    expect(ast.app.multiTenant).toEqual({
+      strategy: "row-level",
+      tenantEntity: "Workspace",
+      tenantField: "workspaceId",
+    });
+  });
+
+  it("parses multiTenant with schema-level strategy", () => {
+    const ast = parse(`
+      app MySaas {
+        title: "My SaaS"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        multiTenant: {
+          strategy: "schema-level"
+          tenantEntity: Tenant
+          tenantField: tenantId
+        }
+      }
+    `);
+    expect(ast.app.multiTenant).toEqual({
+      strategy: "schema-level",
+      tenantEntity: "Tenant",
+      tenantField: "tenantId",
+    });
+  });
+
+  it("multiTenant is undefined when not declared", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+    `);
+    expect(ast.app.multiTenant).toBeUndefined();
+  });
+
+  it("throws on unknown multiTenant property (E047)", () => {
+    expect(() =>
+      parse(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        multiTenant: {
+          strategy: "row-level"
+          tenantEntity: Workspace
+          tenantField: workspaceId
+          unknown: foo
+        }
+      }
+    `),
+    ).toThrow("E047_UNKNOWN_MULTITENANT_PROP");
+  });
+
+  it("throws on unknown app property (E012) when multiTenant is misspelled", () => {
+    expect(() =>
+      parse(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        multiTenantTypo: {
+          strategy: "row-level"
+          tenantEntity: Workspace
+          tenantField: workspaceId
+        }
+      }
+    `),
+    ).toThrow("E012_UNKNOWN_PROP");
+  });
+});

@@ -54,6 +54,12 @@ export const SUPPORTED_EMAIL_PROVIDERS = [
   "smtp",
 ] as const;
 
+export const SUPPORTED_MULTI_TENANT_STRATEGIES = [
+  "row-level",
+  "schema-level",
+  "database-level",
+] as const;
+
 export const DEFAULT_BACKEND_PORT = 3001;
 export const DEFAULT_SPA_PORT = 5173;
 export const DEFAULT_SSR_PORT = 3000;
