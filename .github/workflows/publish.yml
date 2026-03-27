@@ -1,0 +1,98 @@
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump type
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  publish:
+    name: Bump, Build & Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # push version bump commit + tag
+      id-token: write  # OIDC token for npm Trusted Publishers
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Unit tests
+        run: bun run test
+
+      - name: Bump version in all packages
+        id: bump
+        run: |
+          BUMP="${{ inputs.bump }}"
+          CURRENT=$(node -p "require('./packages/core/package.json').version")
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          if [ "$BUMP" = "major" ]; then
+            NEW_VERSION="$((MAJOR + 1)).0.0"
+          elif [ "$BUMP" = "minor" ]; then
+            NEW_VERSION="${MAJOR}.$((MINOR + 1)).0"
+          else
+            NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          fi
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          for PKG in packages/core packages/parser packages/generator packages/runtime packages/cli; do
+            node -e "
+              const fs = require('fs');
+              const path = '$PKG/package.json';
+              const obj = JSON.parse(fs.readFileSync(path, 'utf8'));
+              obj.version = '$NEW_VERSION';
+              fs.writeFileSync(path, JSON.stringify(obj, null, 2) + '\n');
+            "
+            sed -i "s/\*\*Version: .*\*\*/**Version: $NEW_VERSION**/" "$PKG/README.md"
+          done
+          echo "Bumped $CURRENT → $NEW_VERSION"
+
+      - name: Build all packages
+        run: bun run build
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and tag version bump
+        run: |
+          VERSION="v${{ steps.bump.outputs.new_version }}"
+          git add packages/*/package.json packages/*/README.md
+          git commit -m "chore: bump version to $VERSION"
+          git tag "$VERSION"
+          git push origin main --tags
+
+      - name: Publish @vasp-framework/core
+        run: cd packages/core && npm publish --provenance --access public
+
+      - name: Publish @vasp-framework/parser
+        run: cd packages/parser && npm publish --provenance --access public
+
+      - name: Publish @vasp-framework/generator
+        run: cd packages/generator && npm publish --provenance --access public
+
+      - name: Publish @vasp-framework/runtime
+        run: cd packages/runtime && npm publish --provenance --access public
+
+      - name: Publish vasp-cli
+        run: cd packages/cli && npm publish --provenance --access public
