@@ -50,8 +50,12 @@ function formatOne(
   lines: string[],
   filename: string,
 ): string {
+  const isWarning = d.code.startsWith("W");
+  const severityColor = isWarning ? c.yellow : c.red;
+  const severityLabel = isWarning ? "warning" : "error";
   const header =
-    clr(c.red + c.bold, `error[${d.code}]`) + clr(c.bold, `: ${d.message}`);
+    clr(severityColor + c.bold, `${severityLabel}[${d.code}]`) +
+    clr(c.bold, `: ${d.message}`);
 
   if (!d.loc || d.loc.line === 0) {
     // No source location — just show the message and hint
