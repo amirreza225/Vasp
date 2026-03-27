@@ -1,6 +1,7 @@
 import { log } from "./utils/logger.js";
 import { newCommand } from "./commands/new.js";
 import { generateCommand } from "./commands/generate.js";
+import { validateCommand } from "./commands/validate.js";
 import { migrateToTsCommand } from "./commands/migrate-to-ts.js";
 import { enableSsrCommand } from "./commands/enable-ssr.js";
 import { startCommand } from "./commands/start.js";
@@ -22,6 +23,10 @@ export async function run(args: string[]): Promise<void> {
     case "generate":
     case "gen":
       await generateCommand(args.slice(1));
+      break;
+
+    case "validate":
+      await validateCommand(args.slice(1));
       break;
 
     case "--version":
@@ -82,6 +87,7 @@ function printHelp(): void {
     vasp new <project-name> [options]    Create a new Vasp project
     vasp add <type> [name] [options]     Add a block to an existing main.vasp
     vasp generate [options]              Regenerate from main.vasp (preserves user changes)
+    vasp validate [options]              Validate main.vasp without generating code
     vasp enable-ssr                      Convert existing SPA project to SSR (Nuxt 4)
     vasp migrate-to-ts                   Convert existing JS project to TypeScript
     vasp start                           Start the dev server (opens browser automatically)
@@ -112,6 +118,10 @@ function printHelp(): void {
     --force, -f           Overwrite user-modified files
     --dry-run             Preview what would change without writing files
 
+  Options for 'vasp validate':
+    --watch, -w           Re-validate on file changes (Ctrl+C to stop)
+    --strict              Also report best-practice warnings
+
   Examples:
     vasp new my-app
     vasp new my-app --typescript --ssr
@@ -125,5 +135,8 @@ function printHelp(): void {
     vasp add auth
     vasp generate
     vasp generate --dry-run
+    vasp validate
+    vasp validate --watch
+    vasp validate --strict
   `);
 }

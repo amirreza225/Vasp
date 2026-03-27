@@ -23,7 +23,14 @@ import {
 export class SemanticValidator {
   private readonly diagnostics: ParseDiagnostic[] = [];
 
-  validate(ast: VaspAST): void {
+  /**
+   * Run all semantic checks and return every diagnostic (errors and warnings)
+   * without throwing. Useful for tooling that wants to inspect warnings even
+   * when the file is otherwise valid.
+   */
+  collectDiagnostics(ast: VaspAST): ParseDiagnostic[] {
+    // Reset so the same instance can be safely called multiple times.
+    this.diagnostics.length = 0;
     this.checkAppExists(ast);
     this.checkDuplicateEntities(ast);
     this.checkDuplicateRoutes(ast);
@@ -50,10 +57,14 @@ export class SemanticValidator {
     this.checkStorageFieldRefs(ast);
     this.checkEmailProviders(ast);
     this.checkEmailOnSuccess(ast);
+    return [...this.diagnostics];
+  }
 
-    const hasErrors = this.diagnostics.some((d) => d.code.startsWith("E"));
+  validate(ast: VaspAST): void {
+    const diagnostics = this.collectDiagnostics(ast);
+    const hasErrors = diagnostics.some((d) => d.code.startsWith("E"));
     if (hasErrors) {
-      throw new ParseError(this.diagnostics);
+      throw new ParseError(diagnostics);
     }
   }
 
