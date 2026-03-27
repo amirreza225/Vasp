@@ -29,5 +29,9 @@
   "devDependencies": {
     "typescript": "*",
     "vitest": "*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amirreza225/Vasp"
   }
 }
