@@ -4,6 +4,11 @@ import { db } from '../../db/client.{{ext}}'
 import { requireAuth{{#if hasRoles}}, requireRole{{/if}} } from '../../auth/middleware.{{ext}}'
 {{/if}}
 import { {{namedExport}} } from '{{importPath fnSource ext}}'
+{{#if hasCache}}
+import { getCached, setCached, DEFAULT_TTL } from '../../cache/{{camelCacheStore}}.{{ext}}'
+const _CACHE_KEY = '{{cacheKey}}'
+const _CACHE_TTL = {{#if cacheTtl}}{{cacheTtl}}{{else}}DEFAULT_TTL{{/if}}
+{{/if}}
 
 export const {{camelCase name}}Route = new Elysia()
 {{#if requiresAuth}}
@@ -13,12 +18,26 @@ export const {{camelCase name}}Route = new Elysia()
   .use(requireAuth)
 {{/if}}
   .get('/api/queries/{{camelCase name}}', async ({ query, user }) => {
+{{#if hasCache}}
+    const _cached = await getCached(_CACHE_KEY)
+    if (_cached !== null) return _cached
+{{/if}}
     const result = await {{namedExport}}({ db, user, args: query })
+{{#if hasCache}}
+    await setCached(_CACHE_KEY, result, _CACHE_TTL)
+{{/if}}
     return result
   })
 {{else}}
   .get('/api/queries/{{camelCase name}}', async ({ query }) => {
+{{#if hasCache}}
+    const _cached = await getCached(_CACHE_KEY)
+    if (_cached !== null) return _cached
+{{/if}}
     const result = await {{namedExport}}({ db, args: query })
+{{#if hasCache}}
+    await setCached(_CACHE_KEY, result, _CACHE_TTL)
+{{/if}}
     return result
   })
 {{/if}}

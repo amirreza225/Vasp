@@ -24,6 +24,14 @@ export class QueryActionGenerator extends BaseGenerator {
         "server/routes/queries/",
       );
 
+      // Resolve cache config if present
+      const cacheConfig = query.cache;
+      const hasCache = !!cacheConfig;
+      const cacheStore = cacheConfig?.store ?? "";
+      const camelCacheStore = cacheStore ? toCamelCase(cacheStore) : "";
+      const cacheTtl = cacheConfig?.ttl ?? null;
+      const cacheKey = cacheConfig?.key ?? toCamelCase(query.name);
+
       this.write(
         `server/routes/queries/${this.camel(query.name)}.${ext}`,
         this.render("shared/server/routes/queries/_query.hbs", {
@@ -33,6 +41,11 @@ export class QueryActionGenerator extends BaseGenerator {
           requiresAuth: query.auth,
           hasRoles: (query.roles ?? []).length > 0,
           roles: query.roles ?? [],
+          hasCache,
+          cacheStore,
+          camelCacheStore,
+          cacheTtl,
+          cacheKey,
         }),
       );
     }

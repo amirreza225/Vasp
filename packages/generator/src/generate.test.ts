@@ -898,7 +898,166 @@ describe("generate()", () => {
     );
   });
 
-  it("TypeScript CRUD: generates typed crud.ts with entity types", () => {
+  it("generates a memory cache store file", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      cache QueryCache {
+        provider: memory
+        ttl: 60
+      }
+      query getPublicPosts {
+        fn: import { getPublicPosts } from "@src/queries.js"
+        cache: {
+          store: QueryCache
+          ttl: 300
+          key: "public-posts"
+        }
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "cache-memory-test");
+    const result = generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result.success).toBe(true);
+
+    // Cache store file must be generated
+    expect(
+      existsSync(join(outputDir, "server/cache/queryCache.js")),
+    ).toBe(true);
+    const store = readFileSync(
+      join(outputDir, "server/cache/queryCache.js"),
+      "utf8",
+    );
+    expect(store).toContain("getCached");
+    expect(store).toContain("setCached");
+    expect(store).toContain("invalidateCached");
+    expect(store).toContain("DEFAULT_TTL = 60");
+
+    // Query route must import from the cache store and use it
+    const queryRoute = readFileSync(
+      join(outputDir, "server/routes/queries/getPublicPosts.js"),
+      "utf8",
+    );
+    expect(queryRoute).toContain("from '../../cache/queryCache.js'");
+    expect(queryRoute).toContain("_CACHE_KEY = 'public-posts'");
+    expect(queryRoute).toContain("_CACHE_TTL = 300");
+    expect(queryRoute).toContain("await getCached(_CACHE_KEY)");
+    expect(queryRoute).toContain("await setCached(_CACHE_KEY, result, _CACHE_TTL)");
+  });
+
+  it("generates a redis cache store file", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      cache RedisCache {
+        provider: redis
+        ttl: 120
+        redis: {
+          url: env(REDIS_URL)
+        }
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "cache-redis-test");
+    const result = generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result.success).toBe(true);
+
+    const store = readFileSync(
+      join(outputDir, "server/cache/redisCache.js"),
+      "utf8",
+    );
+    expect(store).toContain("createClient");
+    expect(store).toContain("process.env.REDIS_URL");
+    expect(store).toContain("DEFAULT_TTL = 120");
+    expect(store).toContain("getCached");
+    expect(store).toContain("setCached");
+    expect(store).toContain("invalidateCached");
+  });
+
+  it("generates cache invalidation calls in CRUD endpoint", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      entity Post { id: Int @id title: String }
+      cache QueryCache { provider: memory ttl: 60 }
+      crud PostCrud {
+        entity: Post
+        operations: [list, create, update, delete]
+      }
+      query getPublicPosts {
+        fn: import { getPublicPosts } from "@src/queries.js"
+        entities: [Post]
+        cache: {
+          store: QueryCache
+          ttl: 300
+          key: "public-posts"
+          invalidateOn: [Post:create, Post:update, Post:delete]
+        }
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "cache-invalidation-test");
+    const result = generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result.success).toBe(true);
+
+    const crud = readFileSync(
+      join(outputDir, "server/routes/crud/post.js"),
+      "utf8",
+    );
+    // Cache import
+    expect(crud).toContain("import { invalidateCached as _invalidateQueryCache }");
+    expect(crud).toContain("from '../../cache/queryCache.js'");
+    // Invalidation calls after create, update, delete
+    expect(crud).toContain("await _invalidateQueryCache('public-posts')");
+  });
+
+  it("query without cache config generates normal query route (no cache imports)", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      query getPublicPosts {
+        fn: import { getPublicPosts } from "@src/queries.js"
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "query-no-cache-test");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const queryRoute = readFileSync(
+      join(outputDir, "server/routes/queries/getPublicPosts.js"),
+      "utf8",
+    );
+    expect(queryRoute).not.toContain("getCached");
+    expect(queryRoute).not.toContain("setCached");
+    expect(queryRoute).not.toContain("cache");
+  });
     const ast = parse(TS_VASP);
     const outputDir = join(TMP_DIR, "ts-crud");
     generate(ast, {

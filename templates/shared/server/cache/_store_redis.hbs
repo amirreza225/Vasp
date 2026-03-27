@@ -1,0 +1,46 @@
+import { createClient } from 'redis'
+
+/**
+ * Redis/Valkey cache store: {{name}} (provider: {{provider}})
+ * Default TTL: {{defaultTtl}} seconds
+ * Connection URL env var: {{redisUrlEnvVar}}
+ */
+const _client = createClient({ url: process.env.{{redisUrlEnvVar}} })
+_client.on('error', (err) => console.error('[Cache:{{name}}] Redis client error:', err))
+
+let _connected = false
+async function _ensureConnected() {
+  if (!_connected) {
+    await _client.connect()
+    _connected = true
+  }
+}
+
+export const DEFAULT_TTL = {{defaultTtl}}
+
+export async function getCached(key) {
+  await _ensureConnected()
+  const value = await _client.get(key)
+  if (!value) return null
+  try {
+    return JSON.parse(value)
+  } catch {
+    return null
+  }
+}
+
+export async function setCached(key, value, ttl) {
+  await _ensureConnected()
+  await _client.setEx(key, ttl, JSON.stringify(value))
+}
+
+export async function invalidateCached(key) {
+  await _ensureConnected()
+  await _client.del(key)
+}
+
+export async function invalidateCachedByPattern(pattern) {
+  await _ensureConnected()
+  const keys = await _client.keys(pattern + '*')
+  if (keys.length > 0) await _client.del(keys)
+}

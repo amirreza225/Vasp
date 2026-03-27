@@ -7,6 +7,9 @@ import type {
   AppNode,
   AuthMethod,
   AuthNode,
+  CacheNode,
+  CacheProvider,
+  CacheRedisConfig,
   CrudNode,
   CrudListConfig,
   CrudOperation,
@@ -34,6 +37,7 @@ import type {
   OnDeleteBehavior,
   PageNode,
   PermissionMap,
+  QueryCacheConfig,
   QueryNode,
   RealtimeEvent,
   RealtimeNode,
@@ -219,11 +223,14 @@ class Parser {
           case TokenType.KW_EMAIL:
             (ast.emails ??= []).push(this.parseEmail());
             break;
+          case TokenType.KW_CACHE:
+            (ast.caches ??= []).push(this.parseCache());
+            break;
           default:
             throw this.error(
               "E010_UNEXPECTED_TOKEN",
               `Unexpected token '${kw.value}' at top level`,
-              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, storage, or email",
+              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, storage, email, or cache",
               kw.loc,
             );
         }
@@ -854,6 +861,7 @@ class Parser {
     let entities: string[] = [];
     let auth = false;
     let roles: string[] = [];
+    let cache: QueryCacheConfig | undefined;
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -872,11 +880,14 @@ class Parser {
         case "roles":
           roles = this.parseIdentifierArray();
           break;
+        case "cache":
+          cache = this.parseQueryCacheConfig(key.loc);
+          break;
         default:
           throw this.error(
             "E017_UNKNOWN_PROP",
             `Unknown query property '${key.value}'`,
-            "Valid properties: fn, entities, auth, roles",
+            "Valid properties: fn, entities, auth, roles, cache",
             key.loc,
           );
       }
@@ -901,6 +912,7 @@ class Parser {
       entities,
       auth,
       ...(roles.length > 0 ? { roles } : {}),
+      ...(cache !== undefined ? { cache } : {}),
     };
   }
 
@@ -1598,6 +1610,181 @@ class Parser {
       from,
       templates,
     };
+  }
+
+  private parseCache(): CacheNode {
+    const loc = this.consume(TokenType.KW_CACHE).loc;
+    const name = this.consumeIdentifier();
+    this.consume(TokenType.LBRACE);
+
+    let provider: CacheProvider | null = null;
+    let ttl: number | undefined;
+    let redis: CacheRedisConfig | undefined;
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier();
+      this.consume(TokenType.COLON);
+
+      switch (key.value) {
+        case "provider":
+          provider = this.consumeIdentifier().value as CacheProvider;
+          break;
+        case "ttl": {
+          const tok = this.consume(TokenType.NUMBER);
+          ttl = Number(tok.value);
+          break;
+        }
+        case "redis": {
+          this.consume(TokenType.LBRACE);
+          let redisUrl: string | null = null;
+          while (!this.check(TokenType.RBRACE)) {
+            const innerKey = this.consumeIdentifier();
+            this.consume(TokenType.COLON);
+            if (innerKey.value === "url") {
+              redisUrl = this.parseEnvRef();
+            } else {
+              throw this.error(
+                "E072_UNKNOWN_PROP",
+                `Unknown redis property '${innerKey.value}'`,
+                "Valid properties: url",
+                innerKey.loc,
+              );
+            }
+          }
+          this.consume(TokenType.RBRACE);
+          if (!redisUrl) {
+            throw this.error(
+              "E073_MISSING_REDIS_URL",
+              `cache '${name.value}' redis block is missing url`,
+              "Add: url: env(REDIS_URL)",
+              key.loc,
+            );
+          }
+          redis = { url: redisUrl };
+          break;
+        }
+        default:
+          throw this.error(
+            "E071_UNKNOWN_PROP",
+            `Unknown cache property '${key.value}'`,
+            "Valid properties: provider, ttl, redis",
+            key.loc,
+          );
+      }
+    }
+
+    this.consume(TokenType.RBRACE);
+
+    if (!provider) {
+      throw this.error(
+        "E070_MISSING_CACHE_PROVIDER",
+        `Cache block '${name.value}' is missing a provider`,
+        "Add: provider: memory (or redis, valkey)",
+        loc,
+      );
+    }
+
+    return {
+      type: "Cache",
+      name: name.value,
+      loc,
+      provider,
+      ...(ttl !== undefined ? { ttl } : {}),
+      ...(redis !== undefined ? { redis } : {}),
+    };
+  }
+
+  /** Parses the `cache: { store, ttl, key, invalidateOn }` sub-block inside a query */
+  private parseQueryCacheConfig(loc: SourceLocation): QueryCacheConfig {
+    this.consume(TokenType.LBRACE);
+
+    let store: string | null = null;
+    let ttl: number | undefined;
+    let key: string | undefined;
+    let invalidateOn: string[] | undefined;
+
+    while (!this.check(TokenType.RBRACE)) {
+      const innerKey = this.consumeIdentifier();
+      this.consume(TokenType.COLON);
+
+      switch (innerKey.value) {
+        case "store":
+          store = this.consumeIdentifier().value;
+          break;
+        case "ttl": {
+          const tok = this.consume(TokenType.NUMBER);
+          ttl = Number(tok.value);
+          break;
+        }
+        case "key":
+          key = this.consumeString();
+          break;
+        case "invalidateOn":
+          invalidateOn = this.parseInvalidateOnArray();
+          break;
+        default:
+          throw this.error(
+            "E074_UNKNOWN_PROP",
+            `Unknown query cache property '${innerKey.value}'`,
+            "Valid properties: store, ttl, key, invalidateOn",
+            innerKey.loc,
+          );
+      }
+    }
+
+    this.consume(TokenType.RBRACE);
+
+    if (!store) {
+      throw this.error(
+        "E075_MISSING_CACHE_STORE",
+        "Query cache block is missing store",
+        "Add: store: MyCacheBlockName",
+        loc,
+      );
+    }
+
+    return {
+      store,
+      ...(ttl !== undefined ? { ttl } : {}),
+      ...(key !== undefined ? { key } : {}),
+      ...(invalidateOn !== undefined ? { invalidateOn } : {}),
+    };
+  }
+
+  /** Parses: [Entity:operation, Entity:operation, ...] for invalidateOn arrays */
+  private parseInvalidateOnArray(): string[] {
+    this.consume(TokenType.LBRACKET);
+    const items: string[] = [];
+
+    while (!this.check(TokenType.RBRACKET)) {
+      const entity = this.consumeIdentifier().value;
+      this.consume(TokenType.COLON);
+      const operation = this.consumeIdentifier().value;
+      items.push(`${entity}:${operation}`);
+      if (this.check(TokenType.COMMA)) {
+        this.consume(TokenType.COMMA);
+      }
+    }
+
+    this.consume(TokenType.RBRACKET);
+    return items;
+  }
+
+  /** Parses: env(VAR_NAME) and returns the env var name (e.g. "REDIS_URL") */
+  private parseEnvRef(): string {
+    const tok = this.consumeIdentifier();
+    if (tok.value !== "env") {
+      throw this.error(
+        "E076_EXPECTED_ENV_REF",
+        `Expected 'env(VAR_NAME)' but got '${tok.value}'`,
+        "Use the env() function to reference env vars: url: env(REDIS_URL)",
+        tok.loc,
+      );
+    }
+    this.consume(TokenType.LPAREN);
+    const varName = this.consumeIdentifier().value;
+    this.consume(TokenType.RPAREN);
+    return varName;
   }
 
   // ---- Value parsers ----
