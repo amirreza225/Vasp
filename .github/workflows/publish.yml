@@ -72,25 +72,6 @@ jobs:
           done
           echo "Bumped $CURRENT → $NEW_VERSION"
 
-      - name: Replace workspace:* with real version
-        run: |
-          VERSION="${{ steps.bump.outputs.new_version }}"
-          for PKG in packages/core packages/parser packages/generator packages/runtime packages/cli; do
-            node -e "
-              const fs = require('fs');
-              const path = '$PKG/package.json';
-              const obj = JSON.parse(fs.readFileSync(path, 'utf8'));
-              for (const section of ['dependencies', 'peerDependencies', 'optionalDependencies']) {
-                if (obj[section]) {
-                  for (const [k, v] of Object.entries(obj[section])) {
-                    if (v === 'workspace:*') obj[section][k] = '$VERSION';
-                  }
-                }
-              }
-              fs.writeFileSync(path, JSON.stringify(obj, null, 2) + '\n');
-            "
-          done
-
       - name: Build all packages
         run: bun run build
 
