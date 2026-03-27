@@ -2,7 +2,7 @@
 
 Shared types, AST node definitions, error classes, and constants for the Vasp framework.
 
-**Version: 1.3.0**
+**Version: 1.3.1**
 
 This package is an internal dependency used by `@vasp-framework/parser`, `@vasp-framework/generator`, and `vasp-cli`. You don't need to install it directly unless you're building Vasp tooling.
 
