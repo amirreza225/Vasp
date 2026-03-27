@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "typescript": "*",
-    "vitest": "*"
+    "vitest": "^2.0.0"
   },
   "repository": {
     "type": "git",

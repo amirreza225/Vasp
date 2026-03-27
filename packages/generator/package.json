@@ -29,7 +29,7 @@
   "devDependencies": {
     "@types/handlebars": "^4.1.0",
     "typescript": "*",
-    "vitest": "*"
+    "vitest": "^2.0.0"
   },
   "repository": {
     "type": "git",
