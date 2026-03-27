@@ -37,6 +37,12 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
     "title": "Vasp Todo",
     "type": "App",
     "typescript": true,
+    "ui": {
+      "darkModeSelector": ".app-dark",
+      "primaryColor": "blue",
+      "ripple": true,
+      "theme": "Lara",
+    },
   },
   "auth": {
     "methods": [
@@ -48,6 +54,77 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
     "type": "Auth",
     "userEntity": "User",
   },
+  "autoPages": [
+    {
+      "columns": [
+        "id",
+        "title",
+        "status",
+        "done",
+        "createdAt",
+      ],
+      "entity": "Todo",
+      "filterable": [
+        "status",
+      ],
+      "name": "TodoList",
+      "pageSize": 20,
+      "pageType": "list",
+      "paginate": true,
+      "path": "/todos",
+      "rowActions": [
+        "view",
+        "edit",
+        "delete",
+      ],
+      "searchable": [
+        "title",
+      ],
+      "sortable": [
+        "title",
+        "createdAt",
+      ],
+      "title": "Todo List",
+      "topActions": [
+        "create",
+      ],
+      "type": "AutoPage",
+    },
+    {
+      "entity": "Todo",
+      "fields": [
+        "title",
+        "content",
+        "status",
+        "done",
+      ],
+      "layout": "2-column",
+      "name": "CreateTodo",
+      "pageType": "form",
+      "path": "/todos/create",
+      "submitAction": "createTodo",
+      "successRoute": "/todos",
+      "title": "Create Todo",
+      "type": "AutoPage",
+    },
+    {
+      "entity": "Todo",
+      "fields": [
+        "id",
+        "title",
+        "content",
+        "status",
+        "done",
+        "createdAt",
+        "updatedAt",
+      ],
+      "name": "TodoDetail",
+      "pageType": "detail",
+      "path": "/todos/:id",
+      "title": "Todo Detail",
+      "type": "AutoPage",
+    },
+  ],
   "cruds": [
     {
       "entity": "Todo",
@@ -470,6 +547,7 @@ exports[`Parser — snapshot: minimal fixture > matches snapshot 1`] = `
     "type": "App",
     "typescript": false,
   },
+  "autoPages": [],
   "cruds": [],
   "entities": [],
   "jobs": [],

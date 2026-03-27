@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import type { EntityNode, FieldNode } from "@vasp-framework/core";
 import type { GeneratorContext } from "../GeneratorContext.js";
 import type { Manifest } from "../manifest/Manifest.js";
 import type { TemplateEngine } from "../template/TemplateEngine.js";
@@ -114,6 +115,34 @@ export abstract class BaseGenerator {
       hasObservabilitySentry: ast.observability?.errorTracking === "sentry",
       hasObservabilityDatadog: ast.observability?.errorTracking === "datadog",
       hasStructuredLogs: ast.observability?.logs === "structured",
+      autoPages: ast.autoPages ?? [],
+      hasAutoPages: (ast.autoPages?.length ?? 0) > 0,
+      ui: this.resolveUIConfig(ast.app?.ui),
+    };
+  }
+
+  private resolveUIConfig(
+    uiConfig: import("@vasp-framework/core").AppUIConfig | undefined,
+  ): Record<string, unknown> {
+    const theme = uiConfig?.theme ?? "Aura";
+    const primaryColor = uiConfig?.primaryColor ?? null;
+    const darkModeSelector = uiConfig?.darkModeSelector ?? ".app-dark";
+    const ripple = uiConfig?.ripple ?? true;
+    const PRIMARY_SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+    return {
+      theme,
+      themeImportName: theme,
+      themeImportPath: theme.toLowerCase(),
+      primaryColor,
+      hasPrimaryColor: primaryColor !== null,
+      primaryShades: primaryColor
+        ? PRIMARY_SHADES.map((shade) => ({
+            shade,
+            token: `{${primaryColor}.${shade}}`,
+          }))
+        : [],
+      darkModeSelector,
+      ripple,
     };
   }
 
@@ -126,5 +155,55 @@ export abstract class BaseGenerator {
     const depth = fromDir.replace(/\/$/, "").split("/").length;
     const prefix = "../".repeat(depth);
     return prefix + source.slice(1); // strip the leading '@'
+  }
+
+  /** Looks up an entity by name from the current AST */
+  protected resolveEntity(entityName: string): EntityNode | undefined {
+    return this.ctx.ast.entities?.find((e) => e.name === entityName);
+  }
+
+  /**
+   * Maps a VASP field type to the most appropriate PrimeVue 4 form component name.
+   * Used by AutoPageGenerator to select the right input for each field.
+   */
+  protected primevueComponentFor(field: FieldNode): string {
+    switch (field.type) {
+      case "Boolean":
+        return "ToggleSwitch";
+      case "DateTime":
+        return "DatePicker";
+      case "Int":
+      case "Float":
+        return "InputNumber";
+      case "Enum":
+        return "Select";
+      case "Text":
+      case "Json":
+        return "Textarea";
+      case "File":
+        return "FileUpload";
+      default:
+        return "InputText";
+    }
+  }
+
+  /**
+   * Maps a VASP field type to a DataTable column display type hint.
+   * Used by AutoPageGenerator to render cells correctly.
+   */
+  protected primevueColumnTypeFor(field: FieldNode): string {
+    switch (field.type) {
+      case "Boolean":
+        return "boolean";
+      case "DateTime":
+        return "date";
+      case "Int":
+      case "Float":
+        return "number";
+      case "Enum":
+        return "badge";
+      default:
+        return "text";
+    }
   }
 }

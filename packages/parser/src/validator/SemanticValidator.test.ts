@@ -1347,3 +1347,162 @@ describe("SemanticValidator — webhook blocks", () => {
     ).toThrow("E201_WEBHOOK_UNKNOWN_EVENT");
   });
 });
+
+// ─── autoPage semantic checks ─────────────────────────────────────────────────
+
+describe("SemanticValidator — autoPage checks", () => {
+  it("passes when autoPage references a declared entity", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      autoPage TodoList {
+        entity: Todo
+        path: "/todos"
+        type: list
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails when autoPage references unknown entity (E_AUTOPAGE_UNKNOWN_ENTITY)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      autoPage TodoList {
+        entity: Ghost
+        path: "/todos"
+        type: list
+      }
+    `),
+    ).toThrow("E_AUTOPAGE_UNKNOWN_ENTITY");
+  });
+
+  it("fails when autoPage has invalid pageType (E_AUTOPAGE_INVALID_TYPE)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      autoPage TodoList {
+        entity: Todo
+        path: "/todos"
+        type: dashboard
+      }
+    `),
+    ).toThrow("E_AUTOPAGE_INVALID_TYPE");
+  });
+
+  it("fails when autoPage has invalid layout (E_AUTOPAGE_INVALID_LAYOUT)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      autoPage CreateTodo {
+        entity: Todo
+        path: "/todos/create"
+        type: form
+        layout: "3-col"
+      }
+    `),
+    ).toThrow("E_AUTOPAGE_INVALID_LAYOUT");
+  });
+
+  it("fails when two autoPages share the same path (E_AUTOPAGE_DUPLICATE_PATH)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      autoPage ListA {
+        entity: Todo
+        path: "/todos"
+        type: list
+      }
+      autoPage ListB {
+        entity: Todo
+        path: "/todos"
+        type: list
+      }
+    `),
+    ).toThrow("E_AUTOPAGE_DUPLICATE_PATH");
+  });
+
+  it("fails when autoPage column references non-existent field (E_AUTOPAGE_UNKNOWN_FIELD)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      autoPage TodoList {
+        entity: Todo
+        path: "/todos"
+        type: list
+        columns: [id, title, nonExistent]
+      }
+    `),
+    ).toThrow("E_AUTOPAGE_UNKNOWN_FIELD");
+  });
+
+  it("fails when autoPage field references non-existent entity field (E_AUTOPAGE_UNKNOWN_FIELD)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      autoPage CreateTodo {
+        entity: Todo
+        path: "/todos/create"
+        type: form
+        fields: [title, missing]
+      }
+    `),
+    ).toThrow("E_AUTOPAGE_UNKNOWN_FIELD");
+  });
+
+  it("fails when autoPage has invalid rowAction (E_AUTOPAGE_INVALID_ROW_ACTION)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      autoPage TodoList {
+        entity: Todo
+        path: "/todos"
+        type: list
+        rowActions: [view, fly]
+      }
+    `),
+    ).toThrow("E_AUTOPAGE_INVALID_ROW_ACTION");
+  });
+
+  it("fails when autoPage path conflicts with a route path (E_AUTOPAGE_DUPLICATE_PATH)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      page TodoPage { component: import Todo from "@src/pages/Todo.vue" }
+      route TodoRoute { path: "/todos" to: TodoPage }
+      autoPage TodoList {
+        entity: Todo
+        path: "/todos"
+        type: list
+      }
+    `),
+    ).toThrow("E_AUTOPAGE_DUPLICATE_PATH");
+  });
+
+  it("fails on duplicate autoPage names (E_AUTOPAGE_DUPLICATE)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
+      autoPage TodoList {
+        entity: Todo
+        path: "/todos"
+        type: list
+      }
+      autoPage TodoList {
+        entity: Todo
+        path: "/todos-v2"
+        type: list
+      }
+    `),
+    ).toThrow("E_AUTOPAGE_DUPLICATE");
+  });
+});

@@ -8,6 +8,7 @@ import { createConsoleLogger, createContext } from "./GeneratorContext.js";
 import { AdminGenerator } from "./generators/AdminGenerator.js";
 import { AuthGenerator } from "./generators/AuthGenerator.js";
 import { ApiGenerator } from "./generators/ApiGenerator.js";
+import { AutoPageGenerator } from "./generators/AutoPageGenerator.js";
 import { BackendGenerator } from "./generators/BackendGenerator.js";
 import { CacheGenerator } from "./generators/CacheGenerator.js";
 import { CrudGenerator } from "./generators/CrudGenerator.js";
@@ -75,6 +76,7 @@ export function generate(
     new ApiGenerator(ctx, engine, filesWritten, manifest).run();
     new CrudGenerator(ctx, engine, filesWritten, manifest).run();
     new RealtimeGenerator(ctx, engine, filesWritten, manifest).run();
+    new AutoPageGenerator(ctx, engine, filesWritten, manifest).run();
     new JobGenerator(ctx, engine, filesWritten, manifest).run();
     new EmailGenerator(ctx, engine, filesWritten, manifest).run();
     new SeedGenerator(ctx, engine, filesWritten, manifest).run();

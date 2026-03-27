@@ -2398,3 +2398,186 @@ describe("Parser — observability block", () => {
     ).toThrow("E094_UNKNOWN_OBSERVABILITY_PROP");
   });
 });
+
+// ─── autoPage block ───────────────────────────────────────────────────────────
+
+describe("Parser — autoPage block", () => {
+  const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`;
+
+  it("parses a list autoPage with all properties", () => {
+    const ast = parse(`
+      ${APP}
+      autoPage TodoList {
+        entity: Todo
+        path: "/todos"
+        type: list
+        title: "All Todos"
+        columns: [id, title, done]
+        sortable: [title]
+        filterable: [done]
+        searchable: [title]
+        rowActions: [view, edit, delete]
+        topActions: [create, export]
+        paginate: true
+        pageSize: 25
+      }
+    `);
+    expect(ast.autoPages).toHaveLength(1);
+    const ap = ast.autoPages![0]!;
+    expect(ap.type).toBe("AutoPage");
+    expect(ap.name).toBe("TodoList");
+    expect(ap.entity).toBe("Todo");
+    expect(ap.path).toBe("/todos");
+    expect(ap.pageType).toBe("list");
+    expect(ap.title).toBe("All Todos");
+    expect(ap.columns).toEqual(["id", "title", "done"]);
+    expect(ap.sortable).toEqual(["title"]);
+    expect(ap.filterable).toEqual(["done"]);
+    expect(ap.searchable).toEqual(["title"]);
+    expect(ap.rowActions).toEqual(["view", "edit", "delete"]);
+    expect(ap.topActions).toEqual(["create", "export"]);
+    expect(ap.paginate).toBe(true);
+    expect(ap.pageSize).toBe(25);
+  });
+
+  it("parses a form autoPage", () => {
+    const ast = parse(`
+      ${APP}
+      autoPage CreateTodo {
+        entity: Todo
+        path: "/todos/create"
+        type: form
+        title: "Create Todo"
+        fields: [title, done]
+        layout: "2-column"
+        submitAction: createTodo
+        successRoute: "/todos"
+      }
+    `);
+    const ap = ast.autoPages![0]!;
+    expect(ap.pageType).toBe("form");
+    expect(ap.fields).toEqual(["title", "done"]);
+    expect(ap.layout).toBe("2-column");
+    expect(ap.submitAction).toBe("createTodo");
+    expect(ap.successRoute).toBe("/todos");
+  });
+
+  it("parses a detail autoPage", () => {
+    const ast = parse(`
+      ${APP}
+      autoPage TodoDetail {
+        entity: Todo
+        path: "/todos/:id"
+        type: detail
+        fields: [id, title, done]
+      }
+    `);
+    const ap = ast.autoPages![0]!;
+    expect(ap.pageType).toBe("detail");
+    expect(ap.fields).toEqual(["id", "title", "done"]);
+    expect(ap.title).toBeUndefined();
+  });
+
+  it("parses auth and roles on an autoPage", () => {
+    const ast = parse(`
+      ${APP}
+      autoPage AdminTodos {
+        entity: Todo
+        path: "/admin/todos"
+        type: list
+        auth: true
+        roles: [admin, moderator]
+      }
+    `);
+    const ap = ast.autoPages![0]!;
+    expect(ap.auth).toBe(true);
+    expect(ap.roles).toEqual(["admin", "moderator"]);
+  });
+
+  it("initializes autoPages as empty array when no autoPage blocks", () => {
+    const ast = parse(`${APP}`);
+    expect(ast.autoPages).toEqual([]);
+  });
+
+  it("throws when entity is missing", () => {
+    expect(() =>
+      parse(`
+        ${APP}
+        autoPage NoEntity {
+          path: "/foo"
+          type: list
+        }
+      `),
+    ).toThrow("E_AUTOPAGE_NO_ENTITY");
+  });
+
+  it("throws when path is missing", () => {
+    expect(() =>
+      parse(`
+        ${APP}
+        autoPage NoPath {
+          entity: Todo
+          type: list
+        }
+      `),
+    ).toThrow("E_AUTOPAGE_NO_PATH");
+  });
+
+  it("throws when type is missing", () => {
+    expect(() =>
+      parse(`
+        ${APP}
+        autoPage NoType {
+          entity: Todo
+          path: "/todos"
+        }
+      `),
+    ).toThrow("E_AUTOPAGE_NO_TYPE");
+  });
+
+  it("throws on invalid type value", () => {
+    expect(() =>
+      parse(`
+        ${APP}
+        autoPage BadType {
+          entity: Todo
+          path: "/todos"
+          type: unknown
+        }
+      `),
+    ).toThrow("E_AUTOPAGE_INVALID_TYPE");
+  });
+
+  it("throws on unknown property", () => {
+    expect(() =>
+      parse(`
+        ${APP}
+        autoPage UnknownProp {
+          entity: Todo
+          path: "/todos"
+          type: list
+          bogusKey: something
+        }
+      `),
+    ).toThrow("E_AUTOPAGE_UNKNOWN_PROP");
+  });
+
+  it("parses multiple autoPage blocks", () => {
+    const ast = parse(`
+      ${APP}
+      autoPage List {
+        entity: Todo
+        path: "/todos"
+        type: list
+      }
+      autoPage Create {
+        entity: Todo
+        path: "/todos/create"
+        type: form
+      }
+    `);
+    expect(ast.autoPages).toHaveLength(2);
+    expect(ast.autoPages![0]!.name).toBe("List");
+    expect(ast.autoPages![1]!.name).toBe("Create");
+  });
+});

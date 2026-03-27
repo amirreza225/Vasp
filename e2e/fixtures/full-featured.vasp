@@ -5,6 +5,12 @@ app MyTodoApp {
   db: Drizzle
   ssr: true
   typescript: true
+  ui: {
+    theme: Lara
+    primaryColor: blue
+    darkModeSelector: ".app-dark"
+    ripple: true
+  }
 }
 
 auth User {
@@ -180,4 +186,38 @@ webhook TodoOutboundWebhook {
   targets: env(WEBHOOK_URLS)
   retry: 3
   secret: env(WEBHOOK_SECRET)
+}
+
+autoPage TodoList {
+  entity: Todo
+  path: "/todos"
+  type: list
+  title: "Todo List"
+  columns: [id, title, status, done, createdAt]
+  sortable: [title, createdAt]
+  filterable: [status]
+  searchable: [title]
+  rowActions: [view, edit, delete]
+  topActions: [create]
+  paginate: true
+  pageSize: 20
+}
+
+autoPage CreateTodo {
+  entity: Todo
+  path: "/todos/create"
+  type: form
+  title: "Create Todo"
+  fields: [title, content, status, done]
+  layout: "2-column"
+  submitAction: createTodo
+  successRoute: "/todos"
+}
+
+autoPage TodoDetail {
+  entity: Todo
+  path: "/todos/:id"
+  type: detail
+  title: "Todo Detail"
+  fields: [id, title, content, status, done, createdAt, updatedAt]
 }

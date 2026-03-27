@@ -302,6 +302,43 @@ export interface MultiTenantConfig {
   tenantField: string;
 }
 
+// ------ UI Theming ------
+
+export type UITheme = "Aura" | "Lara" | "Nora" | "Material";
+export type UIPrimaryColor =
+  | "emerald"
+  | "green"
+  | "lime"
+  | "red"
+  | "orange"
+  | "amber"
+  | "yellow"
+  | "teal"
+  | "cyan"
+  | "sky"
+  | "blue"
+  | "indigo"
+  | "violet"
+  | "purple"
+  | "fuchsia"
+  | "pink"
+  | "rose";
+
+export interface AppUIConfig {
+  /** PrimeVue theme preset. Default: "Aura" */
+  theme: UITheme;
+  /** Override the primary color palette. Leave unset to use the preset default. */
+  primaryColor?: UIPrimaryColor;
+  /**
+   * Dark-mode CSS selector applied to the <html> element.
+   * Use "system" to follow the OS preference (prefers-color-scheme).
+   * Default: ".app-dark"
+   */
+  darkModeSelector: string;
+  /** Enable the ink ripple effect on interactive elements. Default: true */
+  ripple: boolean;
+}
+
 // ------ Base Node ------
 
 export interface BaseNode {
@@ -319,6 +356,7 @@ export interface AppNode extends BaseNode {
   typescript: boolean;
   env?: Record<string, EnvVarDefinition>;
   multiTenant?: MultiTenantConfig;
+  ui?: AppUIConfig;
 }
 
 export interface AuthNode extends BaseNode {
@@ -486,6 +524,51 @@ export interface ObservabilityNode {
   loc: SourceLocation;
 }
 
+// ------ AutoPage ------
+
+/** Page type variants for autoPage */
+export type AutoPageType = "list" | "form" | "detail";
+
+/** Row-level action buttons in a list view */
+export type AutoPageRowAction = "view" | "edit" | "delete";
+
+/** Top-bar action buttons in a list view */
+export type AutoPageTopAction = "create" | "export";
+
+/** Layout presets for form pages */
+export type AutoPageLayout = "1-column" | "2-column" | "tabs" | "wizard";
+
+export interface AutoPageNode extends BaseNode {
+  type: "AutoPage";
+  /** The entity whose data this page displays or edits */
+  entity: string;
+  /** Vue Router path, e.g. "/todos" or "/todos/:id/edit" */
+  path: string;
+  pageType: AutoPageType;
+  title?: string;
+  // ── list-specific ─────────────────────────────────────────
+  /** Field names to show as DataTable columns (list) */
+  columns?: string[];
+  sortable?: string[];
+  filterable?: string[];
+  searchable?: string[];
+  paginate?: boolean;
+  pageSize?: number;
+  rowActions?: AutoPageRowAction[];
+  topActions?: AutoPageTopAction[];
+  // ── form/detail-specific ──────────────────────────────────
+  /** Field names to show in the form or detail view */
+  fields?: string[];
+  layout?: AutoPageLayout;
+  /** Action name (from `action` block) to call on form submit */
+  submitAction?: string;
+  /** Route path to navigate to after successful form submit */
+  successRoute?: string;
+  // ── access control ────────────────────────────────────────
+  auth?: boolean;
+  roles?: string[];
+}
+
 // ------ Top-level AST ------
 
 export interface VaspAST {
@@ -508,6 +591,7 @@ export interface VaspAST {
   caches?: CacheNode[];
   webhooks?: WebhookNode[];
   observability?: ObservabilityNode;
+  autoPages?: AutoPageNode[];
 }
 
 // ------ Union of all node types ------
@@ -531,6 +615,7 @@ export type VaspNode =
   | EmailNode
   | CacheNode
   | WebhookNode
-  | ObservabilityNode;
+  | ObservabilityNode
+  | AutoPageNode;
 
 export type NodeType = VaspNode["type"];
