@@ -302,6 +302,43 @@ export interface MultiTenantConfig {
   tenantField: string;
 }
 
+// ------ UI Theming ------
+
+export type UITheme = "Aura" | "Lara" | "Nora" | "Material";
+export type UIPrimaryColor =
+  | "emerald"
+  | "green"
+  | "lime"
+  | "red"
+  | "orange"
+  | "amber"
+  | "yellow"
+  | "teal"
+  | "cyan"
+  | "sky"
+  | "blue"
+  | "indigo"
+  | "violet"
+  | "purple"
+  | "fuchsia"
+  | "pink"
+  | "rose";
+
+export interface AppUIConfig {
+  /** PrimeVue theme preset. Default: "Aura" */
+  theme: UITheme;
+  /** Override the primary color palette. Leave unset to use the preset default. */
+  primaryColor?: UIPrimaryColor;
+  /**
+   * Dark-mode CSS selector applied to the <html> element.
+   * Use "system" to follow the OS preference (prefers-color-scheme).
+   * Default: ".app-dark"
+   */
+  darkModeSelector: string;
+  /** Enable the ink ripple effect on interactive elements. Default: true */
+  ripple: boolean;
+}
+
 // ------ Base Node ------
 
 export interface BaseNode {
@@ -319,6 +356,7 @@ export interface AppNode extends BaseNode {
   typescript: boolean;
   env?: Record<string, EnvVarDefinition>;
   multiTenant?: MultiTenantConfig;
+  ui?: AppUIConfig;
 }
 
 export interface AuthNode extends BaseNode {

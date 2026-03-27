@@ -39,6 +39,9 @@ import type {
   JobBackoffStrategy,
   MiddlewareNode,
   MiddlewareScope,
+  AppUIConfig,
+  UITheme,
+  UIPrimaryColor,
   MultiTenantConfig,
   MultiTenantStrategy,
   ObservabilityExporter,
@@ -64,6 +67,8 @@ import type {
 } from "@vasp-framework/core";
 import {
   ParseError,
+  SUPPORTED_UI_THEMES,
+  SUPPORTED_UI_PRIMARY_COLORS,
   SUPPORTED_AUTH_METHODS,
   SUPPORTED_AUTOPAGE_TYPES,
   SUPPORTED_CRUD_OPERATIONS,
@@ -326,6 +331,7 @@ class Parser {
     let typescript = false;
     const env: Record<string, EnvVarDefinition> = {};
     let multiTenant: MultiTenantConfig | undefined;
+    let ui: AppUIConfig | undefined;
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -521,11 +527,81 @@ class Parser {
           multiTenant = { strategy, tenantEntity, tenantField };
           break;
         }
+        case "ui": {
+          this.consume(TokenType.LBRACE);
+          let uiTheme: UITheme = "Aura";
+          let uiPrimaryColor: UIPrimaryColor | undefined;
+          let uiDarkModeSelector = ".app-dark";
+          let uiRipple = true;
+          while (!this.check(TokenType.RBRACE)) {
+            const uiKey = this.consumeIdentifier();
+            this.consume(TokenType.COLON);
+            switch (uiKey.value) {
+              case "theme": {
+                const themeToken = this.consumeIdentifier();
+                if (
+                  !(SUPPORTED_UI_THEMES as readonly string[]).includes(
+                    themeToken.value,
+                  )
+                ) {
+                  throw this.error(
+                    "E048_INVALID_UI_THEME",
+                    `Invalid ui.theme '${themeToken.value}'`,
+                    `Valid themes: ${SUPPORTED_UI_THEMES.join(", ")}`,
+                    themeToken.loc,
+                  );
+                }
+                uiTheme = themeToken.value as UITheme;
+                break;
+              }
+              case "primaryColor": {
+                const colorToken = this.consumeIdentifier();
+                if (
+                  !(SUPPORTED_UI_PRIMARY_COLORS as readonly string[]).includes(
+                    colorToken.value,
+                  )
+                ) {
+                  throw this.error(
+                    "E049_INVALID_UI_PRIMARY_COLOR",
+                    `Invalid ui.primaryColor '${colorToken.value}'`,
+                    `Valid colors: ${SUPPORTED_UI_PRIMARY_COLORS.join(", ")}`,
+                    colorToken.loc,
+                  );
+                }
+                uiPrimaryColor = colorToken.value as UIPrimaryColor;
+                break;
+              }
+              case "darkModeSelector":
+                uiDarkModeSelector = this.consumeString();
+                break;
+              case "ripple":
+                uiRipple = this.consume(TokenType.BOOLEAN).value === "true";
+                break;
+              default:
+                throw this.error(
+                  "E050_UNKNOWN_UI_PROP",
+                  `Unknown ui property '${uiKey.value}'`,
+                  "Valid properties: theme, primaryColor, darkModeSelector, ripple",
+                  uiKey.loc,
+                );
+            }
+          }
+          this.consume(TokenType.RBRACE);
+          ui = {
+            theme: uiTheme,
+            ...(uiPrimaryColor !== undefined
+              ? { primaryColor: uiPrimaryColor }
+              : {}),
+            darkModeSelector: uiDarkModeSelector,
+            ripple: uiRipple,
+          };
+          break;
+        }
         default:
           throw this.error(
             "E012_UNKNOWN_PROP",
             `Unknown app property '${key.value}'`,
-            "Valid properties: title, db, ssr, typescript, env, multiTenant",
+            "Valid properties: title, db, ssr, typescript, env, multiTenant, ui",
             key.loc,
           );
       }
@@ -542,6 +618,7 @@ class Parser {
       typescript,
       ...(Object.keys(env).length > 0 ? { env } : {}),
       ...(multiTenant !== undefined ? { multiTenant } : {}),
+      ...(ui !== undefined ? { ui } : {}),
     };
   }
 

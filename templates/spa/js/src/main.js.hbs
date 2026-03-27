@@ -3,20 +3,32 @@ import App from './App.vue'
 import router from './router/index.js'
 import { vaspPlugin } from './vasp/plugin.js'
 import PrimeVue from 'primevue/config'
-import Aura from '@primevue/themes/aura'
-import ToastService from 'primevue/toastservice'
+import {{ui.themeImportName}} from '@primevue/themes/{{ui.themeImportPath}}'
+{{#if ui.hasPrimaryColor}}import { definePreset } from '@primevue/themes'
+{{/if}}import ToastService from 'primevue/toastservice'
 import ConfirmationService from 'primevue/confirmationservice'
 import DialogService from 'primevue/dialogservice'
 import 'primeicons/primeicons.css'
-
+{{#if ui.hasPrimaryColor}}
+const AppTheme = definePreset({{ui.themeImportName}}, {
+  semantic: {
+    primary: {
+{{#each ui.primaryShades}}
+      {{shade}}: '{{token}}',
+{{/each}}
+    },
+  },
+})
+{{/if}}
 const app = createApp(App)
 app.use(router)
 app.use(vaspPlugin)
 app.use(PrimeVue, {
+  ripple: {{ui.ripple}},
   theme: {
-    preset: Aura,
-    options: { darkModeSelector: '.app-dark' }
-  }
+    preset: {{#if ui.hasPrimaryColor}}AppTheme{{else}}{{ui.themeImportName}}{{/if}},
+    options: { darkModeSelector: '{{ui.darkModeSelector}}' },
+  },
 })
 app.use(ToastService)
 app.use(ConfirmationService)

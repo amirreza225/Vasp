@@ -117,6 +117,32 @@ export abstract class BaseGenerator {
       hasStructuredLogs: ast.observability?.logs === "structured",
       autoPages: ast.autoPages ?? [],
       hasAutoPages: (ast.autoPages?.length ?? 0) > 0,
+      ui: this.resolveUIConfig(ast.app?.ui),
+    };
+  }
+
+  private resolveUIConfig(
+    uiConfig: import("@vasp-framework/core").AppUIConfig | undefined,
+  ): Record<string, unknown> {
+    const theme = uiConfig?.theme ?? "Aura";
+    const primaryColor = uiConfig?.primaryColor ?? null;
+    const darkModeSelector = uiConfig?.darkModeSelector ?? ".app-dark";
+    const ripple = uiConfig?.ripple ?? true;
+    const PRIMARY_SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+    return {
+      theme,
+      themeImportName: theme,
+      themeImportPath: theme.toLowerCase(),
+      primaryColor,
+      hasPrimaryColor: primaryColor !== null,
+      primaryShades: primaryColor
+        ? PRIMARY_SHADES.map((shade) => ({
+            shade,
+            token: `{${primaryColor}.${shade}}`,
+          }))
+        : [],
+      darkModeSelector,
+      ripple,
     };
   }
 

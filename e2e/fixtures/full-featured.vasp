@@ -5,6 +5,12 @@ app MyTodoApp {
   db: Drizzle
   ssr: true
   typescript: true
+  ui: {
+    theme: Lara
+    primaryColor: blue
+    darkModeSelector: ".app-dark"
+    ripple: true
+  }
 }
 
 auth User {

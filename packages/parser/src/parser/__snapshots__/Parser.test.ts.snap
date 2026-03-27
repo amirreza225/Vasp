@@ -37,6 +37,12 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
     "title": "Vasp Todo",
     "type": "App",
     "typescript": true,
+    "ui": {
+      "darkModeSelector": ".app-dark",
+      "primaryColor": "blue",
+      "ripple": true,
+      "theme": "Lara",
+    },
   },
   "auth": {
     "methods": [
