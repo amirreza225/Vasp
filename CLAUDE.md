@@ -86,6 +86,18 @@ Handlebars custom helpers: `camelCase`, `pascalCase`, `kebabCase`, `join`, `impo
 
 The `importPath` helper rewrites `@src/foo.js` → `@src/foo.ts` when `isTypeScript` is true — never hard-code `.ts` in templates.
 
+**Critical Handlebars `}}}` trap** — When a `{{expr}}` expression is immediately followed by `}` (common inside JavaScript `${...}` template literals), the sequence `{{expr}}}` contains three consecutive `}`. Handlebars' lexer greedily tokenises `}}}` as `CLOSE_UNESCAPED` (the `{{{triple-mustache}}}` token) instead of `CLOSE` (`}}`) + text `}`. The template **compiles silently** but **fails at render time** with `Parse error … got 'CLOSE_UNESCAPED'`. Use string concatenation to avoid the pattern:
+
+```hbs
+{{! ❌ breaks: produces {{name}}} }}
+_errors.push(`must be integer (got "${process.env.{{name}}}")`)
+
+{{! ✅ safe: no triple-brace sequence }}
+_errors.push('must be integer (got "' + process.env.{{name}} + '")')
+```
+
+This only occurs when `}}` and `}` are **adjacent** — `{{name}}.length}` (a property access before the closing `}`) is safe.
+
 ## Key Conventions
 
 **ESM imports require `.js` extension** even when the source is `.ts`:
@@ -120,7 +132,7 @@ Full reference: `e2e/fixtures/full-featured.vasp`
 
 | Block | Required | Key constraints |
 |-------|----------|----------------|
-| `app` | Yes (exactly 1) | `ssr: false\|true\|"ssg"`, `typescript: false\|true` |
+| `app` | Yes (exactly 1) | `ssr: false\|true\|"ssg"`, `typescript: false\|true`; optional `env:` sub-block — see below |
 | `auth` | No | `userEntity`, `methods: [usernameAndPassword, google, github]` |
 | `entity` | No | Field modifiers: `@id`, `@unique`, `@default(now)`, `@nullable`, `@updatedAt`, `@manyToMany`, `@storage(Name)` |
 | `route` | No | `path`, `to: <PageName>` — page must be declared |
@@ -132,6 +144,8 @@ Full reference: `e2e/fixtures/full-featured.vasp`
 | `storage` | No | `provider: local\|s3\|r2\|gcs` |
 | `email` | No | `provider: resend\|sendgrid\|smtp` |
 | `admin` | No | `entities: [EntityName, …]` |
+
+**`app.env` sub-block** — declares typed env vars with startup validation. Each entry: `VAR_NAME: required|optional Type`. Supported types: `String`, `Int`, `Boolean`, `Enum(val1, val2, …)`. Optional modifiers: `@default(value)`, `@minLength(n)`, `@maxLength(n)`, `@startsWith("prefix")`, `@endsWith("suffix")`, `@min(n)`, `@max(n)`. The AST type is `Record<string, EnvVarDefinition>` in `packages/core/src/types/ast.ts`. `BackendGenerator` renders these into startup validation code in `templates/shared/server/index.hbs`.
 
 Semantic errors E100–E115 are in `packages/parser/src/validator/SemanticValidator.ts`.
 
@@ -173,6 +187,7 @@ Every step is required — missing any causes TypeScript errors or silent runtim
 - After editing any `.hbs` template or generator, run `bun run test` to catch regressions
 - E2E tests in `e2e/tests/` spawn the CLI as a subprocess; no database needed
 - The exhaustiveness checker flags any switch with a `default: throw` covering 3+ `VaspNode`/`PrimitiveFieldType` values but missing one. Use `// @exhaustiveness-partial: field-type` or `// @exhaustiveness-partial: vaspnode` to mark intentional partial coverage
+- `generate()` writes to a `.vasp-staging-<timestamp>` directory first, then commits atomically. On any generator error the staging dir is deleted and the real output dir is untouched — `generate()` returns `{ success: false, errors: [...] }`. When debugging "all tests fail with ENOENT" check `result.errors` (tests pass `logLevel: "silent"` so errors are not printed). A failure in an early generator (e.g. `BackendGenerator`, which runs 3rd) silently prevents all later generators from running.
 
 ## Quick Reference by Task
 
