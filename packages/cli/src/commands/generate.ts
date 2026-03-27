@@ -2,13 +2,7 @@ import { generate } from "@vasp-framework/generator";
 import { Manifest, computeHash } from "@vasp-framework/generator";
 import { parse } from "@vasp-framework/parser";
 import { join, resolve, dirname } from "node:path";
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  rmSync,
-} from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { log } from "../utils/logger.js";
 import { handleParseError } from "../utils/parse-error.js";
 import { resolveTemplateDir } from "../utils/template-dir.js";
@@ -51,17 +45,21 @@ export async function runRegenerate(
 ): Promise<RegenerateResult> {
   const vaspFile = join(projectDir, "main.vasp");
 
-  if (!existsSync(vaspFile)) {
-    return {
-      success: false,
-      added: 0,
-      updated: 0,
-      skipped: 0,
-      errors: ["main.vasp not found"],
-    };
+  let source: string;
+  try {
+    source = readFileSync(vaspFile, "utf8");
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      return {
+        success: false,
+        added: 0,
+        updated: 0,
+        skipped: 0,
+        errors: ["main.vasp not found"],
+      };
+    }
+    throw err;
   }
-
-  const source = readFileSync(vaspFile, "utf8");
 
   let ast;
   try {
@@ -112,14 +110,18 @@ export async function generateCommand(args: string[]): Promise<void> {
   const projectDir = resolve(process.cwd());
   const vaspFile = join(projectDir, "main.vasp");
 
-  if (!existsSync(vaspFile)) {
-    log.error(
-      `No main.vasp found in ${projectDir}. Run 'vasp generate' from your project root.`,
-    );
-    process.exit(1);
+  let source: string;
+  try {
+    source = readFileSync(vaspFile, "utf8");
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      log.error(
+        `No main.vasp found in ${projectDir}. Run 'vasp generate' from your project root.`,
+      );
+      process.exit(1);
+    }
+    throw err;
   }
-
-  const source = readFileSync(vaspFile, "utf8");
 
   let ast;
   try {
@@ -193,8 +195,12 @@ function detectUserModifiedFiles(
     // Never skip src/ files — those are always user-owned
     if (relPath.startsWith("src/")) continue;
     const fullPath = join(projectDir, relPath);
-    if (!existsSync(fullPath)) continue;
-    const onDisk = readFileSync(fullPath, "utf8");
+    let onDisk: string;
+    try {
+      onDisk = readFileSync(fullPath, "utf8");
+    } catch {
+      continue;
+    }
     const diskHash = computeHash(onDisk);
     if (diskHash !== entry.hash) {
       modified.push(relPath);
@@ -253,8 +259,13 @@ async function runDryRun(
       added++;
     } else {
       const fullPath = join(projectDir, f);
-      if (existsSync(fullPath)) {
-        const onDisk = readFileSync(fullPath, "utf8");
+      let onDisk: string | undefined;
+      try {
+        onDisk = readFileSync(fullPath, "utf8");
+      } catch {
+        // file absent
+      }
+      if (onDisk !== undefined) {
         const diskHash = computeHash(onDisk);
         const prevHash = previousManifest.getEntry(f)?.hash;
         if (diskHash !== prevHash) {
@@ -299,9 +310,7 @@ async function runDiff(
   const diffDir = join(projectDir, ".vasp", "diff-staging");
 
   // Clean any leftover staging dir from a previous interrupted run
-  if (existsSync(diffDir)) {
-    rmSync(diffDir, { recursive: true, force: true });
-  }
+  rmSync(diffDir, { recursive: true, force: true });
 
   const result = generate(ast, {
     outputDir: diffDir,
@@ -323,10 +332,21 @@ async function runDiff(
     const diskPath = join(projectDir, relPath);
     const stagedPath = join(diffDir, relPath);
 
-    if (!existsSync(stagedPath)) continue;
-    const newContent = readFileSync(stagedPath, "utf8");
+    let newContent: string;
+    try {
+      newContent = readFileSync(stagedPath, "utf8");
+    } catch {
+      continue;
+    }
 
-    if (!existsSync(diskPath)) {
+    let oldContent: string | undefined;
+    try {
+      oldContent = readFileSync(diskPath, "utf8");
+    } catch {
+      // file absent on disk — treat as new
+    }
+
+    if (oldContent === undefined) {
       // New file — show as all additions
       if (!previousManifest?.hasFile(relPath)) {
         const diffText = computeUnifiedDiff("", newContent, relPath);
@@ -336,7 +356,6 @@ async function runDiff(
         }
       }
     } else {
-      const oldContent = readFileSync(diskPath, "utf8");
       if (oldContent === newContent) {
         filesUnchanged++;
       } else {
@@ -379,9 +398,7 @@ async function runOnly(
   const stagingOutputDir = join(projectDir, ".vasp", "only-staging");
 
   // Clean any leftover staging dir
-  if (existsSync(stagingOutputDir)) {
-    rmSync(stagingOutputDir, { recursive: true, force: true });
-  }
+  rmSync(stagingOutputDir, { recursive: true, force: true });
 
   const result = generate(ast, {
     outputDir: stagingOutputDir,
@@ -423,24 +440,33 @@ async function runOnly(
     const diskPath = join(projectDir, relPath);
 
     // Preserve user-modified files unless --force
-    if (!force && previousManifest && existsSync(diskPath)) {
-      const onDisk = readFileSync(diskPath, "utf8");
-      const diskHash = computeHash(onDisk);
-      const prevEntry = previousManifest.getEntry(relPath);
-      if (prevEntry && diskHash !== prevEntry.hash) {
-        log.warn(
-          `  ~ ${relPath} (user-modified — skipping; use --force to overwrite)`,
-        );
-        skipped++;
-        continue;
+    if (!force && previousManifest) {
+      let onDisk: string | undefined;
+      try {
+        onDisk = readFileSync(diskPath, "utf8");
+      } catch {
+        // file absent — treat as unmodified
+      }
+      if (onDisk !== undefined) {
+        const diskHash = computeHash(onDisk);
+        const prevEntry = previousManifest.getEntry(relPath);
+        if (prevEntry && diskHash !== prevEntry.hash) {
+          log.warn(
+            `  ~ ${relPath} (user-modified — skipping; use --force to overwrite)`,
+          );
+          skipped++;
+          continue;
+        }
       }
     }
 
     const srcPath = join(stagingOutputDir, relPath);
-    if (!existsSync(srcPath)) continue;
-
     mkdirSync(dirname(diskPath), { recursive: true });
-    copyFileSync(srcPath, diskPath);
+    try {
+      copyFileSync(srcPath, diskPath);
+    } catch {
+      continue;
+    }
     log.info(`  ✓ ${relPath}`);
     copied++;
   }

@@ -1,7 +1,7 @@
 import { generate } from "@vasp-framework/generator";
 import { parse } from "@vasp-framework/parser";
 import { join, resolve } from "node:path";
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { readdirSync, statSync } from "node:fs";
 import { log } from "../utils/logger.js";
 import { handleParseError } from "../utils/parse-error.js";
@@ -11,14 +11,18 @@ export async function migrateToTsCommand(): Promise<void> {
   const cwd = process.cwd();
   const vaspFile = join(cwd, "main.vasp");
 
-  if (!existsSync(vaspFile)) {
-    log.error(
-      "No main.vasp found. Run this command from your Vasp project root.",
-    );
-    process.exit(1);
+  let source: string;
+  try {
+    source = readFileSync(vaspFile, "utf8");
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      log.error(
+        "No main.vasp found. Run this command from your Vasp project root.",
+      );
+      process.exit(1);
+    }
+    throw err;
   }
-
-  const source = readFileSync(vaspFile, "utf8");
   let ast;
   try {
     ast = parse(source, "main.vasp");
@@ -72,12 +76,20 @@ export async function migrateToTsCommand(): Promise<void> {
 
 function renameJsToTs(dir: string): string[] {
   const renamed: string[] = [];
-  if (!existsSync(dir)) return renamed;
-
-  const entries = readdirSync(dir);
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return renamed;
+  }
   for (const entry of entries) {
     const full = join(dir, entry);
-    const stat = statSync(full);
+    let stat;
+    try {
+      stat = statSync(full);
+    } catch {
+      continue;
+    }
     if (stat.isDirectory()) {
       renamed.push(...renameJsToTs(full));
     } else if (entry.endsWith(".js") && !entry.endsWith(".config.js")) {

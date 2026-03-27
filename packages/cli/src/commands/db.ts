@@ -1,5 +1,5 @@
 import { resolve, join } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { log } from "../utils/logger.js";
 
 const DB_SUBCOMMANDS = [
@@ -16,11 +16,6 @@ export async function dbCommand(args: string[]): Promise<void> {
   const projectDir = resolve(process.cwd());
   const pkgFile = join(projectDir, "package.json");
 
-  if (!existsSync(pkgFile)) {
-    log.error("No package.json found. Run this command inside a Vasp project.");
-    process.exit(1);
-  }
-
   if (!sub || !DB_SUBCOMMANDS.includes(sub)) {
     log.error(`Usage: vasp db <${DB_SUBCOMMANDS.join("|")}>`);
     if (sub) log.error(`Unknown subcommand: ${sub}`);
@@ -28,9 +23,20 @@ export async function dbCommand(args: string[]): Promise<void> {
   }
 
   const scriptName = `db:${sub}`;
-  const pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as {
-    scripts?: Record<string, string>;
-  };
+  let pkg: { scripts?: Record<string, string> };
+  try {
+    pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as {
+      scripts?: Record<string, string>;
+    };
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      log.error(
+        "No package.json found. Run this command inside a Vasp project.",
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
 
   const script = pkg.scripts?.[scriptName];
   if (!script) {

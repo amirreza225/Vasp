@@ -1,7 +1,7 @@
 import { generate } from "@vasp-framework/generator";
 import { parse } from "@vasp-framework/parser";
 import { join, resolve } from "node:path";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import { log } from "../utils/logger.js";
 import { handleParseError } from "../utils/parse-error.js";
 import { VASP_VERSION } from "@vasp-framework/core";
@@ -40,11 +40,6 @@ export async function newCommand(args: string[]): Promise<void> {
 
   const outputDir = resolve(process.cwd(), appName);
 
-  if (existsSync(outputDir)) {
-    log.error(`Directory '${appName}' already exists`);
-    process.exit(1);
-  }
-
   log.step(`Creating Vasp app: ${appName}`);
   log.info(`Version: ${VASP_VERSION}`);
 
@@ -58,11 +53,15 @@ export async function newCommand(args: string[]): Promise<void> {
       process.exit(1);
     }
     const starterFile = join(STARTERS_DIR, `${opts.starter}.vasp`);
-    if (!existsSync(starterFile)) {
-      log.error(`Starter file not found: ${starterFile}`);
-      process.exit(1);
+    try {
+      vaspSource = readFileSync(starterFile, "utf8");
+    } catch (err: any) {
+      if (err.code === "ENOENT") {
+        log.error(`Starter file not found: ${starterFile}`);
+        process.exit(1);
+      }
+      throw err;
     }
-    vaspSource = readFileSync(starterFile, "utf8");
     // Replace the app name to match the user's chosen name
     vaspSource = vaspSource.replace(/^app \w+/m, `app ${toPascal(appName)}`);
     log.info(`Starter: ${opts.starter}`);
@@ -83,7 +82,15 @@ export async function newCommand(args: string[]): Promise<void> {
 
   const templateDir = resolveTemplateDir(import.meta.dirname);
 
-  mkdirSync(outputDir, { recursive: true });
+  try {
+    mkdirSync(outputDir);
+  } catch (err: any) {
+    if (err.code === "EEXIST") {
+      log.error(`Directory '${appName}' already exists`);
+      process.exit(1);
+    }
+    throw err;
+  }
 
   const result = generate(ast, {
     outputDir,

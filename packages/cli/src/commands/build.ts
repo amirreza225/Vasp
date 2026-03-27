@@ -1,5 +1,5 @@
 import { join, resolve } from "node:path";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { log } from "../utils/logger.js";
 
 /**
@@ -10,15 +10,24 @@ export async function buildCommand(): Promise<void> {
   const projectDir = resolve(process.cwd());
   const pkgFile = join(projectDir, "package.json");
 
-  if (!existsSync(pkgFile)) {
-    log.error("No package.json found. Run this command inside a Vasp project.");
-    process.exit(1);
-  }
-
-  const pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as {
+  let pkg: {
     scripts?: Record<string, string>;
     dependencies?: Record<string, string>;
   };
+  try {
+    pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as {
+      scripts?: Record<string, string>;
+      dependencies?: Record<string, string>;
+    };
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      log.error(
+        "No package.json found. Run this command inside a Vasp project.",
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
 
   const isSsr = !!pkg.dependencies?.["nuxt"];
 
@@ -80,11 +89,18 @@ export async function buildCommand(): Promise<void> {
  */
 function detectTypeScript(projectDir: string): boolean {
   const vaspFile = join(projectDir, "main.vasp");
-  if (existsSync(vaspFile)) {
+  try {
     const source = readFileSync(vaspFile, "utf8");
     const match = source.match(/typescript\s*:\s*(true|false)/);
     if (match) return match[1] === "true";
+  } catch {
+    // vaspFile absent — fall through to heuristic
   }
-  // Fallback: presence of server/index.ts
-  return existsSync(join(projectDir, "server/index.ts"));
+  // Fallback: try to read server/index.ts
+  try {
+    readFileSync(join(projectDir, "server/index.ts"));
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -3,6 +3,9 @@ import {
   existsSync,
   readFileSync,
   writeFileSync,
+  openSync,
+  closeSync,
+  constants,
   mkdirSync,
   watch,
 } from "node:fs";
@@ -27,14 +30,20 @@ export async function startCommand(): Promise<void> {
   const projectDir = resolve(process.cwd());
   const pkgFile = join(projectDir, "package.json");
 
-  if (!existsSync(pkgFile)) {
-    log.error("No package.json found. Run this command inside a Vasp project.");
-    process.exit(1);
+  let pkg: { scripts?: Record<string, string> };
+  try {
+    pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as {
+      scripts?: Record<string, string>;
+    };
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      log.error(
+        "No package.json found. Run this command inside a Vasp project.",
+      );
+      process.exit(1);
+    }
+    throw err;
   }
-
-  const pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as {
-    scripts?: Record<string, string>;
-  };
 
   const serverScript = pkg.scripts?.["dev:server"];
   const clientScript = pkg.scripts?.["dev:client"];
@@ -47,40 +56,63 @@ export async function startCommand(): Promise<void> {
 
   // Pre-flight checks
   const envFile = join(projectDir, ".env");
-  if (!existsSync(envFile)) {
-    log.warn("No .env file found. Copying from .env.example...");
-    const exampleFile = join(projectDir, ".env.example");
-    if (existsSync(exampleFile)) {
+  const exampleFile = join(projectDir, ".env.example");
+  {
+    // Try to read .env; if absent, copy from .env.example
+    let envExists = true;
+    try {
+      readFileSync(envFile);
+    } catch (err: any) {
+      if (err.code === "ENOENT") envExists = false;
+      else throw err;
+    }
+    if (!envExists) {
+      log.warn("No .env file found. Copying from .env.example...");
       const { copyFileSync } = await import("node:fs");
-      copyFileSync(exampleFile, envFile);
-      log.info(
-        "Created .env from .env.example — edit it to configure your database.",
-      );
-    } else {
-      log.warn("No .env.example found either. Database connection may fail.");
+      try {
+        copyFileSync(exampleFile, envFile);
+        log.info(
+          "Created .env from .env.example — edit it to configure your database.",
+        );
+      } catch (copyErr: any) {
+        if (copyErr.code === "ENOENT") {
+          log.warn(
+            "No .env.example found either. Database connection may fail.",
+          );
+        } else {
+          throw copyErr;
+        }
+      }
     }
   }
 
   // Warn about placeholder values in .env
-  if (existsSync(envFile)) {
-    const envContent = readFileSync(envFile, "utf8");
-    const envVars = parseEnvFile(envContent);
-    if (
-      envVars["DATABASE_URL"] &&
-      isPlaceholderValue(envVars["DATABASE_URL"])
-    ) {
-      log.warn(
-        pc.bold(
-          "DATABASE_URL looks like a placeholder — edit .env before running the app",
-        ),
-      );
+  {
+    let envContent: string | undefined;
+    try {
+      envContent = readFileSync(envFile, "utf8");
+    } catch {
+      // .env absent — nothing to check
     }
-    if (envVars["JWT_SECRET"] && isPlaceholderValue(envVars["JWT_SECRET"])) {
-      log.warn(
-        pc.bold(
-          "JWT_SECRET is still a placeholder — set a real secret in .env",
-        ),
-      );
+    if (envContent !== undefined) {
+      const envVars = parseEnvFile(envContent);
+      if (
+        envVars["DATABASE_URL"] &&
+        isPlaceholderValue(envVars["DATABASE_URL"])
+      ) {
+        log.warn(
+          pc.bold(
+            "DATABASE_URL looks like a placeholder — edit .env before running the app",
+          ),
+        );
+      }
+      if (envVars["JWT_SECRET"] && isPlaceholderValue(envVars["JWT_SECRET"])) {
+        log.warn(
+          pc.bold(
+            "JWT_SECRET is still a placeholder — set a real secret in .env",
+          ),
+        );
+      }
     }
   }
 
@@ -145,9 +177,12 @@ export async function startCommand(): Promise<void> {
 
   // Watch main.vasp and re-generate on change (debounced 300ms)
   const vaspFile = join(projectDir, "main.vasp");
-  if (existsSync(vaspFile)) {
+  try {
+    readFileSync(vaspFile);
     log.dim("  Watching main.vasp for changes...");
     watchVaspFile(vaspFile, projectDir);
+  } catch {
+    // vaspFile absent — skip watching
   }
 
   // Handle Ctrl+C — kill all children
@@ -182,15 +217,17 @@ export async function startCommand(): Promise<void> {
 async function autoMigrateIfNeeded(projectDir: string): Promise<void> {
   const schemaTs = join(projectDir, "drizzle", "schema.ts");
   const schemaJs = join(projectDir, "drizzle", "schema.js");
-  const schemaFile = existsSync(schemaTs)
-    ? schemaTs
-    : existsSync(schemaJs)
-      ? schemaJs
-      : null;
 
-  if (!schemaFile) return; // no schema yet
-
-  const content = readFileSync(schemaFile, "utf8");
+  let content: string | undefined;
+  for (const candidate of [schemaTs, schemaJs]) {
+    try {
+      content = readFileSync(candidate, "utf8");
+      break;
+    } catch {
+      // try next
+    }
+  }
+  if (content === undefined) return; // no schema yet
   const currentHash = createHash("sha256")
     .update(content, "utf8")
     .digest("hex");
@@ -198,9 +235,12 @@ async function autoMigrateIfNeeded(projectDir: string): Promise<void> {
   const vaspDir = join(projectDir, ".vasp");
   const hashFile = join(vaspDir, "schema-hash");
 
-  const previousHash = existsSync(hashFile)
-    ? readFileSync(hashFile, "utf8").trim()
-    : null;
+  let previousHash: string | null;
+  try {
+    previousHash = readFileSync(hashFile, "utf8").trim();
+  } catch {
+    previousHash = null;
+  }
 
   if (previousHash === currentHash) return; // schema unchanged
 
@@ -223,7 +263,13 @@ async function autoMigrateIfNeeded(projectDir: string): Promise<void> {
 
   if (pushCode === 0) {
     mkdirSync(vaspDir, { recursive: true });
-    writeFileSync(hashFile, currentHash, "utf8");
+    const fd = openSync(
+      hashFile,
+      constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC,
+      0o666,
+    );
+    writeFileSync(fd, currentHash, "utf8");
+    closeSync(fd);
     process.stdout.write(
       `${label} ${pc.green("Schema pushed successfully")}\n`,
     );
@@ -349,9 +395,11 @@ function watchVaspFile(vaspFile: string, projectDir: string): void {
 function openBrowser(projectDir: string): void {
   const vaspFile = join(projectDir, "main.vasp");
   let isSsr = false;
-  if (existsSync(vaspFile)) {
+  try {
     const source = readFileSync(vaspFile, "utf8");
     isSsr = /ssr:\s*true/.test(source) || /ssr:\s*"ssg"/.test(source);
+  } catch {
+    // vaspFile absent — default to SPA port
   }
 
   const port = isSsr ? DEFAULT_SSR_PORT : DEFAULT_SPA_PORT;

@@ -1230,7 +1230,11 @@ export class SemanticValidator {
       // Outbound-specific checks
       if (webhook.mode === "outbound") {
         // E200: outbound entity must be declared
-        if (webhook.entity && entityNames.size > 0 && !entityNames.has(webhook.entity)) {
+        if (
+          webhook.entity &&
+          entityNames.size > 0 &&
+          !entityNames.has(webhook.entity)
+        ) {
           this.diagnostics.push({
             code: "E200_WEBHOOK_UNKNOWN_ENTITY",
             message: `Outbound webhook '${webhook.name}' references unknown entity '${webhook.entity}'`,

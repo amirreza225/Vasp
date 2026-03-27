@@ -1,7 +1,7 @@
 import { generate } from "@vasp-framework/generator";
 import { parse } from "@vasp-framework/parser";
 import { join, resolve } from "node:path";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { log } from "../utils/logger.js";
 import { handleParseError } from "../utils/parse-error.js";
 import { resolveTemplateDir } from "../utils/template-dir.js";
@@ -13,14 +13,18 @@ export async function enableSsrCommand(): Promise<void> {
   const projectDir = resolve(process.cwd());
   const vaspFile = join(projectDir, "main.vasp");
 
-  if (!existsSync(vaspFile)) {
-    log.error(
-      `No main.vasp found in ${projectDir}. Run this command inside a Vasp project.`,
-    );
-    process.exit(1);
+  let source: string;
+  try {
+    source = readFileSync(vaspFile, "utf8");
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      log.error(
+        `No main.vasp found in ${projectDir}. Run this command inside a Vasp project.`,
+      );
+      process.exit(1);
+    }
+    throw err;
   }
-
-  let source = readFileSync(vaspFile, "utf8");
 
   if (/ssr:\s*true/.test(source) || /ssr:\s*"ssg"/.test(source)) {
     log.warn("SSR is already enabled in main.vasp — nothing to do.");

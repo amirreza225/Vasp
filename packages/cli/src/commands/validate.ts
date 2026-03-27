@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, watch } from "node:fs";
+import { readFileSync, watch } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseAll, formatDiagnostics } from "@vasp-framework/parser";
 import pc from "picocolors";
@@ -22,11 +22,16 @@ export async function validateCommand(args: string[]): Promise<void> {
   const projectDir = resolve(process.cwd());
   const vaspFile = join(projectDir, opts.file);
 
-  if (!existsSync(vaspFile)) {
-    log.error(
-      `${opts.file} not found. Run 'vasp validate' from your project root.`,
-    );
-    process.exit(1);
+  try {
+    readFileSync(vaspFile);
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      log.error(
+        `${opts.file} not found. Run 'vasp validate' from your project root.`,
+      );
+      process.exit(1);
+    }
+    throw err;
   }
 
   if (opts.watch) {

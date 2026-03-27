@@ -1,6 +1,5 @@
 import { join, resolve, relative, dirname } from "node:path";
 import {
-  existsSync,
   readFileSync,
   writeFileSync,
   mkdirSync,
@@ -19,11 +18,22 @@ function parseArgs(args: string[]): { confirm: boolean } {
  * Walk a directory recursively and return all file paths.
  */
 function walkDir(dir: string): string[] {
-  if (!existsSync(dir)) return [];
   const results: string[] = [];
-  for (const entry of readdirSync(dir)) {
+  let entries: string[];
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return results;
+  }
+  for (const entry of entries) {
     const full = join(dir, entry);
-    if (statSync(full).isDirectory()) {
+    let stat;
+    try {
+      stat = statSync(full);
+    } catch {
+      continue;
+    }
+    if (stat.isDirectory()) {
       results.push(...walkDir(full));
     } else {
       results.push(full);
@@ -60,9 +70,16 @@ export async function ejectCommand(args: string[] = []): Promise<void> {
   const projectDir = resolve(process.cwd());
 
   const pkgFile = join(projectDir, "package.json");
-  if (!existsSync(pkgFile)) {
-    log.error("No package.json found. Run this command inside a Vasp project.");
-    process.exit(1);
+  try {
+    readFileSync(pkgFile);
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      log.error(
+        "No package.json found. Run this command inside a Vasp project.",
+      );
+      process.exit(1);
+    }
+    throw err;
   }
 
   if (!confirm) {
@@ -98,16 +115,26 @@ export async function ejectCommand(args: string[] = []): Promise<void> {
     "@vasp-framework",
     "runtime",
   );
-  if (!existsSync(runtimePkg)) {
-    log.error("Could not find @vasp-framework/runtime in node_modules.");
-    log.info("Run `bun install` first, then retry.");
-    process.exit(1);
+  try {
+    readdirSync(runtimePkg);
+  } catch (err: any) {
+    if (err.code === "ENOENT" || err.code === "ENOTDIR") {
+      log.error("Could not find @vasp-framework/runtime in node_modules.");
+      log.info("Run `bun install` first, then retry.");
+      process.exit(1);
+    }
+    throw err;
   }
 
   const runtimeDist = join(runtimePkg, "dist");
-  if (!existsSync(runtimeDist)) {
-    log.error("Runtime dist not found. The package may be corrupted.");
-    process.exit(1);
+  try {
+    readdirSync(runtimeDist);
+  } catch (err: any) {
+    if (err.code === "ENOENT" || err.code === "ENOTDIR") {
+      log.error("Runtime dist not found. The package may be corrupted.");
+      process.exit(1);
+    }
+    throw err;
   }
 
   // Step 2: Copy runtime dist into src/vasp/runtime/
@@ -161,11 +188,9 @@ export async function ejectCommand(args: string[] = []): Promise<void> {
 
   // Step 5: Delete .vasp/ directory
   const vaspDir = join(projectDir, ".vasp");
-  if (existsSync(vaspDir)) {
-    log.info("Removing .vasp/ metadata directory...");
-    rmSync(vaspDir, { recursive: true, force: true });
-    log.success("  Deleted .vasp/");
-  }
+  log.info("Removing .vasp/ metadata directory...");
+  rmSync(vaspDir, { recursive: true, force: true });
+  log.success("  Deleted .vasp/");
 
   // Step 6: Run bun install to clean lockfile
   log.info("Running bun install to update lockfile...");

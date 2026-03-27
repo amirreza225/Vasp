@@ -1,6 +1,13 @@
 import { parse } from "@vasp-framework/parser";
 import { join, resolve } from "node:path";
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  openSync,
+  closeSync,
+  constants,
+  mkdirSync,
+} from "node:fs";
 import { log } from "../utils/logger.js";
 import { handleParseError } from "../utils/parse-error.js";
 import { runRegenerate } from "./generate.js";
@@ -56,14 +63,18 @@ export async function addCommand(args: string[]): Promise<void> {
   const projectDir = resolve(process.cwd());
   const vaspFile = join(projectDir, "main.vasp");
 
-  if (!existsSync(vaspFile)) {
-    log.error(
-      `No main.vasp found in ${projectDir}. Run this command from your project root.`,
-    );
-    process.exit(1);
+  let source: string;
+  try {
+    source = readFileSync(vaspFile, "utf8");
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      log.error(
+        `No main.vasp found in ${projectDir}. Run this command from your project root.`,
+      );
+      process.exit(1);
+    }
+    throw err;
   }
-
-  const source = readFileSync(vaspFile, "utf8");
   let ast;
   try {
     ast = parse(source, "main.vasp");
@@ -143,12 +154,22 @@ export async function addCommand(args: string[]): Promise<void> {
       // Create the Vue component stub if it doesn't exist yet
       const pageDir = join(projectDir, "src", "pages");
       const pageFile = join(pageDir, `${pageName}.vue`);
-      if (!existsSync(pageFile)) {
-        mkdirSync(pageDir, { recursive: true });
-        writeFileSync(pageFile, buildVueStub(pageName), "utf8");
+      mkdirSync(pageDir, { recursive: true });
+      try {
+        const fd = openSync(
+          pageFile,
+          constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY,
+          0o666,
+        );
+        writeFileSync(fd, buildVueStub(pageName), "utf8");
+        closeSync(fd);
         log.success(`Created src/pages/${pageName}.vue`);
-      } else {
-        log.dim(`  src/pages/${pageName}.vue already exists — skipping`);
+      } catch (err: any) {
+        if (err.code === "EEXIST") {
+          log.dim(`  src/pages/${pageName}.vue already exists — skipping`);
+        } else {
+          throw err;
+        }
       }
       break;
     }
@@ -382,14 +403,18 @@ function appendFunctionStub(
 ): void {
   const filePath = join(projectDir, "src", filename);
   const stub = buildFunctionStub(fnName, ext, kind);
-  if (existsSync(filePath)) {
+  mkdirSync(join(projectDir, "src"), { recursive: true });
+  try {
     const existing = readFileSync(filePath, "utf8");
     writeFileSync(filePath, existing.trimEnd() + "\n\n" + stub + "\n", "utf8");
     log.success(`Added ${fnName} stub to src/${filename}`);
-  } else {
-    mkdirSync(join(projectDir, "src"), { recursive: true });
-    writeFileSync(filePath, stub + "\n", "utf8");
-    log.success(`Created src/${filename} with ${fnName} stub`);
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      writeFileSync(filePath, stub + "\n", "utf8");
+      log.success(`Created src/${filename} with ${fnName} stub`);
+    } else {
+      throw err;
+    }
   }
 }
 

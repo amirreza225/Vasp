@@ -1767,7 +1767,7 @@ class Parser {
       throw this.error(
         "E081_MISSING_WEBHOOK_MODE",
         `Webhook block '${name.value}' must define either 'fn' (inbound) or 'entity' (outbound)`,
-        "Add: fn: import { handler } from \"@src/...\" for inbound, or entity: EntityName for outbound",
+        'Add: fn: import { handler } from "@src/..." for inbound, or entity: EntityName for outbound',
         loc,
       );
     }

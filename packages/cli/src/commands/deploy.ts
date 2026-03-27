@@ -1,5 +1,11 @@
 import { join, resolve } from "node:path";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  readFileSync,
+  writeFileSync,
+  openSync,
+  closeSync,
+  constants,
+} from "node:fs";
 import { log } from "../utils/logger.js";
 
 type DeployTarget = "docker" | "fly" | "railway";
@@ -55,15 +61,21 @@ interface ProjectInfo {
 
 function readProjectInfo(projectDir: string): ProjectInfo {
   const pkgFile = join(projectDir, "package.json");
-  if (!existsSync(pkgFile)) {
-    log.error("No package.json found. Run this command inside a Vasp project.");
-    process.exit(1);
+  let pkg: { name?: string; dependencies?: Record<string, string> };
+  try {
+    pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as {
+      name?: string;
+      dependencies?: Record<string, string>;
+    };
+  } catch (err: any) {
+    if (err.code === "ENOENT") {
+      log.error(
+        "No package.json found. Run this command inside a Vasp project.",
+      );
+      process.exit(1);
+    }
+    throw err;
   }
-
-  const pkg = JSON.parse(readFileSync(pkgFile, "utf8")) as {
-    name?: string;
-    dependencies?: Record<string, string>;
-  };
 
   return {
     appName: pkg.name ?? "vasp-app",
@@ -74,15 +86,30 @@ function readProjectInfo(projectDir: string): ProjectInfo {
 }
 
 function writeFile(filePath: string, content: string, force: boolean): boolean {
-  if (existsSync(filePath) && !force) {
-    log.warn(
-      `  ${filePath} already exists — skipping (use --force to overwrite)`,
-    );
-    return false;
+  if (force) {
+    writeFileSync(filePath, content, "utf8");
+    log.success(`  Created ${filePath}`);
+    return true;
   }
-  writeFileSync(filePath, content, "utf8");
-  log.success(`  Created ${filePath}`);
-  return true;
+  try {
+    const fd = openSync(
+      filePath,
+      constants.O_CREAT | constants.O_EXCL | constants.O_WRONLY,
+      0o666,
+    );
+    writeFileSync(fd, content, "utf8");
+    closeSync(fd);
+    log.success(`  Created ${filePath}`);
+    return true;
+  } catch (err: any) {
+    if (err.code === "EEXIST") {
+      log.warn(
+        `  ${filePath} already exists — skipping (use --force to overwrite)`,
+      );
+      return false;
+    }
+    throw err;
+  }
 }
 
 function generateDockerfile(info: ProjectInfo): string {
