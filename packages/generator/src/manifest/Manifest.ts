@@ -45,6 +45,11 @@ export class Manifest {
     return relativePath in this.data.files;
   }
 
+  /** Set a manifest entry directly (used when merging manifests during selective regeneration). */
+  setEntry(relativePath: string, entry: ManifestEntry): void {
+    this.data.files[relativePath] = entry;
+  }
+
   /** All tracked files. */
   get files(): Record<string, ManifestEntry> {
     return this.data.files;
