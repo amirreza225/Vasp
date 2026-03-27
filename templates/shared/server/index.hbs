@@ -1,3 +1,7 @@
+{{#if hasObservability}}
+// OpenTelemetry instrumentation — must be imported before all other server modules
+import './telemetry/index.{{ext}}'
+{{/if}}
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
 import { staticPlugin } from '@elysiajs/static'
@@ -49,6 +53,9 @@ import { {{camelCase name}}UploadRoutes } from './routes/storage/{{camelCase nam
 {{#each inboundWebhooks}}
 import { {{camelCase name}}Routes } from './routes/webhooks/{{camelCase name}}.{{../ext}}'
 {{/each}}
+{{#if hasObservabilityMetrics}}
+import { getPrometheusMetrics } from './telemetry/metrics.{{ext}}'
+{{/if}}
 
 const PORT = Number(process.env.PORT) || {{backendPort}}
 
@@ -119,6 +126,13 @@ const app = new Elysia()
   .use(csrfProtection())
 {{/if}}
   .get('/api/health', () => ({ status: 'ok', version: '{{vaspVersion}}' }))
+{{#if hasObservabilityMetrics}}
+  .get('/api/metrics', async ({ set }) => {
+    const body = await getPrometheusMetrics()
+    set.headers['content-type'] = 'text/plain; version=0.0.4; charset=utf-8'
+    return body
+  })
+{{/if}}
   .use(vaspDiagnosticRoutes)
 {{#if hasAuth}}
   .use(authRoutes)

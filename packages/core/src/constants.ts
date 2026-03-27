@@ -72,6 +72,23 @@ export const SUPPORTED_WEBHOOK_VERIFICATIONS = [
   "hmac",
 ] as const;
 
+export const SUPPORTED_OBSERVABILITY_EXPORTERS = [
+  "otlp",
+  "prometheus",
+  "console",
+] as const;
+
+export const SUPPORTED_ERROR_TRACKING_PROVIDERS = [
+  "sentry",
+  "datadog",
+  "none",
+] as const;
+
+export const SUPPORTED_OBSERVABILITY_LOGS_MODES = [
+  "structured",
+  "console",
+] as const;
+
 export const SUPPORTED_MULTI_TENANT_STRATEGIES = [
   "row-level",
   "schema-level",

@@ -1,0 +1,55 @@
+{{#if hasPrometheusExporter}}
+import { prometheusExporter } from './index.{{ext}}'
+{{/if}}
+import { metrics as _otelMetrics } from '@opentelemetry/api'
+
+const _meter = _otelMetrics.getMeter('{{appName}}')
+
+/** Counter tracking the total number of HTTP requests received */
+export const httpRequestCounter = _meter.createCounter('http_requests_total', {
+  description: 'Total number of HTTP requests',
+})
+
+/** Histogram recording HTTP request duration in milliseconds */
+export const httpRequestDuration = _meter.createHistogram('http_request_duration_ms', {
+  description: 'HTTP request duration in milliseconds',
+  unit: 'ms',
+  advice: { explicitBucketBoundaries: [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000] },
+})
+
+/** Counter tracking the total number of errors */
+export const errorCounter = _meter.createCounter('errors_total', {
+  description: 'Total number of unhandled errors',
+})
+
+/** Up-down counter tracking active WebSocket connections */
+export const activeWebsocketConnections = _meter.createUpDownCounter('websocket_connections_active', {
+  description: 'Number of active WebSocket connections',
+})
+
+/** Counter tracking total background jobs enqueued */
+export const jobEnqueueCounter = _meter.createCounter('jobs_enqueued_total', {
+  description: 'Total number of background jobs enqueued',
+})
+
+/** Counter tracking total background jobs completed */
+export const jobCompletedCounter = _meter.createCounter('jobs_completed_total', {
+  description: 'Total number of background jobs completed',
+})
+
+/** Counter tracking total background jobs failed */
+export const jobFailedCounter = _meter.createCounter('jobs_failed_total', {
+  description: 'Total number of background jobs that failed permanently',
+})
+
+{{#if hasPrometheusExporter}}
+/**
+ * Returns a Prometheus-format text scrape of all registered metrics.
+ * Attach to a GET /api/metrics route in server/index.{ext}.
+ */
+export async function getPrometheusMetrics(){{#if isTypeScript}}: Promise<string>{{/if}} {
+  if (!prometheusExporter) return ''
+  const { text } = await prometheusExporter.collect()
+  return text
+}
+{{/if}}

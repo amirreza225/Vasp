@@ -1,0 +1,95 @@
+{{#if hasDatadog}}
+// Datadog APM — must be initialised before any other imports
+import tracer from 'dd-trace'
+tracer.init({ logInjection: true })
+{{/if}}
+{{#if hasSentry}}
+import * as Sentry from '@sentry/bun'
+{{/if}}
+{{#if tracing}}
+import { NodeSDK } from '@opentelemetry/sdk-node'
+import { Resource } from '@opentelemetry/resources'
+import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions'
+import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node'
+{{#if hasOtlpExporter}}
+import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http'
+{{/if}}
+{{#if hasPrometheusExporter}}
+import { PrometheusExporter } from '@opentelemetry/exporter-prometheus'
+import { MeterProvider } from '@opentelemetry/sdk-metrics'
+{{/if}}
+{{/if}}
+{{#if metrics}}
+{{#unless tracing}}
+{{#if hasPrometheusExporter}}
+import { PrometheusExporter } from '@opentelemetry/exporter-prometheus'
+import { MeterProvider } from '@opentelemetry/sdk-metrics'
+{{/if}}
+{{/unless}}
+{{/if}}
+
+const SERVICE_NAME = process.env.OTEL_SERVICE_NAME || '{{appName}}'
+const SERVICE_VERSION = process.env.OTEL_SERVICE_VERSION || '1.0.0'
+
+{{#if hasSentry}}
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'production',
+  release: SERVICE_VERSION,
+  tracesSampleRate: 1.0,
+  integrations: [
+    Sentry.requestDataIntegration(),
+  ],
+})
+{{/if}}
+
+{{#if tracing}}
+{{#if hasOtlpExporter}}
+const _traceExporter = new OTLPTraceExporter({
+  url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
+  headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
+    ? Object.fromEntries(
+        process.env.OTEL_EXPORTER_OTLP_HEADERS.split(',').map((h) => h.trim().split('=', 2) as [string, string]),
+      )
+    : {},
+})
+{{/if}}
+
+const _sdk = new NodeSDK({
+  resource: new Resource({
+    [ATTR_SERVICE_NAME]: SERVICE_NAME,
+    [ATTR_SERVICE_VERSION]: SERVICE_VERSION,
+  }),
+  instrumentations: [
+    getNodeAutoInstrumentations({
+      '@opentelemetry/instrumentation-fs': { enabled: false },
+    }),
+  ],
+  {{#if hasOtlpExporter}}
+  traceExporter: _traceExporter,
+  {{/if}}
+})
+
+_sdk.start()
+process.on('SIGTERM', () => _sdk.shutdown().catch(console.error))
+{{/if}}
+
+{{#if metrics}}
+{{#if hasPrometheusExporter}}
+const _prometheusExporter = new PrometheusExporter({ port: 9464, startServer: false })
+export const meterProvider = new MeterProvider({
+  readers: [_prometheusExporter],
+  resource: new Resource({
+    [ATTR_SERVICE_NAME]: SERVICE_NAME,
+    [ATTR_SERVICE_VERSION]: SERVICE_VERSION,
+  }),
+})
+export const prometheusExporter = _prometheusExporter
+{{else}}
+import { metrics as _otelMetrics, createNoopMeter } from '@opentelemetry/api'
+export const meterProvider = null
+export const prometheusExporter = null
+{{/if}}
+{{/if}}
+
+export const telemetryReady = true

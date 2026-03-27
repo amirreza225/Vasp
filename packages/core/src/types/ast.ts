@@ -281,6 +281,12 @@ export type ApiMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 export type MiddlewareScope = "global" | "route";
 
+// ------ Observability ------
+
+export type ObservabilityExporter = "otlp" | "prometheus" | "console";
+export type ErrorTrackingProvider = "sentry" | "datadog" | "none";
+export type ObservabilityLogsMode = "structured" | "console";
+
 // ------ Multi-Tenancy ------
 
 export type MultiTenantStrategy =
@@ -454,6 +460,21 @@ export interface CacheNode extends BaseNode {
   redis?: CacheRedisConfig;
 }
 
+export interface ObservabilityNode {
+  type: "Observability";
+  /** Enable distributed tracing via OpenTelemetry (default: false) */
+  tracing: boolean;
+  /** Enable Prometheus/OTLP metrics (default: false) */
+  metrics: boolean;
+  /** Logging mode: "structured" emits JSON in production, "console" keeps colorful dev output (default: "console") */
+  logs: ObservabilityLogsMode;
+  /** Trace/metrics exporter backend (default: "console") */
+  exporter: ObservabilityExporter;
+  /** Error tracking integration (default: "none") */
+  errorTracking: ErrorTrackingProvider;
+  loc: SourceLocation;
+}
+
 // ------ Top-level AST ------
 
 export interface VaspAST {
@@ -475,6 +496,7 @@ export interface VaspAST {
   emails?: EmailNode[];
   caches?: CacheNode[];
   webhooks?: WebhookNode[];
+  observability?: ObservabilityNode;
 }
 
 // ------ Union of all node types ------
@@ -497,6 +519,7 @@ export type VaspNode =
   | StorageNode
   | EmailNode
   | CacheNode
-  | WebhookNode;
+  | WebhookNode
+  | ObservabilityNode;
 
 export type NodeType = VaspNode["type"];

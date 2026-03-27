@@ -37,6 +37,10 @@ import type {
   MiddlewareScope,
   MultiTenantConfig,
   MultiTenantStrategy,
+  ObservabilityExporter,
+  ObservabilityLogsMode,
+  ErrorTrackingProvider,
+  ObservabilityNode,
   OnDeleteBehavior,
   PageNode,
   PermissionMap,
@@ -59,6 +63,9 @@ import {
   SUPPORTED_AUTH_METHODS,
   SUPPORTED_CRUD_OPERATIONS,
   SUPPORTED_JOB_BACKOFF_STRATEGIES,
+  SUPPORTED_OBSERVABILITY_EXPORTERS,
+  SUPPORTED_ERROR_TRACKING_PROVIDERS,
+  SUPPORTED_OBSERVABILITY_LOGS_MODES,
   SUPPORTED_REALTIME_EVENTS,
 } from "@vasp-framework/core";
 import type { ParseDiagnostic } from "@vasp-framework/core";
@@ -236,11 +243,23 @@ class Parser {
           case TokenType.KW_WEBHOOK:
             (ast.webhooks ??= []).push(this.parseWebhook());
             break;
+          case TokenType.KW_OBSERVABILITY:
+            if (ast.observability) {
+              this.consume(TokenType.KW_OBSERVABILITY);
+              throw this.error(
+                "E090_DUPLICATE_OBSERVABILITY_BLOCK",
+                "Duplicate observability block found",
+                "Only one observability block is allowed in main.vasp",
+                kw.loc,
+              );
+            }
+            ast.observability = this.parseObservability();
+            break;
           default:
             throw this.error(
               "E010_UNEXPECTED_TOKEN",
               `Unexpected token '${kw.value}' at top level`,
-              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, storage, email, cache, or webhook",
+              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, storage, email, cache, webhook, or observability",
               kw.loc,
             );
         }
@@ -1914,6 +1933,97 @@ class Parser {
       ...(targets !== undefined ? { targets } : {}),
       ...(retry !== undefined ? { retry } : {}),
     };
+  }
+
+  private parseObservability(): ObservabilityNode {
+    const loc = this.consume(TokenType.KW_OBSERVABILITY).loc;
+    this.consume(TokenType.LBRACE);
+
+    let tracing = false;
+    let metrics = false;
+    let logs: ObservabilityLogsMode = "console";
+    let exporter: ObservabilityExporter = "console";
+    let errorTracking: ErrorTrackingProvider = "none";
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier();
+      this.consume(TokenType.COLON);
+
+      switch (key.value) {
+        case "tracing": {
+          const tok = this.consume(TokenType.BOOLEAN);
+          tracing = tok.value === "true";
+          break;
+        }
+        case "metrics": {
+          const tok = this.consume(TokenType.BOOLEAN);
+          metrics = tok.value === "true";
+          break;
+        }
+        case "logs": {
+          const tok = this.consumeIdentifier();
+          if (
+            !(SUPPORTED_OBSERVABILITY_LOGS_MODES as readonly string[]).includes(
+              tok.value,
+            )
+          ) {
+            throw this.error(
+              "E091_INVALID_OBSERVABILITY_LOGS_MODE",
+              `Invalid observability logs mode '${tok.value}'`,
+              `Valid values: ${SUPPORTED_OBSERVABILITY_LOGS_MODES.join(", ")}`,
+              tok.loc,
+            );
+          }
+          logs = tok.value as ObservabilityLogsMode;
+          break;
+        }
+        case "exporter": {
+          const tok = this.consumeIdentifier();
+          if (
+            !(SUPPORTED_OBSERVABILITY_EXPORTERS as readonly string[]).includes(
+              tok.value,
+            )
+          ) {
+            throw this.error(
+              "E092_INVALID_OBSERVABILITY_EXPORTER",
+              `Invalid observability exporter '${tok.value}'`,
+              `Valid values: ${SUPPORTED_OBSERVABILITY_EXPORTERS.join(", ")}`,
+              tok.loc,
+            );
+          }
+          exporter = tok.value as ObservabilityExporter;
+          break;
+        }
+        case "errorTracking": {
+          const tok = this.consumeIdentifier();
+          if (
+            !(
+              SUPPORTED_ERROR_TRACKING_PROVIDERS as readonly string[]
+            ).includes(tok.value)
+          ) {
+            throw this.error(
+              "E093_INVALID_ERROR_TRACKING_PROVIDER",
+              `Invalid errorTracking value '${tok.value}'`,
+              `Valid values: ${SUPPORTED_ERROR_TRACKING_PROVIDERS.join(", ")}`,
+              tok.loc,
+            );
+          }
+          errorTracking = tok.value as ErrorTrackingProvider;
+          break;
+        }
+        default:
+          throw this.error(
+            "E094_UNKNOWN_OBSERVABILITY_PROP",
+            `Unknown observability property '${key.value}'`,
+            "Valid properties: tracing, metrics, logs, exporter, errorTracking",
+            key.loc,
+          );
+      }
+    }
+
+    this.consume(TokenType.RBRACE);
+
+    return { type: "Observability", tracing, metrics, logs, exporter, errorTracking, loc };
   }
 
   /** Parses the `cache: { store, ttl, key, invalidateOn }` sub-block inside a query */

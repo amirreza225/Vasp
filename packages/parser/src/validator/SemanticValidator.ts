@@ -64,6 +64,7 @@ export class SemanticValidator {
     this.checkMultiTenantConfig(ast);
     this.checkCacheBlocks(ast);
     this.checkWebhookBlocks(ast);
+    this.checkObservabilityBlock(ast);
     return [...this.diagnostics];
   }
 
@@ -1256,6 +1257,21 @@ export class SemanticValidator {
           }
         }
       }
+    }
+  }
+
+  private checkObservabilityBlock(ast: VaspAST): void {
+    const obs = ast.observability;
+    if (!obs) return;
+
+    // When using prometheus exporter, metrics must be enabled
+    if (obs.exporter === "prometheus" && !obs.metrics) {
+      this.diagnostics.push({
+        code: "W095_PROMETHEUS_WITHOUT_METRICS",
+        message: "observability uses exporter: prometheus but metrics: false",
+        hint: 'Enable metrics to expose the Prometheus endpoint: metrics: true',
+        loc: obs.loc,
+      });
     }
   }
 }

@@ -2245,3 +2245,117 @@ describe("Parser — webhook block", () => {
     ).toThrow("E080_UNKNOWN_WEBHOOK_PROP");
   });
 });
+
+describe("Parser — observability block", () => {
+  it("parses a minimal observability block with defaults", () => {
+    const ast = parse(`
+      ${APP}
+      observability {
+      }
+    `);
+    expect(ast.observability).toMatchObject({
+      type: "Observability",
+      tracing: false,
+      metrics: false,
+      logs: "console",
+      exporter: "console",
+      errorTracking: "none",
+    });
+  });
+
+  it("parses a full observability block", () => {
+    const ast = parse(`
+      ${APP}
+      observability {
+        tracing: true
+        metrics: true
+        logs: structured
+        exporter: otlp
+        errorTracking: sentry
+      }
+    `);
+    expect(ast.observability).toMatchObject({
+      type: "Observability",
+      tracing: true,
+      metrics: true,
+      logs: "structured",
+      exporter: "otlp",
+      errorTracking: "sentry",
+    });
+  });
+
+  it("parses observability with prometheus exporter and datadog error tracking", () => {
+    const ast = parse(`
+      ${APP}
+      observability {
+        metrics: true
+        exporter: prometheus
+        errorTracking: datadog
+      }
+    `);
+    expect(ast.observability).toMatchObject({
+      exporter: "prometheus",
+      errorTracking: "datadog",
+      metrics: true,
+    });
+  });
+
+  it("observability is undefined when no observability block is present", () => {
+    const ast = parse(`${APP}`);
+    expect(ast.observability).toBeUndefined();
+  });
+
+  it("throws on duplicate observability blocks (E090)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      observability { }
+      observability { }
+    `),
+    ).toThrow("E090_DUPLICATE_OBSERVABILITY_BLOCK");
+  });
+
+  it("throws on invalid logs mode (E091)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      observability {
+        logs: json
+      }
+    `),
+    ).toThrow("E091_INVALID_OBSERVABILITY_LOGS_MODE");
+  });
+
+  it("throws on invalid exporter (E092)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      observability {
+        exporter: jaeger
+      }
+    `),
+    ).toThrow("E092_INVALID_OBSERVABILITY_EXPORTER");
+  });
+
+  it("throws on invalid errorTracking provider (E093)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      observability {
+        errorTracking: newrelic
+      }
+    `),
+    ).toThrow("E093_INVALID_ERROR_TRACKING_PROVIDER");
+  });
+
+  it("throws on unknown property (E094)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      observability {
+        unknownProp: true
+      }
+    `),
+    ).toThrow("E094_UNKNOWN_OBSERVABILITY_PROP");
+  });
+});

@@ -102,6 +102,18 @@ export abstract class BaseGenerator {
       multiTenant: ast.app?.multiTenant ?? null,
       hasMultiTenant: !!ast.app?.multiTenant,
       isRowLevelTenant: ast.app?.multiTenant?.strategy === "row-level",
+      observability: ast.observability ?? null,
+      hasObservability: !!ast.observability,
+      hasObservabilityTracing: ast.observability?.tracing ?? false,
+      hasObservabilityMetrics: ast.observability?.metrics ?? false,
+      observabilityLogs: ast.observability?.logs ?? "console",
+      observabilityExporter: ast.observability?.exporter ?? "console",
+      observabilityErrorTracking: ast.observability?.errorTracking ?? "none",
+      hasObservabilityOtlp: ast.observability?.exporter === "otlp",
+      hasObservabilityPrometheus: ast.observability?.exporter === "prometheus",
+      hasObservabilitySentry: ast.observability?.errorTracking === "sentry",
+      hasObservabilityDatadog: ast.observability?.errorTracking === "datadog",
+      hasStructuredLogs: ast.observability?.logs === "structured",
     };
   }
 

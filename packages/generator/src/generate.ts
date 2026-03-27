@@ -16,6 +16,7 @@ import { EmailGenerator } from "./generators/EmailGenerator.js";
 import { FrontendGenerator } from "./generators/FrontendGenerator.js";
 import { JobGenerator } from "./generators/JobGenerator.js";
 import { MiddlewareGenerator } from "./generators/MiddlewareGenerator.js";
+import { ObservabilityGenerator } from "./generators/ObservabilityGenerator.js";
 import { QueryActionGenerator } from "./generators/QueryActionGenerator.js";
 import { RealtimeGenerator } from "./generators/RealtimeGenerator.js";
 import { ScaffoldGenerator } from "./generators/ScaffoldGenerator.js";
@@ -66,6 +67,7 @@ export function generate(
     new ScaffoldGenerator(ctx, engine, filesWritten, manifest).run();
     new DrizzleSchemaGenerator(ctx, engine, filesWritten, manifest).run();
     new BackendGenerator(ctx, engine, filesWritten, manifest).run();
+    new ObservabilityGenerator(ctx, engine, filesWritten, manifest).run();
     new AuthGenerator(ctx, engine, filesWritten, manifest).run();
     new MiddlewareGenerator(ctx, engine, filesWritten, manifest).run();
     new CacheGenerator(ctx, engine, filesWritten, manifest).run();
