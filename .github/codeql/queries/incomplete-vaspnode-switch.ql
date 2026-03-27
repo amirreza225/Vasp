@@ -72,8 +72,9 @@ class ExhaustiveVaspSwitch extends SwitchStmt {
     ) and
 
     // 3. Default case exists and contains a throw (exhaustive intent marker)
-    exists(DefaultCase dc, ThrowStmt t |
+    exists(Case dc, ThrowStmt t |
       dc = this.getACase() and
+      not exists(dc.getExpr()) and  // no expression = default case
       t.getParent+() = dc
     )
   }
