@@ -4,17 +4,13 @@
   "description": "Code generator: produces Elysia backend, Vue/Nuxt frontend, and @vasp-framework/client SDK from a VaspAST",
   "license": "Apache-2.0",
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
   "exports": {
-    ".": "./src/index.ts"
-  },
-  "publishConfig": {
-    "main": "./dist/index.js",
-    "exports": {
-      ".": {
-        "import": "./dist/index.js",
-        "types": "./dist/index.d.ts"
-      }
+    ".": {
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
     }
   },
   "files": [
@@ -38,5 +34,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/amirreza225/Vasp"
-  }
+  },
+  "module": "./dist/index.js"
 }
