@@ -1,6 +1,6 @@
 # Vasp
 
-> Wasp magic for Vue — now with Bun + Elysia speed, Drizzle simplicity, full TypeScript support, and Nuxt 4 SSR/SSG.
+> One of the most AI-friendly full-stack blueprints available today — now with Bun + Elysia speed, Drizzle simplicity, full TypeScript support, and Nuxt 4 SSR/SSG.
 
 Vasp is a batteries-included, declarative full-stack web framework for Vue developers. Write a single `main.vasp` configuration file and get a complete, production-ready application — backend, frontend, auth, database schema, realtime, and background jobs — all generated automatically.
 
