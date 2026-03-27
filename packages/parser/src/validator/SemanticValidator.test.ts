@@ -52,6 +52,59 @@ describe("SemanticValidator", () => {
     ).toThrow("E102_EMPTY_CRUD_OPERATIONS");
   });
 
+  it("fails when crud ownership is used without an auth block", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Order {
+        id: Int @id
+        ownerId: Int
+      }
+      crud Order {
+        entity: Order
+        operations: [list, create, update, delete]
+        ownership: ownerId
+      }
+    `),
+    ).toThrow("E202_CRUD_OWNERSHIP_REQUIRES_AUTH");
+  });
+
+  it("fails when crud ownership references a field that does not exist on the entity", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      auth User { userEntity: User methods: [usernameAndPassword] }
+      entity Order {
+        id: Int @id
+        title: String
+      }
+      crud Order {
+        entity: Order
+        operations: [list, create, update, delete]
+        ownership: nonExistentField
+      }
+    `),
+    ).toThrow("E203_CRUD_OWNERSHIP_FIELD_NOT_FOUND");
+  });
+
+  it("passes when crud ownership references a valid field with auth configured", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      auth User { userEntity: User methods: [usernameAndPassword] }
+      entity Order {
+        id: Int @id
+        ownerId: Int
+      }
+      crud Order {
+        entity: Order
+        operations: [list, create, update, delete]
+        ownership: ownerId
+      }
+    `),
+    ).not.toThrow();
+  });
+
   it("fails when realtime entity has no crud", () => {
     expect(() =>
       validate(`

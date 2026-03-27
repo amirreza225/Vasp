@@ -707,6 +707,61 @@ describe("generate()", () => {
     expect(crud).toContain("useTodoCrud");
   });
 
+  it("generates CRUD with ownership — adds WHERE ownerId condition and auto-sets on create", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      auth User { userEntity: User methods: [usernameAndPassword] }
+      entity Order {
+        id: Int @id
+        title: String
+        ownerId: Int
+      }
+      crud Order {
+        entity: Order
+        operations: [list, create, update, delete]
+        ownership: ownerId
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "crud-ownership-test");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const route = readFileSync(
+      join(outputDir, "server/routes/crud/order.js"),
+      "utf8",
+    );
+
+    // Auth middleware should be applied (ownership requires auth)
+    expect(route).toContain("requireAuth");
+    expect(route).toContain(".use(requireAuth)");
+
+    // GET / (list): should filter by owner
+    expect(route).toContain("eq(table.ownerId, _ownerId)");
+
+    // GET /:id: should add ownership WHERE condition
+    expect(route).toContain("and(eq(orders.id, Number(id)), eq(orders.ownerId, _ownerId))");
+
+    // POST / (create): should auto-set ownerId
+    expect(route).toContain("ownerId: _ownerId");
+
+    // PUT /:id: should add ownership WHERE condition
+    // DELETE /:id: should add ownership WHERE condition
+    // (both appear in the same WHERE pattern)
+    const ownershipWhereCount = (route.match(/eq\(orders\.ownerId, _ownerId\)/g) ?? []).length;
+    // Appears in GET/:id, PUT/:id, DELETE/:id = at least 3 times
+    expect(ownershipWhereCount).toBeGreaterThanOrEqual(3);
+
+    // Should NOT expose records without ownership check
+    expect(route).not.toContain("eq(orders.id, Number(id)))"); // plain single-condition WHERE
+  });
+
   it("generates realtime WebSocket channel files", () => {
     const source = `
       app A { title: "T" db: Drizzle ssr: false typescript: false }

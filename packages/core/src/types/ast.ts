@@ -375,6 +375,17 @@ export interface CrudNode extends BaseNode {
   listConfig?: CrudListConfig;
   /** Per-operation permission requirements: operation → permission name */
   permissions?: CrudPermissions;
+  /**
+   * Entity field that stores the owner's user ID for resource-level access
+   * control (IDOR prevention). When set, read/update/delete operations
+   * automatically append `WHERE <ownershipField> = currentUser.id`, and list
+   * filters the results to records owned by the current user.
+   * Requires an `auth` block to be defined.
+   *
+   * @example
+   *   ownership: ownerId  // WHERE id = :id AND ownerId = :currentUserId
+   */
+  ownership?: string;
 }
 
 export interface RealtimeNode extends BaseNode {
