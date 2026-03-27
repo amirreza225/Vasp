@@ -205,8 +205,12 @@ app EnvApp {
   ssr: false
   typescript: false
   env: {
-    DATABASE_URL: required
-    GOOGLE_CLIENT_ID: optional
+    DATABASE_URL: required String
+    JWT_SECRET: required String @minLength(32)
+    STRIPE_KEY: required String @startsWith("sk_")
+    GOOGLE_CLIENT_ID: optional String
+    MAX_UPLOAD_SIZE: optional Int @default(10485760)
+    NODE_ENV: required Enum(development, staging, production)
   }
 }
 
@@ -450,10 +454,24 @@ describe("generate()", () => {
       join(outputDir, "server/index.js"),
       "utf8",
     );
-    expect(serverIndex).toContain("const REQUIRED_ENV_VARS = ['DATABASE_URL']");
-    expect(serverIndex).toContain("Missing required environment variables");
+    // Required vars checked for presence
+    expect(serverIndex).toContain("DATABASE_URL is required");
+    expect(serverIndex).toContain("JWT_SECRET is required");
+    expect(serverIndex).toContain("STRIPE_KEY is required");
+    expect(serverIndex).toContain("NODE_ENV is required");
+    // Type validation
+    expect(serverIndex).toContain("must be an integer");
+    expect(serverIndex).toContain("must be one of:");
+    // Validator checks
+    expect(serverIndex).toContain("must be at least 32 characters long");
+    expect(serverIndex).toContain('must start with "sk_"');
+    // Default applied for optional var
+    expect(serverIndex).toContain("process.env.MAX_UPLOAD_SIZE = '10485760'");
+    // Optional var without validators not checked for presence
+    expect(serverIndex).not.toContain("GOOGLE_CLIENT_ID is required");
+    // Error reporting
+    expect(serverIndex).toContain("Environment variable validation failed");
     expect(serverIndex).toContain("process.exit(1)");
-    expect(serverIndex).not.toContain("GOOGLE_CLIENT_ID");
   });
 
   it("generates seed runner, script, and source seed stub", () => {

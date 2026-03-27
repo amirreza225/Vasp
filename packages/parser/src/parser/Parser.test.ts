@@ -47,7 +47,7 @@ describe("Parser — minimal app", () => {
     expect(ast.app.typescript).toBe(true);
   });
 
-  it("parses app env schema", () => {
+  it("parses app env schema with types and validators", () => {
     const ast = parse(`
       app A {
         title: "T"
@@ -55,15 +55,25 @@ describe("Parser — minimal app", () => {
         ssr: false
         typescript: false
         env: {
-          DATABASE_URL: required
-          GOOGLE_CLIENT_ID: optional
+          DATABASE_URL: required String
+          GOOGLE_CLIENT_ID: optional String
+          JWT_SECRET: required String @minLength(32)
+          STRIPE_KEY: required String @startsWith("sk_")
+          MAX_SIZE: optional Int @default(1024)
+          NODE_ENV: required Enum(development, production)
+          FEATURE_FLAG: optional Boolean @default(false)
         }
       }
     `);
 
     expect(ast.app.env).toEqual({
-      DATABASE_URL: "required",
-      GOOGLE_CLIENT_ID: "optional",
+      DATABASE_URL: { requirement: "required", type: "String" },
+      GOOGLE_CLIENT_ID: { requirement: "optional", type: "String" },
+      JWT_SECRET: { requirement: "required", type: "String", validation: { minLength: 32 } },
+      STRIPE_KEY: { requirement: "required", type: "String", validation: { startsWith: "sk_" } },
+      MAX_SIZE: { requirement: "optional", type: "Int", defaultValue: "1024" },
+      NODE_ENV: { requirement: "required", type: "Enum", enumValues: ["development", "production"] },
+      FEATURE_FLAG: { requirement: "optional", type: "Boolean", defaultValue: "false" },
     });
   });
 
@@ -76,11 +86,27 @@ describe("Parser — minimal app", () => {
         ssr: false
         typescript: false
         env: {
-          DATABASE_URL: mandatory
+          DATABASE_URL: mandatory String
         }
       }
     `),
     ).toThrow("E038_INVALID_ENV_REQUIREMENT");
+  });
+
+  it("throws on invalid app env type", () => {
+    expect(() =>
+      parse(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          DATABASE_URL: required URL
+        }
+      }
+    `),
+    ).toThrow("E040_INVALID_ENV_TYPE");
   });
 
   it("throws on duplicate app env keys", () => {
@@ -92,12 +118,44 @@ describe("Parser — minimal app", () => {
         ssr: false
         typescript: false
         env: {
-          DATABASE_URL: required
-          DATABASE_URL: optional
+          DATABASE_URL: required String
+          DATABASE_URL: optional String
         }
       }
     `),
     ).toThrow("E039_DUPLICATE_ENV_KEY");
+  });
+
+  it("throws on duplicate env enum variants", () => {
+    expect(() =>
+      parse(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          NODE_ENV: required Enum(dev, dev)
+        }
+      }
+    `),
+    ).toThrow("E041_DUPLICATE_ENV_ENUM_VARIANT");
+  });
+
+  it("throws on empty env Enum variant list", () => {
+    expect(() =>
+      parse(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          NODE_ENV: required Enum()
+        }
+      }
+    `),
+    ).toThrow("E042_EMPTY_ENV_ENUM");
   });
 });
 

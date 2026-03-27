@@ -413,11 +413,75 @@ describe("SemanticValidator", () => {
         ssr: false
         typescript: false
         env: {
-          database_url: required
+          database_url: required String
         }
       }
     `),
     ).toThrow("E122_INVALID_ENV_KEY");
+  });
+
+  it("fails with invalid default value for Enum env var", () => {
+    expect(() =>
+      validate(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          NODE_ENV: optional Enum(development, production) @default(staging)
+        }
+      }
+    `),
+    ).toThrow("E123_INVALID_ENV_DEFAULT");
+  });
+
+  it("fails with non-numeric default for Int env var", () => {
+    expect(() =>
+      validate(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          MAX_SIZE: optional Int @default(abc)
+        }
+      }
+    `),
+    ).toThrow("E124_INVALID_ENV_DEFAULT_TYPE");
+  });
+
+  it("fails when string validator is used on Int env var", () => {
+    expect(() =>
+      validate(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          MAX_SIZE: required Int @minLength(3)
+        }
+      }
+    `),
+    ).toThrow("E125_INCOMPATIBLE_ENV_VALIDATOR");
+  });
+
+  it("fails when numeric validator is used on String env var", () => {
+    expect(() =>
+      validate(`
+      app A {
+        title: "T"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          API_KEY: required String @min(10)
+        }
+      }
+    `),
+    ).toThrow("E125_INCOMPATIBLE_ENV_VALIDATOR");
   });
 
   // ── Bug 4: Validation ordering ──────────────────────────────────────────

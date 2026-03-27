@@ -16,6 +16,25 @@ export interface SourceLocation {
 
 export type EnvRequirement = "required" | "optional";
 
+export type EnvVarType = "String" | "Int" | "Boolean" | "Enum";
+
+export interface EnvVarValidation {
+  minLength?: number;
+  maxLength?: number;
+  startsWith?: string;
+  endsWith?: string;
+  min?: number;
+  max?: number;
+}
+
+export interface EnvVarDefinition {
+  requirement: EnvRequirement;
+  type: EnvVarType;
+  enumValues?: string[];
+  defaultValue?: string;
+  validation?: EnvVarValidation;
+}
+
 export interface DefaultImportExpression {
   kind: "default";
   defaultExport: string; // e.g. "Home" from `import Home from "@src/pages/Home.vue"`
@@ -195,7 +214,7 @@ export interface AppNode extends BaseNode {
   db: "Drizzle";
   ssr: boolean | "ssg"; // false = SPA (default), true = SSR, 'ssg' = Static Site Generation
   typescript: boolean;
-  env?: Record<string, EnvRequirement>;
+  env?: Record<string, EnvVarDefinition>;
 }
 
 export interface AuthNode extends BaseNode {

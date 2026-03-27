@@ -15,16 +15,23 @@ export class BackendGenerator extends BaseGenerator {
       fnSource: this.resolveServerImport(middleware.fn.source, "server/"),
       importAlias: `${this.camel(middleware.name)}Middleware`,
     }));
-    const requiredEnvVars = Object.entries(this.ctx.ast.app.env ?? {})
-      .filter(([, requirement]) => requirement === "required")
-      .map(([key]) => key);
+    const envVars = Object.entries(this.ctx.ast.app.env ?? {}).map(
+      ([name, def]) => ({
+        name,
+        requirement: def.requirement,
+        type: def.type,
+        enumValues: def.enumValues ?? null,
+        defaultValue: def.defaultValue ?? null,
+        validation: def.validation ?? null,
+      }),
+    );
 
     const data = {
       backendPort: DEFAULT_BACKEND_PORT,
       frontendPort: this.ctx.isSpa ? DEFAULT_SPA_PORT : DEFAULT_SSR_PORT,
       vaspVersion: VASP_VERSION,
       middlewares,
-      requiredEnvVars,
+      envVars,
     };
 
     this.write(

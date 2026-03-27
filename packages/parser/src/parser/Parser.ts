@@ -19,6 +19,9 @@ import type {
   EntityNode,
   EntityUniqueConstraint,
   EnvRequirement,
+  EnvVarDefinition,
+  EnvVarType,
+  EnvVarValidation,
   FieldModifier,
   FieldNode,
   FieldValidation,
@@ -274,7 +277,7 @@ class Parser {
     let db = "Drizzle" as const;
     let ssr: boolean | "ssg" = false;
     let typescript = false;
-    const env: Record<string, EnvRequirement> = {};
+    const env: Record<string, EnvVarDefinition> = {};
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -328,15 +331,15 @@ class Parser {
           while (!this.check(TokenType.RBRACE)) {
             const envKey = this.consumeIdentifier().value;
             this.consume(TokenType.COLON);
-            const requirement = this.consumeIdentifier()
-              .value as EnvRequirement;
+            const requirementToken = this.consumeIdentifier();
+            const requirement = requirementToken.value as EnvRequirement;
 
             if (requirement !== "required" && requirement !== "optional") {
               throw this.error(
                 "E038_INVALID_ENV_REQUIREMENT",
                 `Invalid env requirement '${requirement}' for '${envKey}'`,
                 "Use required or optional",
-                this.peek().loc,
+                requirementToken.loc,
               );
             }
 
@@ -349,7 +352,80 @@ class Parser {
               );
             }
 
-            env[envKey] = requirement;
+            // Parse type (String, Int, Boolean, Enum)
+            const typeToken = this.consumeIdentifier();
+            const envType = typeToken.value as EnvVarType;
+            const validEnvTypes = new Set<string>(["String", "Int", "Boolean", "Enum"]);
+            if (!validEnvTypes.has(envType)) {
+              throw this.error(
+                "E040_INVALID_ENV_TYPE",
+                `Invalid env type '${envType}' for '${envKey}'`,
+                "Use String, Int, Boolean, or Enum",
+                typeToken.loc,
+              );
+            }
+
+            let enumValues: string[] | undefined;
+            if (envType === "Enum") {
+              this.consume(TokenType.LPAREN);
+              enumValues = [];
+              const seenVariants = new Set<string>();
+              while (!this.check(TokenType.RPAREN)) {
+                const variant = this.consumeIdentifier();
+                if (seenVariants.has(variant.value)) {
+                  throw this.error(
+                    "E041_DUPLICATE_ENV_ENUM_VARIANT",
+                    `Duplicate enum variant '${variant.value}' for env key '${envKey}'`,
+                    "Each enum variant must be unique",
+                    variant.loc,
+                  );
+                }
+                seenVariants.add(variant.value);
+                enumValues.push(variant.value);
+                if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA);
+              }
+              this.consume(TokenType.RPAREN);
+              if (enumValues.length === 0) {
+                throw this.error(
+                  "E042_EMPTY_ENV_ENUM",
+                  `Env var '${envKey}' of type Enum must have at least one variant`,
+                  "Example: NODE_ENV: required Enum(development, production)",
+                  typeToken.loc,
+                );
+              }
+            }
+
+            // Parse optional modifiers: @default(...), @minLength(...), @maxLength(...),
+            // @startsWith(...), @endsWith(...), @min(...), @max(...)
+            let defaultValue: string | undefined;
+            const validation: EnvVarValidation = {};
+            while (this.check(TokenType.AT_MODIFIER)) {
+              const mod = this.consume(TokenType.AT_MODIFIER);
+              const modVal = mod.value;
+              if (modVal.startsWith("default_")) {
+                defaultValue = modVal.slice("default_".length);
+              } else if (modVal.startsWith("minLength_")) {
+                validation.minLength = Number(modVal.slice("minLength_".length));
+              } else if (modVal.startsWith("maxLength_")) {
+                validation.maxLength = Number(modVal.slice("maxLength_".length));
+              } else if (modVal.startsWith("startsWith_")) {
+                validation.startsWith = modVal.slice("startsWith_".length);
+              } else if (modVal.startsWith("endsWith_")) {
+                validation.endsWith = modVal.slice("endsWith_".length);
+              } else if (modVal.startsWith("min_")) {
+                validation.min = Number(modVal.slice("min_".length));
+              } else if (modVal.startsWith("max_")) {
+                validation.max = Number(modVal.slice("max_".length));
+              }
+              // Unknown env modifiers silently ignored (forward-compat)
+            }
+
+            const def: EnvVarDefinition = { requirement, type: envType };
+            if (enumValues !== undefined) def.enumValues = enumValues;
+            if (defaultValue !== undefined) def.defaultValue = defaultValue;
+            if (Object.keys(validation).length > 0) def.validation = validation;
+
+            env[envKey] = def;
             if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA);
           }
           this.consume(TokenType.RBRACE);

@@ -49,20 +49,53 @@ import { {{camelCase name}}UploadRoutes } from './routes/storage/{{camelCase nam
 
 const PORT = Number(process.env.PORT) || {{backendPort}}
 
-const REQUIRED_ENV_VARS = [{{#each requiredEnvVars}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]
-const missingEnvVars = REQUIRED_ENV_VARS.filter((name) => {
-  const value = process.env[name]
-  return typeof value !== 'string' || value.trim() === ''
-})
-
-if (missingEnvVars.length > 0) {
-  console.error('❌ Missing required environment variables:')
-  for (const key of missingEnvVars) {
-    console.error(`  - ${key}`)
+{{#if envVars}}
+// ── Environment variable validation ─────────────────────────────────────────
+{{#each envVars}}{{#if defaultValue}}
+if (!process.env.{{name}}?.trim()) process.env.{{name}} = '{{defaultValue}}'
+{{/if}}{{/each}}
+{
+  const _envErrors = []
+{{#each envVars}}
+  // {{name}}: {{requirement}} {{type}}{{#if enumValues}}({{join enumValues ", "}}){{/if}}
+{{#if (eq requirement "required")}}
+  if (!process.env.{{name}}?.trim()) _envErrors.push('{{name}} is required{{#if (eq type "Enum")}} (must be one of: {{join enumValues ", "}}){{else if (eq type "Int")}} (must be an integer){{else if (eq type "Boolean")}} (must be "true" or "false"){{/if}}')
+{{/if}}
+{{#if (eq type "Int")}}
+  if (process.env.{{name}} && isNaN(Number(process.env.{{name}}))) _envErrors.push(`{{name}} must be an integer (got "${process.env.{{name}}}")`)
+{{/if}}
+{{#if (eq type "Boolean")}}
+  if (process.env.{{name}} && !['true', 'false'].includes(process.env.{{name}})) _envErrors.push(`{{name}} must be "true" or "false" (got "${process.env.{{name}}}")`)
+{{/if}}
+{{#if (eq type "Enum")}}
+  if (process.env.{{name}} && ![{{#each enumValues}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}].includes(process.env.{{name}})) _envErrors.push(`{{name}} must be one of: {{join enumValues ", "}} (got "${process.env.{{name}}}")`)
+{{/if}}
+{{#if validation.minLength}}
+  if (process.env.{{name}} && process.env.{{name}}.length < {{validation.minLength}}) _envErrors.push(`{{name}} must be at least {{validation.minLength}} characters long (got ${process.env.{{name}}.length})`)
+{{/if}}
+{{#if validation.maxLength}}
+  if (process.env.{{name}} && process.env.{{name}}.length > {{validation.maxLength}}) _envErrors.push(`{{name}} must be at most {{validation.maxLength}} characters long (got ${process.env.{{name}}.length})`)
+{{/if}}
+{{#if validation.startsWith}}
+  if (process.env.{{name}} && !process.env.{{name}}.startsWith('{{validation.startsWith}}')) _envErrors.push('{{name}} must start with "{{validation.startsWith}}"')
+{{/if}}
+{{#if validation.endsWith}}
+  if (process.env.{{name}} && !process.env.{{name}}.endsWith('{{validation.endsWith}}')) _envErrors.push('{{name}} must end with "{{validation.endsWith}}"')
+{{/if}}
+{{#if validation.min}}
+  if (process.env.{{name}} && Number(process.env.{{name}}) < {{validation.min}}) _envErrors.push(`{{name}} must be >= {{validation.min}} (got ${process.env.{{name}}})`)
+{{/if}}
+{{#if validation.max}}
+  if (process.env.{{name}} && Number(process.env.{{name}}) > {{validation.max}}) _envErrors.push(`{{name}} must be <= {{validation.max}} (got ${process.env.{{name}}})`)
+{{/if}}
+{{/each}}
+  if (_envErrors.length > 0) {
+    console.error('❌ Environment variable validation failed:')
+    for (const _e of _envErrors) console.error('  - ' + _e)
+    process.exit(1)
   }
-  process.exit(1)
 }
-
+{{/if}}
 const app = new Elysia()
   .use(swagger({
     path: '/api/docs',

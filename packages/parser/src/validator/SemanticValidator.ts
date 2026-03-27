@@ -421,7 +421,11 @@ export class SemanticValidator {
   private checkEnvSchema(ast: VaspAST): void {
     const envSchema = ast.app?.env ?? {};
     const envKeyPattern = /^[A-Z][A-Z0-9_]*$/;
-    for (const envKey of Object.keys(envSchema)) {
+    const numericOnlyTypes = new Set(["Int", "Boolean"]);
+    const stringOnlyValidators = new Set(["minLength", "maxLength", "startsWith", "endsWith"]);
+    const numericValidators = new Set(["min", "max"]);
+
+    for (const [envKey, def] of Object.entries(envSchema)) {
       if (!envKeyPattern.test(envKey)) {
         this.diagnostics.push({
           code: "E122_INVALID_ENV_KEY",
@@ -429,6 +433,72 @@ export class SemanticValidator {
           hint: "Use uppercase env names like DATABASE_URL or JWT_SECRET",
           loc: ast.app.loc,
         });
+      }
+
+      // @default value for Enum must be one of the declared variants
+      if (def.type === "Enum" && def.defaultValue !== undefined && def.enumValues) {
+        if (!def.enumValues.includes(def.defaultValue)) {
+          this.diagnostics.push({
+            code: "E123_INVALID_ENV_DEFAULT",
+            message: `Default value '${def.defaultValue}' for '${envKey}' is not a valid enum variant`,
+            hint: `Valid variants: ${def.enumValues.join(", ")}`,
+            loc: ast.app.loc,
+          });
+        }
+      }
+
+      // @default value for Int must be numeric
+      if (def.type === "Int" && def.defaultValue !== undefined) {
+        if (isNaN(Number(def.defaultValue))) {
+          this.diagnostics.push({
+            code: "E124_INVALID_ENV_DEFAULT_TYPE",
+            message: `Default value '${def.defaultValue}' for '${envKey}' must be an integer`,
+            hint: "Example: MAX_SIZE: optional Int @default(1024)",
+            loc: ast.app.loc,
+          });
+        }
+      }
+
+      // @default value for Boolean must be "true" or "false"
+      if (def.type === "Boolean" && def.defaultValue !== undefined) {
+        if (def.defaultValue !== "true" && def.defaultValue !== "false") {
+          this.diagnostics.push({
+            code: "E124_INVALID_ENV_DEFAULT_TYPE",
+            message: `Default value '${def.defaultValue}' for '${envKey}' must be "true" or "false"`,
+            hint: "Example: ENABLE_FEATURE: optional Boolean @default(false)",
+            loc: ast.app.loc,
+          });
+        }
+      }
+
+      if (def.validation) {
+        const v = def.validation;
+        // String-only validators used on non-String types
+        if (numericOnlyTypes.has(def.type)) {
+          for (const sv of stringOnlyValidators) {
+            if (sv in v) {
+              this.diagnostics.push({
+                code: "E125_INCOMPATIBLE_ENV_VALIDATOR",
+                message: `Validator @${sv} is not valid for ${def.type} env var '${envKey}'`,
+                hint: `@${sv} can only be used on String or Enum env vars`,
+                loc: ast.app.loc,
+              });
+            }
+          }
+        }
+        // Numeric validators used on non-Int types
+        if (def.type !== "Int") {
+          for (const nv of numericValidators) {
+            if (nv in v) {
+              this.diagnostics.push({
+                code: "E125_INCOMPATIBLE_ENV_VALIDATOR",
+                message: `Validator @${nv} is not valid for ${def.type} env var '${envKey}'`,
+                hint: `@${nv} can only be used on Int env vars`,
+                loc: ast.app.loc,
+              });
+            }
+          }
+        }
       }
     }
   }

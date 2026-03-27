@@ -205,7 +205,13 @@ export class Lexer {
       (name === "default" ||
         name === "onDelete" ||
         name === "validate" ||
-        name === "storage") &&
+        name === "storage" ||
+        name === "minLength" ||
+        name === "maxLength" ||
+        name === "startsWith" ||
+        name === "endsWith" ||
+        name === "min" ||
+        name === "max") &&
       this.peek() === "("
     ) {
       const parenLoc = this.loc(); // capture opening '(' location for error reporting
@@ -249,9 +255,12 @@ export class Lexer {
       } else if (name === "storage") {
         // storage: StorageBlockName
         modifier = `storage_${argTrimmed}`;
-      } else {
+      } else if (name === "validate") {
         // validate: raw key-value content preserved for the Parser to decode
         modifier = `validate_${argTrimmed}`;
+      } else {
+        // env validators: minLength, maxLength, startsWith, endsWith, min, max
+        modifier = `${name}_${argTrimmed}`;
       }
     }
     this.tokens.push({ type: TokenType.AT_MODIFIER, value: modifier, loc });
