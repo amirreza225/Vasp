@@ -18,6 +18,9 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@vasp-framework/core": "workspace:*",
+    "@vasp-framework/generator": "workspace:*",
+    "@vasp-framework/parser": "workspace:*",
     "picocolors": "^1.1.0"
   },
   "devDependencies": {
