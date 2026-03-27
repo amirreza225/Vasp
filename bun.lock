@@ -21,7 +21,7 @@
     },
     "packages/cli": {
       "name": "vasp-cli",
-      "version": "1.3.4",
+      "version": "1.4.2",
       "bin": {
         "vasp": "dist/vasp",
       },
@@ -33,20 +33,20 @@
       },
       "devDependencies": {
         "typescript": "*",
-        "vitest": "*",
+        "vitest": "^2.0.0",
       },
     },
     "packages/core": {
       "name": "@vasp-framework/core",
-      "version": "1.3.4",
+      "version": "1.4.2",
       "devDependencies": {
         "typescript": "*",
-        "vitest": "*",
+        "vitest": "^2.0.0",
       },
     },
     "packages/generator": {
       "name": "@vasp-framework/generator",
-      "version": "1.3.4",
+      "version": "1.4.2",
       "dependencies": {
         "@vasp-framework/core": "1.3.4",
         "@vasp-framework/parser": "1.3.4",
@@ -55,30 +55,30 @@
       "devDependencies": {
         "@types/handlebars": "^4.1.0",
         "typescript": "*",
-        "vitest": "*",
+        "vitest": "^2.0.0",
       },
     },
     "packages/parser": {
       "name": "@vasp-framework/parser",
-      "version": "1.3.4",
+      "version": "1.4.2",
       "dependencies": {
         "@vasp-framework/core": "1.3.4",
       },
       "devDependencies": {
         "typescript": "*",
-        "vitest": "*",
+        "vitest": "^2.0.0",
       },
     },
     "packages/runtime": {
       "name": "@vasp-framework/runtime",
-      "version": "1.3.4",
+      "version": "1.4.2",
       "dependencies": {
         "ofetch": "^1.3.4",
         "vue": "^3.5.0",
       },
       "devDependencies": {
         "typescript": "*",
-        "vitest": "*",
+        "vitest": "^2.0.0",
       },
       "peerDependencies": {
         "vue": "^3.5.0",
@@ -744,6 +744,12 @@
 
     "@typescript-eslint/eslint-plugin/ignore": ["ignore@7.0.5", "", {}, "sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg=="],
 
+    "@vasp-framework/generator/@vasp-framework/core": ["@vasp-framework/core@1.3.4", "", {}, "sha512-dAF3yHhcUfCwEuuoi7C7+Hqddx++tDqFUGYMS3dDEieXWBsjwXZOcJNBmEIC1ApJGONIyuwSh+HJEqxlFoiqZw=="],
+
+    "@vasp-framework/generator/@vasp-framework/parser": ["@vasp-framework/parser@1.3.4", "", { "dependencies": { "@vasp-framework/core": "1.3.4" } }, "sha512-XBsrgm2g0QKSApqhbtEDTYIyxlOCJ4FeYXpd2vfa129NvOy6m82PxkF+DUeLsWTBXEZvFIAyJgDL16VHb282Xw=="],
+
+    "@vasp-framework/parser/@vasp-framework/core": ["@vasp-framework/core@1.3.4", "", {}, "sha512-dAF3yHhcUfCwEuuoi7C7+Hqddx++tDqFUGYMS3dDEieXWBsjwXZOcJNBmEIC1ApJGONIyuwSh+HJEqxlFoiqZw=="],
+
     "@vue/compiler-core/estree-walker": ["estree-walker@2.0.2", "", {}, "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w=="],
 
     "@vue/compiler-sfc/estree-walker": ["estree-walker@2.0.2", "", {}, "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w=="],
@@ -761,6 +767,12 @@
     "string-width-cjs/strip-ansi": ["strip-ansi@6.0.1", "", { "dependencies": { "ansi-regex": "^5.0.1" } }, "sha512-Y38VPSHcqkFrCpFnQ9vuSXmquuv5oXOKpGeT6aGrr3o3Gc9AlVa6JBfUSOCnbxGGZF+/0ooI7KrPuUSztUdU5A=="],
 
     "strip-ansi-cjs/ansi-regex": ["ansi-regex@5.0.1", "", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="],
+
+    "vasp-cli/@vasp-framework/core": ["@vasp-framework/core@1.3.4", "", {}, "sha512-dAF3yHhcUfCwEuuoi7C7+Hqddx++tDqFUGYMS3dDEieXWBsjwXZOcJNBmEIC1ApJGONIyuwSh+HJEqxlFoiqZw=="],
+
+    "vasp-cli/@vasp-framework/generator": ["@vasp-framework/generator@1.3.4", "", { "dependencies": { "@vasp-framework/core": "1.3.4", "@vasp-framework/parser": "1.3.4", "handlebars": "^4.7.8" } }, "sha512-GjRPMtsgEEfMbABSro59CjMXV/gbnhfY1Jkyk1ASctmbJ+41ZmBG6iCXFlvVhJ2ySzo/lcYPQ+F2m74f24QAnQ=="],
+
+    "vasp-cli/@vasp-framework/parser": ["@vasp-framework/parser@1.3.4", "", { "dependencies": { "@vasp-framework/core": "1.3.4" } }, "sha512-XBsrgm2g0QKSApqhbtEDTYIyxlOCJ4FeYXpd2vfa129NvOy6m82PxkF+DUeLsWTBXEZvFIAyJgDL16VHb282Xw=="],
 
     "vite/fsevents": ["fsevents@2.3.3", "", { "os": "darwin" }, "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw=="],
 
