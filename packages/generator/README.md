@@ -2,7 +2,7 @@
 
 Handlebars-based code generator for Vasp. Takes a `VaspAST` and writes a complete, production-ready full-stack project to disk.
 
-**Version: 1.3.4**
+**Version: 1.4.0**
 
 This is an internal package used by `vasp-cli`. You don't need to install it unless you're building custom Vasp tooling.
 
