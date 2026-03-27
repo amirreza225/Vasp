@@ -7,8 +7,12 @@ import type {
   AppNode,
   AuthMethod,
   AuthNode,
-  CacheNode,
-  CacheProvider,
+  AutoPageNode,
+  AutoPageType,
+  AutoPageRowAction,
+  AutoPageTopAction,
+  AutoPageLayout,
+  CacheNode,  CacheProvider,
   CacheRedisConfig,
   CrudNode,
   CrudListConfig,
@@ -61,6 +65,7 @@ import type {
 import {
   ParseError,
   SUPPORTED_AUTH_METHODS,
+  SUPPORTED_AUTOPAGE_TYPES,
   SUPPORTED_CRUD_OPERATIONS,
   SUPPORTED_JOB_BACKOFF_STRATEGIES,
   SUPPORTED_OBSERVABILITY_EXPORTERS,
@@ -146,6 +151,7 @@ class Parser {
       cruds: [],
       realtimes: [],
       jobs: [],
+      autoPages: [],
     };
 
     while (!this.isEOF()) {
@@ -255,11 +261,14 @@ class Parser {
             }
             ast.observability = this.parseObservability();
             break;
+          case TokenType.KW_AUTOPAGE:
+            (ast.autoPages ??= []).push(this.parseAutoPage());
+            break;
           default:
             throw this.error(
               "E010_UNEXPECTED_TOKEN",
               `Unexpected token '${kw.value}' at top level`,
-              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, storage, email, cache, webhook, or observability",
+              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, storage, email, cache, webhook, observability, or autoPage",
               kw.loc,
             );
         }
@@ -2024,6 +2033,171 @@ class Parser {
     this.consume(TokenType.RBRACE);
 
     return { type: "Observability", tracing, metrics, logs, exporter, errorTracking, loc };
+  }
+
+  private parseAutoPage(): AutoPageNode {
+    const loc = this.consume(TokenType.KW_AUTOPAGE).loc;
+    const name = this.consumeIdentifier();
+    this.consume(TokenType.LBRACE);
+
+    let entity = "";
+    let path = "";
+    let pageType: AutoPageType | null = null;
+    let title: string | undefined;
+    let columns: string[] | undefined;
+    let sortable: string[] | undefined;
+    let filterable: string[] | undefined;
+    let searchable: string[] | undefined;
+    let paginate: boolean | undefined;
+    let pageSize: number | undefined;
+    let rowActions: AutoPageRowAction[] | undefined;
+    let topActions: AutoPageTopAction[] | undefined;
+    let fields: string[] | undefined;
+    let layout: AutoPageLayout | undefined;
+    let submitAction: string | undefined;
+    let successRoute: string | undefined;
+    let auth: boolean | undefined;
+    let roles: string[] | undefined;
+
+    while (!this.check(TokenType.RBRACE) && !this.check(TokenType.EOF)) {
+      const key = this.consumeIdentifier();
+      this.consume(TokenType.COLON);
+
+      switch (key.value) {
+        case "entity":
+          entity = this.consumeIdentifier().value;
+          break;
+        case "path":
+          path = this.consumeString();
+          break;
+        case "type": {
+          const typeTok = this.consumeIdentifier();
+          if (
+            !(SUPPORTED_AUTOPAGE_TYPES as readonly string[]).includes(
+              typeTok.value,
+            )
+          ) {
+            throw this.error(
+              "E_AUTOPAGE_INVALID_TYPE",
+              `Invalid autoPage type '${typeTok.value}'`,
+              `Valid values: ${SUPPORTED_AUTOPAGE_TYPES.join(", ")}`,
+              typeTok.loc,
+            );
+          }
+          pageType = typeTok.value as AutoPageType;
+          break;
+        }
+        case "title":
+          title = this.consumeString();
+          break;
+        case "columns":
+          columns = this.parseIdentifierArray();
+          break;
+        case "sortable":
+          sortable = this.parseIdentifierArray();
+          break;
+        case "filterable":
+          filterable = this.parseIdentifierArray();
+          break;
+        case "searchable":
+          searchable = this.parseIdentifierArray();
+          break;
+        case "paginate": {
+          const bt = this.consume(TokenType.BOOLEAN);
+          paginate = bt.value === "true";
+          break;
+        }
+        case "pageSize": {
+          const numTok = this.consume(TokenType.NUMBER);
+          pageSize = Number(numTok.value);
+          break;
+        }
+        case "rowActions":
+          rowActions = this.parseIdentifierArray() as AutoPageRowAction[];
+          break;
+        case "topActions":
+          topActions = this.parseIdentifierArray() as AutoPageTopAction[];
+          break;
+        case "fields":
+          fields = this.parseIdentifierArray();
+          break;
+        case "layout":
+          layout = this.consumeString() as AutoPageLayout;
+          break;
+        case "submitAction":
+          submitAction = this.consumeIdentifier().value;
+          break;
+        case "successRoute":
+          successRoute = this.consumeString();
+          break;
+        case "auth": {
+          const at = this.consume(TokenType.BOOLEAN);
+          auth = at.value === "true";
+          break;
+        }
+        case "roles":
+          roles = this.parseIdentifierArray();
+          break;
+        default:
+          throw this.error(
+            "E_AUTOPAGE_UNKNOWN_PROP",
+            `Unknown autoPage property '${key.value}'`,
+            "Valid properties: entity, path, type, title, columns, sortable, filterable, searchable, paginate, pageSize, rowActions, topActions, fields, layout, submitAction, successRoute, auth, roles",
+            key.loc,
+          );
+      }
+    }
+
+    this.consume(TokenType.RBRACE);
+
+    if (!entity) {
+      throw this.error(
+        "E_AUTOPAGE_NO_ENTITY",
+        `autoPage '${name.value}' is missing required property 'entity'`,
+        "Add: entity: MyEntityName",
+        loc,
+      );
+    }
+    if (!path) {
+      throw this.error(
+        "E_AUTOPAGE_NO_PATH",
+        `autoPage '${name.value}' is missing required property 'path'`,
+        'Add: path: "/my-path"',
+        loc,
+      );
+    }
+    if (!pageType) {
+      throw this.error(
+        "E_AUTOPAGE_NO_TYPE",
+        `autoPage '${name.value}' is missing required property 'type'`,
+        `Valid values: ${SUPPORTED_AUTOPAGE_TYPES.join(", ")}`,
+        loc,
+      );
+    }
+
+    return {
+      type: "AutoPage",
+      name: name.value,
+      loc,
+      entity,
+      path,
+      pageType,
+      ...(title !== undefined ? { title } : {}),
+      ...(columns !== undefined ? { columns } : {}),
+      ...(sortable !== undefined ? { sortable } : {}),
+      ...(filterable !== undefined ? { filterable } : {}),
+      ...(searchable !== undefined ? { searchable } : {}),
+      ...(paginate !== undefined ? { paginate } : {}),
+      ...(pageSize !== undefined ? { pageSize } : {}),
+      ...(rowActions !== undefined ? { rowActions } : {}),
+      ...(topActions !== undefined ? { topActions } : {}),
+      ...(fields !== undefined ? { fields } : {}),
+      ...(layout !== undefined ? { layout } : {}),
+      ...(submitAction !== undefined ? { submitAction } : {}),
+      ...(successRoute !== undefined ? { successRoute } : {}),
+      ...(auth !== undefined ? { auth } : {}),
+      ...(roles !== undefined ? { roles } : {}),
+    };
   }
 
   /** Parses the `cache: { store, ttl, key, invalidateOn }` sub-block inside a query */

@@ -19,6 +19,7 @@ export enum TokenType {
   KW_CACHE = "cache",
   KW_WEBHOOK = "webhook",
   KW_OBSERVABILITY = "observability",
+  KW_AUTOPAGE = "autoPage",
 
   // Value-position keywords
   KW_IMPORT = "import",
@@ -71,6 +72,7 @@ export const BLOCK_KEYWORDS = new Set<string>([
   TokenType.KW_CACHE,
   TokenType.KW_WEBHOOK,
   TokenType.KW_OBSERVABILITY,
+  TokenType.KW_AUTOPAGE,
 ]);
 
 /** All reserved keywords (cannot be used as identifiers in value position) */

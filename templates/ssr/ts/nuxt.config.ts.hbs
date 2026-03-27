@@ -7,6 +7,16 @@ export default defineNuxtConfig({
     strict: true,
     typeCheck: true,
   },
+  modules: ['@primevue/nuxt-module'],
+  primevue: {
+    options: {
+      theme: {
+        preset: 'Aura',
+        options: { darkModeSelector: '.app-dark' }
+      }
+    }
+  },
+  css: ['primeicons/primeicons.css'],
   alias: {
     '@src': '~/src',
     '@shared': '~/shared',

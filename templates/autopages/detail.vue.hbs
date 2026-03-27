@@ -1,0 +1,97 @@
+<script setup{{#if isTypeScript}} lang="ts"{{/if}}>
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import Button from 'primevue/button'
+import Tag from 'primevue/tag'
+import Skeleton from 'primevue/skeleton'
+import { useConfirm } from 'primevue/useconfirm'
+import { useToast } from 'primevue/usetoast'
+
+const route = useRoute()
+const router = useRouter()
+const confirm = useConfirm()
+const toast = useToast()
+
+const record = ref(null)
+const loading = ref(true)
+
+onMounted(async () => {
+  const res = await fetch('/api/{{kebabCase entityNamePascal}}/' + route.params.id)
+  record.value = await res.json()
+  loading.value = false
+})
+
+function confirmDelete() {
+  confirm.require({
+    message: 'Are you sure you want to delete this record?',
+    header: 'Confirm Delete',
+    icon: 'pi pi-exclamation-triangle',
+    rejectProps: { label: 'Cancel', severity: 'secondary', outlined: true },
+    acceptProps: { label: 'Delete', severity: 'danger' },
+    accept: async () => {
+      await fetch('/api/{{kebabCase entityNamePascal}}/' + route.params.id, { method: 'DELETE' })
+      toast.add({ severity: 'success', summary: 'Deleted', life: 3000 })
+      router.back()
+    }
+  })
+}
+</script>
+
+<template>
+  <div class="p-6 max-w-3xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center gap-4">
+        <Button icon="pi pi-arrow-left" severity="secondary" rounded outlined @click="router.back()" />
+        <h1 class="text-2xl font-semibold m-0">{{pageTitle}}</h1>
+      </div>
+      <div class="flex gap-2">
+        <Button
+          label="Edit"
+          icon="pi pi-pencil"
+          outlined
+          @click="router.push(route.path + '/edit')"
+        />
+        <Button
+          label="Delete"
+          icon="pi pi-trash"
+          severity="danger"
+          outlined
+          @click="confirmDelete()"
+        />
+      </div>
+    </div>
+
+    <div class="card p-6 border border-surface rounded-xl shadow-sm">
+      <template v-if="loading">
+        <div class="flex flex-col gap-4">
+          <Skeleton v-for="i in {{fieldCount}}" :key="i" height="2.5rem" />
+        </div>
+      </template>
+      <template v-else-if="record">
+        <div class="divide-y divide-surface">
+          {{#each resolvedFields}}
+          <div class="py-4 grid grid-cols-3 gap-4 items-start">
+            <span class="font-medium text-surface-500 text-sm">{{label}}</span>
+            <span class="col-span-2 text-sm">
+              {{#if (eq columnType "boolean")}}
+              <i :class="record.{{key}} ? 'pi pi-check text-green-500' : 'pi pi-times text-red-400'" />
+              {{else if (eq columnType "date")}}
+              <time v-if="record.{{key}}" :datetime="record.{{key}}">\{{ new Date(record.{{key}}).toLocaleString() }}</time>
+              <span v-else>—</span>
+              {{else if (eq columnType "badge")}}
+              <Tag :value="record.{{key}}" v-if="record.{{key}}" />
+              <span v-else>—</span>
+              {{else}}
+              <span>\{{ record.{{key}} ?? '—' }}</span>
+              {{/if}}
+            </span>
+          </div>
+          {{/each}}
+        </div>
+      </template>
+      <template v-else>
+        <p class="text-surface-500 text-sm">Record not found.</p>
+      </template>
+    </div>
+  </div>
+</template>

@@ -22,6 +22,10 @@ import {
   SUPPORTED_FIELD_TYPES,
   SUPPORTED_STORAGE_PROVIDERS,
   SUPPORTED_WEBHOOK_VERIFICATIONS,
+  SUPPORTED_AUTOPAGE_TYPES,
+  SUPPORTED_AUTOPAGE_ROW_ACTIONS,
+  SUPPORTED_AUTOPAGE_TOP_ACTIONS,
+  SUPPORTED_AUTOPAGE_LAYOUTS,
 } from "@vasp-framework/core";
 
 export class SemanticValidator {
@@ -65,6 +69,7 @@ export class SemanticValidator {
     this.checkCacheBlocks(ast);
     this.checkWebhookBlocks(ast);
     this.checkObservabilityBlock(ast);
+    this.checkAutoPages(ast);
     return [...this.diagnostics];
   }
 
@@ -1272,6 +1277,123 @@ export class SemanticValidator {
         hint: 'Enable metrics to expose the Prometheus endpoint: metrics: true',
         loc: obs.loc,
       });
+    }
+  }
+
+  private checkAutoPages(ast: VaspAST): void {
+    if (!ast.autoPages?.length) return;
+
+    const entityNames = new Set(ast.entities?.map((e) => e.name) ?? []);
+    const autoPageNames = new Set<string>();
+    const allPaths = new Set<string>(ast.routes.map((r) => r.path));
+
+    for (const ap of ast.autoPages) {
+      // Duplicate names
+      if (autoPageNames.has(ap.name)) {
+        this.diagnostics.push({
+          code: "E_AUTOPAGE_DUPLICATE",
+          message: `Duplicate autoPage name '${ap.name}'`,
+          hint: "Each autoPage must have a unique name",
+          loc: ap.loc,
+        });
+      }
+      autoPageNames.add(ap.name);
+
+      // Entity must be declared
+      if (!entityNames.has(ap.entity)) {
+        this.diagnostics.push({
+          code: "E_AUTOPAGE_UNKNOWN_ENTITY",
+          message: `autoPage '${ap.name}' references unknown entity '${ap.entity}'`,
+          hint: `Declare an entity block named '${ap.entity}'`,
+          loc: ap.loc,
+        });
+      }
+
+      // pageType must be valid
+      if (
+        !(SUPPORTED_AUTOPAGE_TYPES as readonly string[]).includes(ap.pageType)
+      ) {
+        this.diagnostics.push({
+          code: "E_AUTOPAGE_INVALID_TYPE",
+          message: `autoPage '${ap.name}' has invalid type '${ap.pageType}'`,
+          hint: `Valid types: ${SUPPORTED_AUTOPAGE_TYPES.join(", ")}`,
+          loc: ap.loc,
+        });
+      }
+
+      // layout must be valid when present
+      if (
+        ap.layout &&
+        !(SUPPORTED_AUTOPAGE_LAYOUTS as readonly string[]).includes(ap.layout)
+      ) {
+        this.diagnostics.push({
+          code: "E_AUTOPAGE_INVALID_LAYOUT",
+          message: `autoPage '${ap.name}' has invalid layout '${ap.layout}'`,
+          hint: `Valid layouts: ${SUPPORTED_AUTOPAGE_LAYOUTS.join(", ")}`,
+          loc: ap.loc,
+        });
+      }
+
+      // rowActions must be valid
+      for (const ra of ap.rowActions ?? []) {
+        if (!(SUPPORTED_AUTOPAGE_ROW_ACTIONS as readonly string[]).includes(ra)) {
+          this.diagnostics.push({
+            code: "E_AUTOPAGE_INVALID_ROW_ACTION",
+            message: `autoPage '${ap.name}' has invalid rowAction '${ra}'`,
+            hint: `Valid rowActions: ${SUPPORTED_AUTOPAGE_ROW_ACTIONS.join(", ")}`,
+            loc: ap.loc,
+          });
+        }
+      }
+
+      // topActions must be valid
+      for (const ta of ap.topActions ?? []) {
+        if (!(SUPPORTED_AUTOPAGE_TOP_ACTIONS as readonly string[]).includes(ta)) {
+          this.diagnostics.push({
+            code: "E_AUTOPAGE_INVALID_TOP_ACTION",
+            message: `autoPage '${ap.name}' has invalid topAction '${ta}'`,
+            hint: `Valid topActions: ${SUPPORTED_AUTOPAGE_TOP_ACTIONS.join(", ")}`,
+            loc: ap.loc,
+          });
+        }
+      }
+
+      // Field names in columns/fields/sortable/filterable/searchable should exist on entity
+      const entity = ast.entities?.find((e) => e.name === ap.entity);
+      if (entity) {
+        const fieldKeys = new Set(entity.fields.map((f) => f.name));
+        const checkFieldRefs = (
+          names: string[] | undefined,
+          prop: string,
+        ): void => {
+          for (const n of names ?? []) {
+            if (!fieldKeys.has(n)) {
+              this.diagnostics.push({
+                code: "E_AUTOPAGE_UNKNOWN_FIELD",
+                message: `autoPage '${ap.name}' ${prop} references unknown field '${n}' on entity '${ap.entity}'`,
+                hint: `Valid fields: ${[...fieldKeys].join(", ")}`,
+                loc: ap.loc,
+              });
+            }
+          }
+        };
+        checkFieldRefs(ap.columns, "columns");
+        checkFieldRefs(ap.fields, "fields");
+        checkFieldRefs(ap.sortable, "sortable");
+        checkFieldRefs(ap.filterable, "filterable");
+        checkFieldRefs(ap.searchable, "searchable");
+      }
+
+      // Duplicate paths (across autoPages and regular routes)
+      if (allPaths.has(ap.path)) {
+        this.diagnostics.push({
+          code: "E_AUTOPAGE_DUPLICATE_PATH",
+          message: `autoPage '${ap.name}' path '${ap.path}' conflicts with another route or autoPage`,
+          hint: "Use a unique path for each autoPage and route",
+          loc: ap.loc,
+        });
+      }
+      allPaths.add(ap.path);
     }
   }
 }

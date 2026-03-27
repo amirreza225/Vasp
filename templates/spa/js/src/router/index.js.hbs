@@ -10,6 +10,15 @@ const routes = [
     component: () => import('{{lookup ../pagesMap to}}'),
   },
 {{/each}}
+{{#each autoPages}}
+  {
+    path: '{{path}}',
+    component: () => import('../pages/{{name}}.vue'),
+    {{#if auth}}
+    meta: { requiresAuth: true{{#if roles}}, roles: [{{#each roles}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]{{/if}} },
+    {{/if}}
+  },
+{{/each}}
 {{#if hasAuth}}
   {
     path: '/login',

@@ -2,8 +2,23 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router/index.js'
 import { vaspPlugin } from './vasp/plugin.js'
+import PrimeVue from 'primevue/config'
+import Aura from '@primevue/themes/aura'
+import ToastService from 'primevue/toastservice'
+import ConfirmationService from 'primevue/confirmationservice'
+import DialogService from 'primevue/dialogservice'
+import 'primeicons/primeicons.css'
 
 const app = createApp(App)
 app.use(router)
 app.use(vaspPlugin)
+app.use(PrimeVue, {
+  theme: {
+    preset: Aura,
+    options: { darkModeSelector: '.app-dark' }
+  }
+})
+app.use(ToastService)
+app.use(ConfirmationService)
+app.use(DialogService)
 app.mount('#app')

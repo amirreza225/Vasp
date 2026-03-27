@@ -1,6 +1,9 @@
 <script setup>
 import VaspErrorBoundary from './components/VaspErrorBoundary.vue'
 import VaspNotifications from './components/VaspNotifications.vue'
+import Toast from 'primevue/toast'
+import ConfirmDialog from 'primevue/confirmdialog'
+import DynamicDialog from 'primevue/dynamicdialog'
 </script>
 
 <template>
@@ -8,4 +11,7 @@ import VaspNotifications from './components/VaspNotifications.vue'
     <RouterView />
   </VaspErrorBoundary>
   <VaspNotifications />
+  <Toast />
+  <ConfirmDialog />
+  <DynamicDialog />
 </template>

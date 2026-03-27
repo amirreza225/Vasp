@@ -1,0 +1,127 @@
+<script setup{{#if isTypeScript}} lang="ts"{{/if}}>
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { Form } from '@primevue/forms'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import Textarea from 'primevue/textarea'
+import ToggleSwitch from 'primevue/toggleswitch'
+import DatePicker from 'primevue/datepicker'
+import Select from 'primevue/select'
+import FileUpload from 'primevue/fileupload'
+import Button from 'primevue/button'
+import Message from 'primevue/message'
+import { useToast } from 'primevue/usetoast'
+
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
+
+const isEdit = !!route.params.id
+const loading = ref(false)
+
+const initialValues = ref({
+  {{#each resolvedFields}}
+  {{key}}: {{#if isBoolean}}false{{else if isDateTime}}null{{else if isNumber}}null{{else}}''{{/if}},
+  {{/each}}
+})
+
+onMounted(async () => {
+  if (isEdit) {
+    loading.value = true
+    try {
+      const res = await fetch('/api/{{kebabCase entityNamePascal}}/' + route.params.id)
+      initialValues.value = await res.json()
+    } finally {
+      loading.value = false
+    }
+  }
+})
+
+async function onSubmit({ valid, values }) {
+  if (!valid) return
+  const url = isEdit
+    ? '/api/{{kebabCase entityNamePascal}}/' + route.params.id
+    : '/api/{{kebabCase entityNamePascal}}'
+  const method = isEdit ? 'PUT' : 'POST'
+  await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(values),
+  })
+  toast.add({ severity: 'success', summary: isEdit ? 'Updated!' : 'Created!', life: 3000 })
+  router.push('{{successRoute}}')
+}
+</script>
+
+<template>
+  <div class="p-6">
+    <div class="{{#if isTwoColumn}}max-w-5xl{{else}}max-w-2xl{{/if}} mx-auto">
+      <div class="flex items-center gap-4 mb-6">
+        <Button icon="pi pi-arrow-left" severity="secondary" rounded outlined @click="router.back()" />
+        <h1 class="text-2xl font-semibold m-0">
+          <template v-if="isEdit">Edit {{pageTitle}}</template>
+          <template v-else>{{pageTitle}}</template>
+        </h1>
+      </div>
+
+      <div class="card p-6 border border-surface rounded-xl shadow-sm">
+        <Form
+          v-slot="$form"
+          :initialValues="initialValues"
+          @submit="onSubmit"
+          class="{{#if isTwoColumn}}grid grid-cols-2 gap-x-6 gap-y-4{{else}}flex flex-col gap-4{{/if}}"
+        >
+          {{#each resolvedFields}}
+          <div class="flex flex-col gap-1">
+            <label for="field-{{key}}" class="font-medium text-sm">
+              {{label}}{{#if isRequired}} <span class="text-red-500">*</span>{{/if}}
+            </label>
+
+            {{#if isBoolean}}
+            <ToggleSwitch name="{{key}}" inputId="field-{{key}}" />
+            {{else if isDateTime}}
+            <DatePicker name="{{key}}" inputId="field-{{key}}" fluid showIcon />
+            {{else if isEnum}}
+            <Select
+              name="{{key}}"
+              inputId="field-{{key}}"
+              :options="[{{#each enumOptions}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]"
+              fluid
+            />
+            {{else if isFile}}
+            <FileUpload name="{{key}}" mode="basic" chooseLabel="Upload file" />
+            {{else if isText}}
+            <Textarea name="{{key}}" id="field-{{key}}" rows="4" fluid autoResize />
+            {{else if isNumber}}
+            <InputNumber name="{{key}}" inputId="field-{{key}}" fluid />
+            {{else}}
+            <InputText name="{{key}}" id="field-{{key}}" fluid />
+            {{/if}}
+
+            <Message v-if="$form.{{key}}?.invalid" severity="error" size="small" variant="simple">
+              \{{ $form.{{key}}.error?.message }}
+            </Message>
+          </div>
+          {{/each}}
+
+          <div class="{{#if isTwoColumn}}col-span-2{{/if}} flex gap-3 justify-end pt-4 border-t border-surface">
+            <Button
+              label="Cancel"
+              severity="secondary"
+              outlined
+              type="button"
+              @click="router.back()"
+            />
+            <Button
+              :label="isEdit ? 'Save Changes' : 'Create'"
+              type="submit"
+              icon="pi pi-check"
+              :loading="loading"
+            />
+          </div>
+        </Form>
+      </div>
+    </div>
+  </div>
+</template>

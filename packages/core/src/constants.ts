@@ -95,6 +95,30 @@ export const SUPPORTED_MULTI_TENANT_STRATEGIES = [
   "database-level",
 ] as const;
 
+export const SUPPORTED_AUTOPAGE_TYPES = [
+  "list",
+  "form",
+  "detail",
+] as const;
+
+export const SUPPORTED_AUTOPAGE_ROW_ACTIONS = [
+  "view",
+  "edit",
+  "delete",
+] as const;
+
+export const SUPPORTED_AUTOPAGE_TOP_ACTIONS = [
+  "create",
+  "export",
+] as const;
+
+export const SUPPORTED_AUTOPAGE_LAYOUTS = [
+  "1-column",
+  "2-column",
+  "tabs",
+  "wizard",
+] as const;
+
 export const DEFAULT_BACKEND_PORT = 3001;
 export const DEFAULT_SPA_PORT = 5173;
 export const DEFAULT_SSR_PORT = 3000;
