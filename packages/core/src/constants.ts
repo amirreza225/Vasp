@@ -28,7 +28,17 @@ export const SUPPORTED_REALTIME_EVENTS = [
   "updated",
   "deleted",
 ] as const;
-export const SUPPORTED_JOB_EXECUTORS = ["PgBoss"] as const;
+export const SUPPORTED_JOB_EXECUTORS = [
+  "PgBoss",
+  "BullMQ",
+  "RedisStreams",
+  "RabbitMQ",
+  "Kafka",
+] as const;
+export const SUPPORTED_JOB_BACKOFF_STRATEGIES = [
+  "fixed",
+  "exponential",
+] as const;
 export const SUPPORTED_FIELD_TYPES = [
   "String",
   "Int",

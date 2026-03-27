@@ -87,8 +87,83 @@ realtime TodoChannel {
 
 job sendWelcomeEmail {
   executor: PgBoss
+  priority: 5
+  retries: {
+    limit: 3
+    backoff: exponential
+    delay: 1000
+    multiplier: 2
+  }
+  deadLetter: {
+    queue: "failed-emails"
+  }
   perform: {
     fn: import { sendWelcomeEmail } from "@src/jobs.js"
+  }
+}
+
+job processPayment {
+  executor: BullMQ
+  priority: 100
+  retries: {
+    limit: 5
+    backoff: exponential
+    delay: 2000
+    multiplier: 3
+  }
+  deadLetter: {
+    queue: "failed-payments"
+  }
+  perform: {
+    fn: import { processPayment } from "@src/jobs.js"
+  }
+  schedule: "0 * * * *"
+}
+
+job syncInventory {
+  executor: RedisStreams
+  retries: {
+    limit: 3
+    backoff: fixed
+    delay: 5000
+  }
+  deadLetter: {
+    queue: "failed-inventory-sync"
+  }
+  perform: {
+    fn: import { syncInventory } from "@src/jobs.js"
+  }
+}
+
+job notifyPartner {
+  executor: RabbitMQ
+  priority: 10
+  retries: {
+    limit: 4
+    backoff: exponential
+    delay: 3000
+    multiplier: 2
+  }
+  deadLetter: {
+    queue: "failed-partner-notifications"
+  }
+  perform: {
+    fn: import { notifyPartner } from "@src/jobs.js"
+  }
+}
+
+job indexSearchDocs {
+  executor: Kafka
+  retries: {
+    limit: 3
+    backoff: fixed
+    delay: 1000
+  }
+  deadLetter: {
+    queue: "failed-search-indexing"
+  }
+  perform: {
+    fn: import { indexSearchDocs } from "@src/jobs.js"
   }
 }
 

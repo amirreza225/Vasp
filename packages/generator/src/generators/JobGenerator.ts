@@ -1,7 +1,8 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import type { JobNode } from "@vasp-framework/core";
 import { BaseGenerator } from "./BaseGenerator.js";
-import { toCamelCase } from "../template/TemplateEngine.js";
+import { toCamelCase, toPascalCase } from "../template/TemplateEngine.js";
 
 export class JobGenerator extends BaseGenerator {
   run(): void {
@@ -10,25 +11,44 @@ export class JobGenerator extends BaseGenerator {
 
     this.ctx.logger.info("Generating background jobs...");
 
-    // PgBoss singleton
-    this.write(`server/jobs/boss.${ext}`, this.render("shared/jobs/boss.hbs"));
+    const hasPgBoss = ast.jobs.some((j) => j.executor === "PgBoss");
+    const hasBullMQ = ast.jobs.some((j) => j.executor === "BullMQ");
+    const hasRedisStreams = ast.jobs.some((j) => j.executor === "RedisStreams");
+    const hasRabbitMQ = ast.jobs.some((j) => j.executor === "RabbitMQ");
+    const hasKafka = ast.jobs.some((j) => j.executor === "Kafka");
+
+    // Executor setup/client singletons
+    if (hasPgBoss) {
+      this.write(`server/jobs/boss.${ext}`, this.render("shared/jobs/boss.hbs"));
+    }
+    if (hasBullMQ) {
+      this.write(
+        `server/jobs/bullmq.${ext}`,
+        this.render("shared/jobs/bullmq.hbs"),
+      );
+    }
+    if (hasRedisStreams) {
+      this.write(
+        `server/jobs/redis-streams.${ext}`,
+        this.render("shared/jobs/redis-streams.hbs"),
+      );
+    }
+    if (hasRabbitMQ) {
+      this.write(
+        `server/jobs/rabbitmq.${ext}`,
+        this.render("shared/jobs/rabbitmq.hbs"),
+      );
+    }
+    if (hasKafka) {
+      this.write(
+        `server/jobs/kafka.${ext}`,
+        this.render("shared/jobs/kafka.hbs"),
+      );
+    }
 
     // One worker file per job
     for (const job of ast.jobs) {
-      const fn = job.perform.fn;
-      const namedExport =
-        fn.kind === "named" ? fn.namedExport : fn.defaultExport;
-
-      this.write(
-        `server/jobs/${toCamelCase(job.name)}.${ext}`,
-        this.render("shared/jobs/_job.hbs", {
-          name: job.name,
-          namedExport,
-          fnSource: this.resolveServerImport(fn.source, `server/jobs/`),
-          schedule: job.schedule,
-          hasSchedule: !!job.schedule,
-        }),
-      );
+      this.writeJobWorker(job);
 
       // HTTP endpoint to schedule this job
       this.write(
@@ -43,6 +63,59 @@ export class JobGenerator extends BaseGenerator {
     this.generateJobStubs();
   }
 
+  private writeJobWorker(job: JobNode): void {
+    const { ext } = this.ctx;
+    const fn = job.perform.fn;
+    const namedExport = fn.kind === "named" ? fn.namedExport : fn.defaultExport;
+    const fnSource = this.resolveServerImport(fn.source, `server/jobs/`);
+
+    const dlqQueue =
+      job.deadLetter?.queue ?? `${toCamelCase(job.name)}-failed`;
+    const retryLimit = job.retries?.limit ?? 3;
+    const retryDelay = job.retries?.delay ?? 1000;
+    const retryMultiplier = job.retries?.multiplier ?? 2;
+    const isExponential = (job.retries?.backoff ?? "fixed") === "exponential";
+    const priority = job.priority ?? 1;
+
+    const templateData = {
+      name: job.name,
+      namedExport,
+      fnSource,
+      schedule: job.schedule,
+      hasSchedule: !!job.schedule,
+      priority,
+      retryLimit,
+      retryDelay,
+      retryMultiplier,
+      isExponential,
+      hasDeadLetter: !!job.deadLetter,
+      dlqQueue,
+    };
+
+    let templateName: string;
+    switch (job.executor) {
+      case "BullMQ":
+        templateName = "shared/jobs/_bullmq-job.hbs";
+        break;
+      case "RedisStreams":
+        templateName = "shared/jobs/_redis-streams-job.hbs";
+        break;
+      case "RabbitMQ":
+        templateName = "shared/jobs/_rabbitmq-job.hbs";
+        break;
+      case "Kafka":
+        templateName = "shared/jobs/_kafka-job.hbs";
+        break;
+      default:
+        templateName = "shared/jobs/_job.hbs";
+    }
+
+    this.write(
+      `server/jobs/${toCamelCase(job.name)}.${ext}`,
+      this.render(templateName, templateData),
+    );
+  }
+
   /** Groups job perform functions by source file and writes a stub for each. Skips existing files. */
   private generateJobStubs(): void {
     const bySource = new Map<string, string[]>();
@@ -54,7 +127,7 @@ export class JobGenerator extends BaseGenerator {
       bySource.get(fn.source)!.push(fnName);
     }
 
-    const paramType = this.ctx.isTypeScript ? "(data: any)" : "(data)";
+    const paramType = this.ctx.isTypeScript ? "(data: unknown)" : "(data)";
 
     for (const [source, fnNames] of bySource) {
       const relativePath = source.replace("@src/", "src/");
@@ -70,3 +143,4 @@ export class JobGenerator extends BaseGenerator {
     }
   }
 }
+

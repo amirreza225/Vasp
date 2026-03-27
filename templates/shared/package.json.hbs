@@ -30,8 +30,12 @@
     "ofetch": "^1.3.4",
     "vue": "^3.5.0"{{#if isSpa}},
     "vue-router": "^4.4.0"{{else}},
-    "nuxt": "^4.0.0"{{/if}}{{#if hasJobs}},
-    "pg-boss": "^10.0.0"{{/if}}{{#if hasEmailResend}},
+    "nuxt": "^4.0.0"{{/if}}{{#if hasPgBossJobs}},
+    "pg-boss": "^10.0.0"{{/if}}{{#if hasRedisJobs}},
+    "ioredis": "^5.0.0"{{/if}}{{#if hasBullMQJobs}},
+    "bullmq": "^5.0.0"{{/if}}{{#if hasRabbitMQJobs}},
+    "amqplib": "^0.10.0"{{/if}}{{#if hasKafkaJobs}},
+    "kafkajs": "^2.0.0"{{/if}}{{#if hasEmailResend}},
     "resend": "^4.0.0"{{/if}}{{#if hasEmailSendgrid}},
     "@sendgrid/mail": "^8.0.0"{{/if}}{{#if hasEmailSmtp}},
     "nodemailer": "^6.9.0"{{/if}}
@@ -44,6 +48,7 @@
     "typescript": "^5.6.0",
     "vue-tsc": "^2.0.0",
     "@types/node": "^22.0.0"{{#if hasEmailSmtp}},
-    "@types/nodemailer": "^6.4.0"{{/if}}{{/if}}
+    "@types/nodemailer": "^6.4.0"{{/if}}{{#if hasRabbitMQJobs}},
+    "@types/amqplib": "^0.10.0"{{/if}}{{/if}}
   }
 }

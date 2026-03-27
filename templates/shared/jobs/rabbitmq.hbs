@@ -1,0 +1,51 @@
+import amqplib from 'amqplib'
+
+const amqpUrl = process.env.RABBITMQ_URL
+if (!amqpUrl) throw new Error('RABBITMQ_URL is required for RabbitMQ job queue')
+
+// Singleton AMQP connection and channel
+let connection = undefined
+let channel = undefined
+
+export async function getRabbitMQChannel() {
+  if (!channel) {
+    connection = await amqplib.connect(amqpUrl)
+    channel = await connection.createChannel()
+
+    // Reconnect on unexpected close
+    connection.on('close', () => {
+      connection = null
+      channel = null
+    })
+  }
+  return channel
+}
+
+/**
+ * Declare a work queue with dead-letter exchange (DLX) support.
+ * The DLX routes rejected/expired messages to a dedicated error queue.
+ *
+ * @param {string} queueName - Main queue name
+ * @param {string} dlqName - Dead-letter queue name
+ * @param {object} [opts] - Additional queue options (e.g. maxPriority)
+ */
+export async function assertWorkQueue(queueName, dlqName, opts = {}) {
+  const ch = await getRabbitMQChannel()
+
+  // Declare the dead-letter exchange and its bound queue
+  const dlxName = queueName + '.dlx'
+  await ch.assertExchange(dlxName, 'direct', { durable: true })
+  await ch.assertQueue(dlqName, { durable: true })
+  await ch.bindQueue(dlqName, dlxName, '')
+
+  // Declare the main queue with x-dead-letter-exchange pointing to the DLX
+  await ch.assertQueue(queueName, {
+    durable: true,
+    arguments: {
+      'x-dead-letter-exchange': dlxName,
+      ...opts,
+    },
+  })
+
+  return ch
+}

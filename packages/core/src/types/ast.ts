@@ -247,7 +247,31 @@ export interface QueryCacheConfig {
 
 // ------ Job Executors ------
 
-export type JobExecutor = "PgBoss";
+export type JobExecutor =
+  | "PgBoss"
+  | "BullMQ"
+  | "RedisStreams"
+  | "RabbitMQ"
+  | "Kafka";
+
+export type JobBackoffStrategy = "fixed" | "exponential";
+
+export interface JobRetryConfig {
+  /** Maximum number of retry attempts (default: 3) */
+  limit?: number;
+  /** Backoff strategy: "fixed" keeps the same delay, "exponential" multiplies it each attempt */
+  backoff?: JobBackoffStrategy;
+  /** Initial delay in milliseconds between retries (default: 1000) */
+  delay?: number;
+  /** Multiplier applied to delay on each attempt when backoff is "exponential" (default: 2) */
+  multiplier?: number;
+}
+
+export interface JobDeadLetterConfig {
+  /** Name of the dead-letter queue/topic/stream to route permanently failed jobs to.
+   *  Defaults to "{jobName}-failed" when omitted. */
+  queue?: string;
+}
 
 // ------ API ------
 
@@ -362,6 +386,12 @@ export interface JobNode extends BaseNode {
   executor: JobExecutor;
   perform: JobPerform;
   schedule?: string; // optional cron expression
+  /** Job priority — higher value = higher priority (default: 1) */
+  priority?: number;
+  /** Retry configuration with optional exponential backoff */
+  retries?: JobRetryConfig;
+  /** Dead-letter queue routing for jobs that exhaust all retries */
+  deadLetter?: JobDeadLetterConfig;
 }
 
 export interface SeedNode {

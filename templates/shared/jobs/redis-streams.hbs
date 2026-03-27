@@ -1,0 +1,43 @@
+import { Redis } from 'ioredis'
+
+const redisUrl = process.env.REDIS_URL
+if (!redisUrl) throw new Error('REDIS_URL is required for Redis Streams job queue')
+
+// Singleton Redis client shared across all stream producers and consumers
+let client = undefined
+
+export function getRedisClient() {
+  if (!client) {
+    client = new Redis(redisUrl)
+  }
+  return client
+}
+
+/**
+ * Publish a message to a Redis Stream.
+ * @param {string} stream - Stream (queue) name
+ * @param {object} data - Arbitrary key-value payload
+ * @returns {Promise<string>} Message ID assigned by Redis
+ */
+export async function publishToStream(stream, data) {
+  const redis = getRedisClient()
+  const fields = []
+  for (const [key, value] of Object.entries(data)) {
+    fields.push(key, typeof value === 'string' ? value : JSON.stringify(value))
+  }
+  return redis.xadd(stream, '*', ...fields)
+}
+
+/**
+ * Ensure a consumer group exists for the given stream.
+ * Creates the stream and group if they do not already exist.
+ */
+export async function ensureConsumerGroup(stream, group) {
+  const redis = getRedisClient()
+  try {
+    await redis.xgroup('CREATE', stream, group, '$', 'MKSTREAM')
+  } catch (err) {
+    // BUSYGROUP = group already exists — safe to ignore
+    if (!err.message.includes('BUSYGROUP')) throw err
+  }
+}

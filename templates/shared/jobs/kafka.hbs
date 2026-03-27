@@ -1,0 +1,48 @@
+import { Kafka } from 'kafkajs'
+
+const brokersEnv = process.env.KAFKA_BROKERS
+if (!brokersEnv) throw new Error('KAFKA_BROKERS is required for Kafka job queue (comma-separated, e.g. localhost:9092)')
+
+const clientId = process.env.KAFKA_CLIENT_ID || '{{camelCase appName}}'
+const brokers = brokersEnv.split(',').map((b) => b.trim())
+
+// Singleton Kafka client
+let kafka = undefined
+// Singleton producer (lazy-connected)
+let producer = undefined
+
+export function getKafkaClient() {
+  if (!kafka) {
+    kafka = new Kafka({ clientId, brokers })
+  }
+  return kafka
+}
+
+export async function getKafkaProducer() {
+  if (!producer) {
+    producer = getKafkaClient().producer()
+    await producer.connect()
+  }
+  return producer
+}
+
+/**
+ * Publish a message to a Kafka topic.
+ * @param {string} topic - Kafka topic name
+ * @param {object} value - Message payload (will be JSON-serialised)
+ * @param {object} [headers] - Optional Kafka message headers
+ */
+export async function publishToTopic(topic, value, headers = {}) {
+  const prod = await getKafkaProducer()
+  await prod.send({
+    topic,
+    messages: [
+      {
+        value: JSON.stringify(value),
+        headers: Object.fromEntries(
+          Object.entries(headers).map(([k, v]) => [k, String(v)])
+        ),
+      },
+    ],
+  })
+}

@@ -1,0 +1,97 @@
+import { getRedisClient, publishToStream, ensureConsumerGroup } from './redis-streams.{{ext}}'
+import { {{namedExport}} } from '{{importPath fnSource ext}}'
+
+const STREAM = '{{camelCase name}}'
+const DLQ_STREAM = '{{dlqQueue}}'
+const CONSUMER_GROUP = '{{camelCase name}}-group'
+const CONSUMER_ID = 'worker-' + process.pid
+const RETRY_LIMIT = {{retryLimit}}
+const RETRY_DELAY_MS = {{retryDelay}}
+const RETRY_MULTIPLIER = {{retryMultiplier}}
+const IS_EXPONENTIAL = {{isExponential}}
+
+/**
+ * Register the '{{name}}' Redis Streams consumer.
+ * Reads from the stream, processes each message, and ACKs on success.
+ * Failed messages are retried with {{#if isExponential}}exponential{{else}}fixed{{/if}} backoff;
+ * after {{retryLimit}} attempts they are moved to the dead-letter stream.
+ */
+export async function register{{pascalCase name}}Worker() {
+  const redis = getRedisClient()
+  await ensureConsumerGroup(STREAM, CONSUMER_GROUP)
+
+  // Poll loop — runs until the process exits
+  void (async () => {
+    while (true) {
+      const results = await redis.xreadgroup(
+        'GROUP', CONSUMER_GROUP, CONSUMER_ID,
+        'COUNT', '10',
+        'BLOCK', '5000',
+        'STREAMS', STREAM, '>',
+      )
+
+      if (!results) continue
+
+      for (const [, messages] of results) {
+        for (const [id, fields] of messages) {
+          const raw = {}
+          for (let i = 0; i < fields.length; i += 2) {
+            try { raw[fields[i]] = JSON.parse(fields[i + 1]) }
+            catch (_parseErr) { raw[fields[i]] = fields[i + 1] } // non-JSON stored as raw string
+          }
+
+          const retryCount = Number(raw.__retryCount ?? 0)
+          delete raw.__retryCount
+
+          let success = false
+          try {
+            await {{namedExport}}(raw)
+            success = true
+          } catch (err) {
+            if (retryCount < RETRY_LIMIT - 1) {
+              // Re-enqueue with incremented retry count and backoff delay
+              const delay = IS_EXPONENTIAL
+                ? RETRY_DELAY_MS * Math.pow(RETRY_MULTIPLIER, retryCount)
+                : RETRY_DELAY_MS
+
+              setTimeout(async () => {
+                await publishToStream(STREAM, { ...raw, __retryCount: retryCount + 1 })
+              }, delay)
+            } else {
+{{#if hasDeadLetter}}
+              // Exhausted all retries — move to dead-letter stream
+              await publishToStream(DLQ_STREAM, {
+                originalData: JSON.stringify(raw),
+                error: err instanceof Error ? err.message : String(err),
+                failedAt: new Date().toISOString(),
+              })
+{{/if}}
+              console.error('[{{name}}] Message permanently failed after ' + (retryCount + 1) + ' attempts:', err)
+            }
+          }
+
+          // ACK the message so Redis knows it has been processed
+          if (success || retryCount >= RETRY_LIMIT - 1) {
+            await redis.xack(STREAM, CONSUMER_GROUP, id)
+          }
+        }
+      }
+    }
+  })()
+}
+
+/**
+ * Publish a '{{name}}' message to the Redis stream.
+ * @param {object} data - Payload to enqueue
+ * @returns {Promise<string>} Stream message ID
+ */
+export async function schedule{{pascalCase name}}(data) {
+  return publishToStream(STREAM, data)
+}
+{{#if hasSchedule}}
+
+// Recurring cron schedule for '{{name}}': {{schedule}}
+// Install a cron library (e.g. node-cron) and call this at startup:
+//   import cron from 'node-cron'
+//   cron.schedule('{{schedule}}', () => schedule{{pascalCase name}}({}))
+{{/if}}

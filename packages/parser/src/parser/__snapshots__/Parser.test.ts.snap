@@ -244,6 +244,9 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
   ],
   "jobs": [
     {
+      "deadLetter": {
+        "queue": "failed-emails",
+      },
       "executor": "PgBoss",
       "name": "sendWelcomeEmail",
       "perform": {
@@ -252,6 +255,98 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
           "namedExport": "sendWelcomeEmail",
           "source": "@src/jobs.js",
         },
+      },
+      "priority": 5,
+      "retries": {
+        "backoff": "exponential",
+        "delay": 1000,
+        "limit": 3,
+        "multiplier": 2,
+      },
+      "type": "Job",
+    },
+    {
+      "deadLetter": {
+        "queue": "failed-payments",
+      },
+      "executor": "BullMQ",
+      "name": "processPayment",
+      "perform": {
+        "fn": {
+          "kind": "named",
+          "namedExport": "processPayment",
+          "source": "@src/jobs.js",
+        },
+      },
+      "priority": 100,
+      "retries": {
+        "backoff": "exponential",
+        "delay": 2000,
+        "limit": 5,
+        "multiplier": 3,
+      },
+      "schedule": "0 * * * *",
+      "type": "Job",
+    },
+    {
+      "deadLetter": {
+        "queue": "failed-inventory-sync",
+      },
+      "executor": "RedisStreams",
+      "name": "syncInventory",
+      "perform": {
+        "fn": {
+          "kind": "named",
+          "namedExport": "syncInventory",
+          "source": "@src/jobs.js",
+        },
+      },
+      "retries": {
+        "backoff": "fixed",
+        "delay": 5000,
+        "limit": 3,
+      },
+      "type": "Job",
+    },
+    {
+      "deadLetter": {
+        "queue": "failed-partner-notifications",
+      },
+      "executor": "RabbitMQ",
+      "name": "notifyPartner",
+      "perform": {
+        "fn": {
+          "kind": "named",
+          "namedExport": "notifyPartner",
+          "source": "@src/jobs.js",
+        },
+      },
+      "priority": 10,
+      "retries": {
+        "backoff": "exponential",
+        "delay": 3000,
+        "limit": 4,
+        "multiplier": 2,
+      },
+      "type": "Job",
+    },
+    {
+      "deadLetter": {
+        "queue": "failed-search-indexing",
+      },
+      "executor": "Kafka",
+      "name": "indexSearchDocs",
+      "perform": {
+        "fn": {
+          "kind": "named",
+          "namedExport": "indexSearchDocs",
+          "source": "@src/jobs.js",
+        },
+      },
+      "retries": {
+        "backoff": "fixed",
+        "delay": 1000,
+        "limit": 3,
       },
       "type": "Job",
     },

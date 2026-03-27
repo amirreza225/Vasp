@@ -15,6 +15,7 @@ import {
   SUPPORTED_CACHE_PROVIDERS,
   SUPPORTED_CRUD_OPERATIONS,
   SUPPORTED_EMAIL_PROVIDERS,
+  SUPPORTED_JOB_EXECUTORS,
   SUPPORTED_MIDDLEWARE_SCOPES,
   SUPPORTED_MULTI_TENANT_STRATEGIES,
   SUPPORTED_REALTIME_EVENTS,
@@ -382,11 +383,11 @@ export class SemanticValidator {
 
   private checkJobExecutors(ast: VaspAST): void {
     for (const job of ast.jobs) {
-      if (job.executor !== "PgBoss") {
+      if (!(SUPPORTED_JOB_EXECUTORS as readonly string[]).includes(job.executor)) {
         this.diagnostics.push({
           code: "E110_UNKNOWN_JOB_EXECUTOR",
           message: `Unknown job executor '${job.executor}' in '${job.name}'`,
-          hint: "Supported executors: PgBoss",
+          hint: `Supported executors: ${SUPPORTED_JOB_EXECUTORS.join(", ")}`,
           loc: job.loc,
         });
       }

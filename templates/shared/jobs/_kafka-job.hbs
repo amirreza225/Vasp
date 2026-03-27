@@ -1,0 +1,69 @@
+import { getKafkaClient, publishToTopic } from './kafka.{{ext}}'
+import { {{namedExport}} } from '{{importPath fnSource ext}}'
+
+const TOPIC = '{{camelCase name}}'
+const DLQ_TOPIC = '{{dlqQueue}}'
+const GROUP_ID = '{{camelCase name}}-group'
+const RETRY_LIMIT = {{retryLimit}}
+const RETRY_DELAY_MS = {{retryDelay}}
+const RETRY_MULTIPLIER = {{retryMultiplier}}
+const IS_EXPONENTIAL = {{isExponential}}
+
+/**
+ * Register the '{{name}}' Kafka consumer.
+ * Processes messages from the '{{camelCase name}}' topic with
+ * {{#if isExponential}}exponential{{else}}fixed{{/if}} backoff retry (up to {{retryLimit}} attempts).
+ * Permanently failed messages are forwarded to '{{dlqQueue}}'.
+ */
+export async function register{{pascalCase name}}Worker() {
+  const consumer = getKafkaClient().consumer({ groupId: GROUP_ID })
+  await consumer.connect()
+  await consumer.subscribe({ topic: TOPIC, fromBeginning: false })
+
+  await consumer.run({
+    eachMessage: async ({ message }) => {
+      const raw = message.value ? JSON.parse(message.value.toString()) : {}
+      const retryCount = Number(message.headers['x-retry-count'] ?? 0)
+
+      try {
+        await {{namedExport}}(raw)
+      } catch (err) {
+        if (retryCount < RETRY_LIMIT - 1) {
+          // Re-publish to the same topic with incremented retry header and backoff
+          const delay = IS_EXPONENTIAL
+            ? RETRY_DELAY_MS * Math.pow(RETRY_MULTIPLIER, retryCount)
+            : RETRY_DELAY_MS
+
+          setTimeout(async () => {
+            await publishToTopic(TOPIC, raw, { 'x-retry-count': retryCount + 1 })
+          }, delay)
+        } else {
+{{#if hasDeadLetter}}
+          // Exhausted all retries — forward to the dead-letter topic
+          await publishToTopic(DLQ_TOPIC, {
+            originalData: raw,
+            error: err instanceof Error ? err.message : String(err),
+            failedAt: new Date().toISOString(),
+          })
+{{/if}}
+          console.error('[{{name}}] Message permanently failed after ' + (retryCount + 1) + ' attempts:', err)
+        }
+      }
+    },
+  })
+}
+
+/**
+ * Publish a '{{name}}' message to the Kafka topic.
+ * @param {object} data - Job payload
+ */
+export async function schedule{{pascalCase name}}(data) {
+  return publishToTopic(TOPIC, data, { 'x-retry-count': '0' })
+}
+{{#if hasSchedule}}
+
+// Recurring cron schedule for '{{name}}': {{schedule}}
+// Install node-cron and call this at startup:
+//   import cron from 'node-cron'
+//   cron.schedule('{{schedule}}', () => schedule{{pascalCase name}}({}))
+{{/if}}

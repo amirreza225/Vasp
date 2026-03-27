@@ -30,6 +30,9 @@ import type {
   FieldValidation,
   ImportExpression,
   JobNode,
+  JobRetryConfig,
+  JobDeadLetterConfig,
+  JobBackoffStrategy,
   MiddlewareNode,
   MiddlewareScope,
   MultiTenantConfig,
@@ -55,6 +58,7 @@ import {
   ParseError,
   SUPPORTED_AUTH_METHODS,
   SUPPORTED_CRUD_OPERATIONS,
+  SUPPORTED_JOB_BACKOFF_STRATEGIES,
   SUPPORTED_REALTIME_EVENTS,
 } from "@vasp-framework/core";
 import type { ParseDiagnostic } from "@vasp-framework/core";
@@ -1342,9 +1346,12 @@ class Parser {
     const name = this.consumeIdentifier();
     this.consume(TokenType.LBRACE);
 
-    let executor = "PgBoss" as const;
+    let executor = "PgBoss" as JobNode["executor"];
     let performFn: ImportExpression | null = null;
     let schedule: string | undefined;
+    let priority: number | undefined;
+    let retries: JobRetryConfig | undefined;
+    let deadLetter: JobDeadLetterConfig | undefined;
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -1352,8 +1359,88 @@ class Parser {
 
       switch (key.value) {
         case "executor":
-          executor = this.consumeIdentifier().value as "PgBoss";
+          executor = this.consumeIdentifier().value as JobNode["executor"];
           break;
+        case "priority": {
+          const tok = this.consume(TokenType.NUMBER);
+          priority = Number(tok.value);
+          break;
+        }
+        case "retries": {
+          // Nested block: retries: { limit: N, backoff: exponential, delay: N, multiplier: N }
+          this.consume(TokenType.LBRACE);
+          const retriesCfg: JobRetryConfig = {};
+          while (!this.check(TokenType.RBRACE)) {
+            const innerKey = this.consumeIdentifier();
+            this.consume(TokenType.COLON);
+            switch (innerKey.value) {
+              case "limit": {
+                const tok = this.consume(TokenType.NUMBER);
+                retriesCfg.limit = Number(tok.value);
+                break;
+              }
+              case "backoff": {
+                const backoffTok = this.consumeIdentifier();
+                if (
+                  !(
+                    SUPPORTED_JOB_BACKOFF_STRATEGIES as readonly string[]
+                  ).includes(backoffTok.value)
+                ) {
+                  throw this.error(
+                    "E026_UNKNOWN_BACKOFF",
+                    `Unknown backoff strategy '${backoffTok.value}'`,
+                    `Valid strategies: ${SUPPORTED_JOB_BACKOFF_STRATEGIES.join(", ")}`,
+                    backoffTok.loc,
+                  );
+                }
+                retriesCfg.backoff = backoffTok.value as JobBackoffStrategy;
+                break;
+              }
+              case "delay": {
+                const tok = this.consume(TokenType.NUMBER);
+                retriesCfg.delay = Number(tok.value);
+                break;
+              }
+              case "multiplier": {
+                const tok = this.consume(TokenType.NUMBER);
+                retriesCfg.multiplier = Number(tok.value);
+                break;
+              }
+              default:
+                throw this.error(
+                  "E027_UNKNOWN_PROP",
+                  `Unknown retries property '${innerKey.value}'`,
+                  "Valid properties: limit, backoff, delay, multiplier",
+                  innerKey.loc,
+                );
+            }
+          }
+          this.consume(TokenType.RBRACE);
+          retries = retriesCfg;
+          break;
+        }
+        case "deadLetter": {
+          // Nested block: deadLetter: { queue: "name" }
+          this.consume(TokenType.LBRACE);
+          const dlqCfg: JobDeadLetterConfig = {};
+          while (!this.check(TokenType.RBRACE)) {
+            const innerKey = this.consumeIdentifier();
+            this.consume(TokenType.COLON);
+            if (innerKey.value === "queue") {
+              dlqCfg.queue = this.consumeString();
+            } else {
+              throw this.error(
+                "E028_UNKNOWN_PROP",
+                `Unknown deadLetter property '${innerKey.value}'`,
+                "Valid properties: queue",
+                innerKey.loc,
+              );
+            }
+          }
+          this.consume(TokenType.RBRACE);
+          deadLetter = dlqCfg;
+          break;
+        }
         case "perform": {
           // Nested block: perform: { fn: import ... }
           this.consume(TokenType.LBRACE);
@@ -1381,7 +1468,7 @@ class Parser {
           throw this.error(
             "E024_UNKNOWN_PROP",
             `Unknown job property '${key.value}'`,
-            "Valid properties: executor, perform, schedule",
+            "Valid properties: executor, priority, retries, deadLetter, perform, schedule",
             key.loc,
           );
       }
@@ -1405,6 +1492,9 @@ class Parser {
       executor,
       perform: { fn: performFn },
       ...(schedule !== undefined ? { schedule } : {}),
+      ...(priority !== undefined ? { priority } : {}),
+      ...(retries !== undefined ? { retries } : {}),
+      ...(deadLetter !== undefined ? { deadLetter } : {}),
     };
   }
 

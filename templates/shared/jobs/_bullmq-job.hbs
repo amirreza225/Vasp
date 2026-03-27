@@ -1,0 +1,75 @@
+import { createQueue, createWorker } from './bullmq.{{ext}}'
+import { {{namedExport}} } from '{{importPath fnSource ext}}'
+
+const JOB_NAME = '{{camelCase name}}'
+const DLQ_QUEUE = '{{dlqQueue}}'
+const RETRY_LIMIT = {{retryLimit}}
+const RETRY_DELAY = {{retryDelay}}
+
+// Queue instance — used for dispatching '{{name}}' jobs
+const queue = createQueue(JOB_NAME)
+{{#if hasDeadLetter}}
+// Dead-letter queue — receives jobs that exhaust all retry attempts
+const dlqQueue = createQueue(DLQ_QUEUE)
+{{/if}}
+
+/**
+ * Register the '{{name}}' BullMQ worker.
+ * Called once on server startup.
+ */
+export async function register{{pascalCase name}}Worker() {
+  const worker = createWorker(JOB_NAME, async (job) => {
+    await {{namedExport}}(job.data)
+  })
+
+  // Route permanently-failed jobs to the dead-letter queue
+  worker.on('failed', async (job, err) => {
+    if (job && job.attemptsMade >= RETRY_LIMIT) {
+{{#if hasDeadLetter}}
+      await dlqQueue.add('failed', {
+        originalJobId: job.id,
+        originalJobData: job.data,
+        error: err.message,
+        failedAt: new Date().toISOString(),
+      })
+{{/if}}
+      console.error('[{{name}}] Job permanently failed after ' + job.attemptsMade + ' attempts:', err.message)
+    }
+  })
+
+  return worker
+}
+
+/**
+ * Schedule a '{{name}}' job on demand.
+ * @param {unknown} data - Data to pass to the job handler
+ * @param {object} [opts] - Optional BullMQ job options
+ */
+export async function schedule{{pascalCase name}}(data, opts = {}) {
+  return queue.add(JOB_NAME, data, {
+    priority: {{priority}},
+    attempts: RETRY_LIMIT,
+    backoff: {
+      type: '{{#if isExponential}}exponential{{else}}fixed{{/if}}',
+      delay: RETRY_DELAY,
+{{#if isExponential}}
+      // delay doubles each attempt: {{retryDelay}}ms → {{retryDelay}}×{{retryMultiplier}}ms → …
+{{/if}}
+    },
+    removeOnComplete: { age: 7 * 24 * 60 * 60 },
+    removeOnFail: false,
+    ...opts,
+  })
+}
+{{#if hasSchedule}}
+
+// Register the recurring schedule for '{{name}}': {{schedule}}
+// Call this once at startup after register{{pascalCase name}}Worker()
+export async function start{{pascalCase name}}Schedule() {
+  await queue.upsertJobScheduler(
+    '{{camelCase name}}-schedule',
+    { pattern: '{{schedule}}' },
+    { name: JOB_NAME, data: {} },
+  )
+}
+{{/if}}

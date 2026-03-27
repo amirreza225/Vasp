@@ -1,7 +1,9 @@
-import { getBoss } from './boss.{{ext}}'
+import { getBoss, registerDeadLetterWorker } from './boss.{{ext}}'
 import { {{namedExport}} } from '{{importPath fnSource ext}}'
 
 const JOB_NAME = '{{camelCase name}}'
+const DLQ_QUEUE = '{{dlqQueue}}'
+const RETRY_LIMIT = {{retryLimit}}
 
 /**
  * Register the '{{name}}' job worker with PgBoss.
@@ -9,11 +11,32 @@ const JOB_NAME = '{{camelCase name}}'
  */
 export async function register{{pascalCase name}}Worker() {
   const boss = await getBoss()
-  await boss.work(JOB_NAME, async (job) => {
-    await {{namedExport}}(job.data)
-  })
-{{#if hasSchedule}}
 
+  await boss.work(JOB_NAME, async (job) => {
+    try {
+      await {{namedExport}}(job.data)
+    } catch (err) {
+      // When this is the final retry attempt, publish to the dead-letter queue
+      if (job.retryCount >= RETRY_LIMIT - 1) {
+        await boss.send(DLQ_QUEUE, {
+          originalJobId: job.id,
+          originalJobData: job.data,
+          error: err instanceof Error ? err.message : String(err),
+          failedAt: new Date().toISOString(),
+        })
+      }
+      throw err
+    }
+  })
+
+{{#if hasDeadLetter}}
+  // Monitor the dead-letter queue for permanently failed jobs
+  await registerDeadLetterWorker(DLQ_QUEUE, async (data) => {
+    console.error('[DLQ] {{name}} job permanently failed:', data)
+  })
+
+{{/if}}
+{{#if hasSchedule}}
   // Register cron schedule: {{schedule}}
   await boss.schedule(JOB_NAME, '{{schedule}}', {})
 {{/if}}
@@ -26,9 +49,10 @@ export async function register{{pascalCase name}}Worker() {
 export async function schedule{{pascalCase name}}(data) {
   const boss = await getBoss()
   return boss.send(JOB_NAME, data, {
-    retryLimit: Number(process.env.JOB_RETRY_LIMIT) || 3,
-    retryDelay: Number(process.env.JOB_RETRY_DELAY) || 60,
-    retryBackoff: true,
+    priority: {{priority}},
+    retryLimit: RETRY_LIMIT,
+    retryDelay: Math.round({{retryDelay}} / 1000),
+    retryBackoff: {{isExponential}},
     expireInMinutes: Number(process.env.JOB_EXPIRE_MINUTES) || 15,
   })
 }

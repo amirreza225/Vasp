@@ -1,0 +1,85 @@
+import { getRabbitMQChannel, assertWorkQueue } from './rabbitmq.{{ext}}'
+import { {{namedExport}} } from '{{importPath fnSource ext}}'
+
+const QUEUE = '{{camelCase name}}'
+const DLQ = '{{dlqQueue}}'
+const RETRY_LIMIT = {{retryLimit}}
+const RETRY_DELAY_MS = {{retryDelay}}
+const RETRY_MULTIPLIER = {{retryMultiplier}}
+const IS_EXPONENTIAL = {{isExponential}}
+const PRIORITY = {{priority}} // 0 (lowest) – 255 (highest)
+
+/**
+ * Register the '{{name}}' RabbitMQ consumer.
+ * Messages that fail processing are re-queued with backoff headers up to
+ * {{retryLimit}} times before being routed to the dead-letter queue ({{dlqQueue}}).
+ */
+export async function register{{pascalCase name}}Worker() {
+  const ch = await assertWorkQueue(QUEUE, DLQ, {
+    'x-max-priority': 10, // Enable priority queuing (1–10)
+  })
+
+  // Prefetch one message at a time for fair dispatch
+  await ch.prefetch(1)
+
+  await ch.consume(QUEUE, async (msg) => {
+    if (!msg) return
+
+    let parsed = {}
+    try {
+      parsed = JSON.parse(msg.content.toString())
+    } catch (_parseErr) {
+      // Non-JSON message — pass raw string as data
+      parsed = { raw: msg.content.toString() }
+    }
+
+    const retryCount = Number(msg.properties.headers['x-retry-count'] ?? 0)
+
+    try {
+      await {{namedExport}}(parsed)
+      ch.ack(msg)
+    } catch (err) {
+      if (retryCount < RETRY_LIMIT - 1) {
+        // Re-publish with incremented retry count and a backoff delay
+        const delay = IS_EXPONENTIAL
+          ? RETRY_DELAY_MS * Math.pow(RETRY_MULTIPLIER, retryCount)
+          : RETRY_DELAY_MS
+
+        ch.nack(msg, false, false) // reject without re-queue (routes to DLX if configured)
+
+        setTimeout(async () => {
+          const retryCh = await getRabbitMQChannel()
+          retryCh.publish('', QUEUE, Buffer.from(JSON.stringify(parsed)), {
+            persistent: true,
+            priority: PRIORITY,
+            headers: { 'x-retry-count': retryCount + 1 },
+          })
+        }, delay)
+      } else {
+        // Exhausted all retries — nack without re-queue; RabbitMQ routes to DLQ via DLX
+        ch.nack(msg, false, false)
+        console.error('[{{name}}] Message permanently failed after ' + (retryCount + 1) + ' attempts:', err)
+      }
+    }
+  })
+}
+
+/**
+ * Publish a '{{name}}' job to RabbitMQ.
+ * @param {object} data - Job payload
+ */
+export async function schedule{{pascalCase name}}(data) {
+  const ch = await getRabbitMQChannel()
+  ch.sendToQueue(QUEUE, Buffer.from(JSON.stringify(data)), {
+    persistent: true,
+    priority: PRIORITY,
+    headers: { 'x-retry-count': 0 },
+  })
+}
+{{#if hasSchedule}}
+
+// Recurring cron schedule for '{{name}}': {{schedule}}
+// Install node-cron and call this at startup:
+//   import cron from 'node-cron'
+//   cron.schedule('{{schedule}}', () => schedule{{pascalCase name}}({}))
+{{/if}}

@@ -675,6 +675,167 @@ describe("Parser — job", () => {
       },
     });
   });
+
+  it("parses BullMQ job with priority, retries and deadLetter", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      job processPayment {
+        executor: BullMQ
+        priority: 100
+        retries: {
+          limit: 5
+          backoff: exponential
+          delay: 2000
+          multiplier: 3
+        }
+        deadLetter: {
+          queue: "failed-payments"
+        }
+        perform: {
+          fn: import { processPayment } from "@src/jobs.js"
+        }
+        schedule: "0 * * * *"
+      }
+    `);
+    expect(ast.jobs[0]).toMatchObject({
+      type: "Job",
+      name: "processPayment",
+      executor: "BullMQ",
+      priority: 100,
+      retries: {
+        limit: 5,
+        backoff: "exponential",
+        delay: 2000,
+        multiplier: 3,
+      },
+      deadLetter: { queue: "failed-payments" },
+      schedule: "0 * * * *",
+      perform: {
+        fn: { kind: "named", namedExport: "processPayment", source: "@src/jobs.js" },
+      },
+    });
+  });
+
+  it("parses RedisStreams job with fixed backoff", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      job syncInventory {
+        executor: RedisStreams
+        retries: {
+          limit: 3
+          backoff: fixed
+          delay: 5000
+        }
+        deadLetter: {
+          queue: "failed-inventory"
+        }
+        perform: {
+          fn: import { syncInventory } from "@src/jobs.js"
+        }
+      }
+    `);
+    expect(ast.jobs[0]).toMatchObject({
+      executor: "RedisStreams",
+      retries: { limit: 3, backoff: "fixed", delay: 5000 },
+      deadLetter: { queue: "failed-inventory" },
+    });
+    expect(ast.jobs[0].retries?.multiplier).toBeUndefined();
+    expect(ast.jobs[0].priority).toBeUndefined();
+  });
+
+  it("parses RabbitMQ job", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      job notifyPartner {
+        executor: RabbitMQ
+        priority: 10
+        perform: {
+          fn: import { notifyPartner } from "@src/jobs.js"
+        }
+      }
+    `);
+    expect(ast.jobs[0].executor).toBe("RabbitMQ");
+    expect(ast.jobs[0].priority).toBe(10);
+  });
+
+  it("parses Kafka job", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      job indexSearchDocs {
+        executor: Kafka
+        perform: {
+          fn: import { indexSearchDocs } from "@src/jobs.js"
+        }
+      }
+    `);
+    expect(ast.jobs[0].executor).toBe("Kafka");
+  });
+
+  it("throws on unknown backoff strategy", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        job myJob {
+          executor: BullMQ
+          retries: {
+            backoff: quadratic
+          }
+          perform: {
+            fn: import { myJob } from "@src/jobs.js"
+          }
+        }
+      `),
+    ).toThrow(/E026_UNKNOWN_BACKOFF/);
+  });
+
+  it("throws on unknown retries property", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        job myJob {
+          executor: PgBoss
+          retries: {
+            maxAttempts: 3
+          }
+          perform: {
+            fn: import { myJob } from "@src/jobs.js"
+          }
+        }
+      `),
+    ).toThrow(/E027_UNKNOWN_PROP/);
+  });
+
+  it("throws on unknown deadLetter property", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        job myJob {
+          executor: PgBoss
+          deadLetter: {
+            topic: "wrong"
+          }
+          perform: {
+            fn: import { myJob } from "@src/jobs.js"
+          }
+        }
+      `),
+    ).toThrow(/E028_UNKNOWN_PROP/);
+  });
+
+  it("throws on unknown job property", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        job myJob {
+          executor: PgBoss
+          maxConcurrency: 5
+          perform: {
+            fn: import { myJob } from "@src/jobs.js"
+          }
+        }
+      `),
+    ).toThrow(/E024_UNKNOWN_PROP/);
+  });
 });
 
 describe("Parser — seed", () => {

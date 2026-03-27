@@ -1,0 +1,50 @@
+import { Queue, Worker, QueueEvents } from 'bullmq'
+import { Redis } from 'ioredis'
+
+const redisUrl = process.env.REDIS_URL
+if (!redisUrl) throw new Error('REDIS_URL is required for BullMQ job queue')
+
+// Singleton Redis connection shared across all BullMQ queues and workers
+let connection = undefined
+
+export function getRedisConnection() {
+  if (!connection) {
+    connection = new Redis(redisUrl, {
+      maxRetriesPerRequest: null, // Required by BullMQ
+    })
+  }
+  return connection
+}
+
+/**
+ * Create (or reuse) a BullMQ Queue for the given name.
+ * @param {string} name - Queue name
+ * @returns {Queue}
+ */
+export function createQueue(name) {
+  return new Queue(name, { connection: getRedisConnection() })
+}
+
+/**
+ * Create a BullMQ Worker that processes jobs from the given queue.
+ * @param {string} name - Queue name
+ * @param {Function} handler - Async function that processes a single job
+ * @param {object} opts - Worker options (concurrency, etc.)
+ * @returns {Worker}
+ */
+export function createWorker(name, handler, opts = {}) {
+  return new Worker(name, handler, {
+    connection: getRedisConnection(),
+    concurrency: 5,
+    ...opts,
+  })
+}
+
+/**
+ * Subscribe to queue-level events (completed, failed, stalled).
+ * @param {string} name - Queue name
+ * @returns {QueueEvents}
+ */
+export function createQueueEvents(name) {
+  return new QueueEvents(name, { connection: getRedisConnection() })
+}

@@ -872,7 +872,7 @@ describe("generate()", () => {
     expect(stub).toContain("export async function cleanupActivityLogs");
   });
 
-  it("job stub: TypeScript stub uses typed (data: any) parameter", () => {
+  it("job stub: TypeScript stub uses typed (data: unknown) parameter", () => {
     const source = `
       app A { title: "T" db: Drizzle ssr: false typescript: true }
       route R { path: "/" to: P }
@@ -894,8 +894,214 @@ describe("generate()", () => {
     expect(existsSync(join(outputDir, "src/jobs.ts"))).toBe(true);
     const stub = readFileSync(join(outputDir, "src/jobs.ts"), "utf8");
     expect(stub).toContain(
-      "export async function sendTaskNotification(data: any)",
+      "export async function sendTaskNotification(data: unknown)",
     );
+  });
+
+  it("generates BullMQ setup file and worker with priority/retry/DLQ", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      job processPayment {
+        executor: BullMQ
+        priority: 100
+        retries: {
+          limit: 5
+          backoff: exponential
+          delay: 2000
+          multiplier: 3
+        }
+        deadLetter: {
+          queue: "failed-payments"
+        }
+        perform: {
+          fn: import { processPayment } from "@src/jobs.js"
+        }
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "jobs-bullmq-test");
+    const result = generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result.success).toBe(true);
+    // BullMQ setup file — not the PgBoss boss.js
+    expect(existsSync(join(outputDir, "server/jobs/bullmq.js"))).toBe(true);
+    expect(existsSync(join(outputDir, "server/jobs/boss.js"))).toBe(false);
+
+    const worker = readFileSync(
+      join(outputDir, "server/jobs/processPayment.js"),
+      "utf8",
+    );
+    expect(worker).toContain("registerProcessPaymentWorker");
+    expect(worker).toContain("scheduleProcessPayment");
+    expect(worker).toContain("failed-payments"); // DLQ name
+    expect(worker).toContain("exponential"); // backoff strategy
+    expect(worker).toContain("RETRY_LIMIT = 5");
+    expect(worker).toContain("priority: 100");
+  });
+
+  it("generates RedisStreams setup file and worker", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      job syncInventory {
+        executor: RedisStreams
+        retries: {
+          limit: 3
+          backoff: fixed
+          delay: 5000
+        }
+        deadLetter: {
+          queue: "failed-inventory"
+        }
+        perform: {
+          fn: import { syncInventory } from "@src/jobs.js"
+        }
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "jobs-redis-streams-test");
+    const result = generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result.success).toBe(true);
+    expect(existsSync(join(outputDir, "server/jobs/redis-streams.js"))).toBe(true);
+    const worker = readFileSync(
+      join(outputDir, "server/jobs/syncInventory.js"),
+      "utf8",
+    );
+    expect(worker).toContain("registerSyncInventoryWorker");
+    expect(worker).toContain("scheduleSyncInventory");
+    expect(worker).toContain("failed-inventory");
+    expect(worker).toContain("RETRY_LIMIT = 3");
+  });
+
+  it("generates RabbitMQ setup file and worker", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      job notifyPartner {
+        executor: RabbitMQ
+        priority: 10
+        retries: {
+          limit: 4
+          backoff: exponential
+          delay: 3000
+          multiplier: 2
+        }
+        deadLetter: {
+          queue: "failed-notifications"
+        }
+        perform: {
+          fn: import { notifyPartner } from "@src/jobs.js"
+        }
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "jobs-rabbitmq-test");
+    const result = generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result.success).toBe(true);
+    expect(existsSync(join(outputDir, "server/jobs/rabbitmq.js"))).toBe(true);
+    const worker = readFileSync(
+      join(outputDir, "server/jobs/notifyPartner.js"),
+      "utf8",
+    );
+    expect(worker).toContain("registerNotifyPartnerWorker");
+    expect(worker).toContain("scheduleNotifyPartner");
+    expect(worker).toContain("failed-notifications");
+    expect(worker).toContain("RETRY_LIMIT = 4");
+    expect(worker).toContain("PRIORITY = 10");
+  });
+
+  it("generates Kafka setup file and worker", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      job indexSearchDocs {
+        executor: Kafka
+        retries: {
+          limit: 3
+          backoff: fixed
+          delay: 1000
+        }
+        deadLetter: {
+          queue: "failed-search"
+        }
+        perform: {
+          fn: import { indexSearchDocs } from "@src/jobs.js"
+        }
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "jobs-kafka-test");
+    const result = generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result.success).toBe(true);
+    expect(existsSync(join(outputDir, "server/jobs/kafka.js"))).toBe(true);
+    const worker = readFileSync(
+      join(outputDir, "server/jobs/indexSearchDocs.js"),
+      "utf8",
+    );
+    expect(worker).toContain("registerIndexSearchDocsWorker");
+    expect(worker).toContain("scheduleIndexSearchDocs");
+    expect(worker).toContain("failed-search");
+    expect(worker).toContain("RETRY_LIMIT = 3");
+  });
+
+  it("generates only the correct executor setup files when multiple executors are used", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      job jobA {
+        executor: PgBoss
+        perform: { fn: import { jobA } from "@src/jobs.js" }
+      }
+      job jobB {
+        executor: BullMQ
+        perform: { fn: import { jobB } from "@src/jobs.js" }
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "jobs-multi-executor-test");
+    const result = generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result.success).toBe(true);
+    expect(existsSync(join(outputDir, "server/jobs/boss.js"))).toBe(true);
+    expect(existsSync(join(outputDir, "server/jobs/bullmq.js"))).toBe(true);
+    // Executors not used must NOT be generated
+    expect(existsSync(join(outputDir, "server/jobs/kafka.js"))).toBe(false);
+    expect(existsSync(join(outputDir, "server/jobs/rabbitmq.js"))).toBe(false);
+    expect(existsSync(join(outputDir, "server/jobs/redis-streams.js"))).toBe(false);
   });
 
   it("generates a memory cache store file", () => {
