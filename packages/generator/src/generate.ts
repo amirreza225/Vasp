@@ -21,6 +21,7 @@ import { RealtimeGenerator } from "./generators/RealtimeGenerator.js";
 import { ScaffoldGenerator } from "./generators/ScaffoldGenerator.js";
 import { SeedGenerator } from "./generators/SeedGenerator.js";
 import { StorageGenerator } from "./generators/StorageGenerator.js";
+import { WebhookGenerator } from "./generators/WebhookGenerator.js";
 import { Manifest } from "./manifest/Manifest.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
 import { cleanupDir, commitStagedFiles } from "./utils/fs.js";
@@ -76,6 +77,7 @@ export function generate(
     new EmailGenerator(ctx, engine, filesWritten, manifest).run();
     new SeedGenerator(ctx, engine, filesWritten, manifest).run();
     new StorageGenerator(ctx, engine, filesWritten, manifest).run();
+    new WebhookGenerator(ctx, engine, filesWritten, manifest).run();
     new FrontendGenerator(ctx, engine, filesWritten, manifest).run();
     new AdminGenerator(ctx, engine, filesWritten, manifest).run();
 

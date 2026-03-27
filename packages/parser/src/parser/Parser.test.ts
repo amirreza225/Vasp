@@ -1850,3 +1850,237 @@ describe("Parser — query cache config", () => {
     ]);
   });
 });
+
+describe("Parser — webhook block", () => {
+  const APP = `app A { title: "T" db: Drizzle ssr: false typescript: false }`;
+
+  it("parses a minimal inbound webhook block", () => {
+    const ast = parse(`
+      ${APP}
+      webhook StripeWebhook {
+        path: "/webhooks/stripe"
+        fn: import { handleStripeWebhook } from "@src/webhooks/stripe.js"
+      }
+    `);
+    expect(ast.webhooks).toHaveLength(1);
+    expect(ast.webhooks![0]).toMatchObject({
+      type: "Webhook",
+      name: "StripeWebhook",
+      mode: "inbound",
+      path: "/webhooks/stripe",
+      fn: {
+        kind: "named",
+        namedExport: "handleStripeWebhook",
+        source: "@src/webhooks/stripe.js",
+      },
+    });
+  });
+
+  it("parses a full inbound webhook with secret and verifyWith", () => {
+    const ast = parse(`
+      ${APP}
+      webhook StripeWebhook {
+        path: "/webhooks/stripe"
+        secret: env(STRIPE_WEBHOOK_SECRET)
+        verifyWith: "stripe-signature"
+        fn: import { handleStripeWebhook } from "@src/webhooks/stripe.js"
+      }
+    `);
+    expect(ast.webhooks![0]).toMatchObject({
+      type: "Webhook",
+      name: "StripeWebhook",
+      mode: "inbound",
+      path: "/webhooks/stripe",
+      secret: "STRIPE_WEBHOOK_SECRET",
+      verifyWith: "stripe-signature",
+    });
+  });
+
+  it("parses an inbound webhook with github-signature verifyWith", () => {
+    const ast = parse(`
+      ${APP}
+      webhook GithubWebhook {
+        path: "/webhooks/github"
+        secret: env(GITHUB_WEBHOOK_SECRET)
+        verifyWith: "github-signature"
+        fn: import { handleGithubWebhook } from "@src/webhooks/github.js"
+      }
+    `);
+    expect(ast.webhooks![0]).toMatchObject({
+      mode: "inbound",
+      verifyWith: "github-signature",
+    });
+  });
+
+  it("parses an inbound webhook with hmac verifyWith", () => {
+    const ast = parse(`
+      ${APP}
+      webhook MyWebhook {
+        path: "/webhooks/my"
+        secret: env(MY_WEBHOOK_SECRET)
+        verifyWith: "hmac"
+        fn: import { handleMyWebhook } from "@src/webhooks/my.js"
+      }
+    `);
+    expect(ast.webhooks![0]).toMatchObject({
+      mode: "inbound",
+      verifyWith: "hmac",
+    });
+  });
+
+  it("parses a minimal outbound webhook block", () => {
+    const ast = parse(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      webhook TaskWebhook {
+        entity: Task
+        events: [created, updated, deleted]
+        targets: env(WEBHOOK_URLS)
+      }
+    `);
+    expect(ast.webhooks).toHaveLength(1);
+    expect(ast.webhooks![0]).toMatchObject({
+      type: "Webhook",
+      name: "TaskWebhook",
+      mode: "outbound",
+      entity: "Task",
+      events: ["created", "updated", "deleted"],
+      targets: "WEBHOOK_URLS",
+    });
+    expect(ast.webhooks![0]?.retry).toBeUndefined();
+  });
+
+  it("parses a full outbound webhook with secret and retry", () => {
+    const ast = parse(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      webhook TaskWebhook {
+        entity: Task
+        events: [created, updated, deleted]
+        targets: env(WEBHOOK_URLS)
+        retry: 3
+        secret: env(WEBHOOK_SECRET)
+      }
+    `);
+    expect(ast.webhooks![0]).toMatchObject({
+      mode: "outbound",
+      retry: 3,
+      secret: "WEBHOOK_SECRET",
+    });
+  });
+
+  it("parses outbound webhook with subset of events", () => {
+    const ast = parse(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      webhook TaskCreatedWebhook {
+        entity: Task
+        events: [created]
+        targets: env(WEBHOOK_URLS)
+      }
+    `);
+    expect(ast.webhooks![0]?.events).toEqual(["created"]);
+  });
+
+  it("parses multiple webhook blocks", () => {
+    const ast = parse(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      webhook StripeWebhook {
+        path: "/webhooks/stripe"
+        fn: import { handleStripe } from "@src/webhooks/stripe.js"
+      }
+      webhook TaskWebhook {
+        entity: Task
+        events: [created]
+        targets: env(WEBHOOK_URLS)
+      }
+    `);
+    expect(ast.webhooks).toHaveLength(2);
+    expect(ast.webhooks![0]?.name).toBe("StripeWebhook");
+    expect(ast.webhooks![1]?.name).toBe("TaskWebhook");
+  });
+
+  it("webhooks is undefined when no webhook block is present", () => {
+    const ast = parse(`${APP}`);
+    expect(ast.webhooks).toBeUndefined();
+  });
+
+  it("throws when neither fn nor entity is provided (E081)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      webhook MyWebhook {
+        path: "/webhooks/my"
+        secret: env(MY_SECRET)
+      }
+    `),
+    ).toThrow("E081_MISSING_WEBHOOK_MODE");
+  });
+
+  it("throws when both fn and entity are provided (E082)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      webhook Ambiguous {
+        path: "/webhooks/ambiguous"
+        fn: import { handler } from "@src/webhooks/handler.js"
+        entity: Task
+        events: [created]
+        targets: env(WEBHOOK_URLS)
+      }
+    `),
+    ).toThrow("E082_AMBIGUOUS_WEBHOOK_MODE");
+  });
+
+  it("throws on missing path for inbound webhook (E083)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      webhook MissingPath {
+        fn: import { handler } from "@src/webhooks/handler.js"
+      }
+    `),
+    ).toThrow("E083_INBOUND_WEBHOOK_MISSING_PATH");
+  });
+
+  it("throws on missing events for outbound webhook (E084)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      webhook MissingEvents {
+        entity: Task
+        targets: env(WEBHOOK_URLS)
+      }
+    `),
+    ).toThrow("E084_OUTBOUND_WEBHOOK_MISSING_EVENTS");
+  });
+
+  it("throws on missing targets for outbound webhook (E085)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      webhook MissingTargets {
+        entity: Task
+        events: [created]
+      }
+    `),
+    ).toThrow("E085_OUTBOUND_WEBHOOK_MISSING_TARGETS");
+  });
+
+  it("throws on unknown property (E080)", () => {
+    expect(() =>
+      parse(`
+      ${APP}
+      webhook Bad {
+        path: "/webhooks/bad"
+        fn: import { handler } from "@src/webhooks/handler.js"
+        unknownProp: foo
+      }
+    `),
+    ).toThrow("E080_UNKNOWN_WEBHOOK_PROP");
+  });
+});

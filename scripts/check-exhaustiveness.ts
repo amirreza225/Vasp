@@ -58,6 +58,7 @@ const VASP_NODE_TYPES: ReadonlySet<string> = new Set([
   "Storage",
   "Email",
   "Cache",
+  "Webhook",
 ])
 
 // ---------------------------------------------------------------------------

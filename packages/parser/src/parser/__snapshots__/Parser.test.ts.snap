@@ -332,6 +332,35 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
       "type": "Route",
     },
   ],
+  "webhooks": [
+    {
+      "fn": {
+        "kind": "named",
+        "namedExport": "handleStripeWebhook",
+        "source": "@src/webhooks/stripe.js",
+      },
+      "mode": "inbound",
+      "name": "StripeWebhook",
+      "path": "/webhooks/stripe",
+      "secret": "STRIPE_WEBHOOK_SECRET",
+      "type": "Webhook",
+      "verifyWith": "stripe-signature",
+    },
+    {
+      "entity": "Todo",
+      "events": [
+        "created",
+        "updated",
+        "deleted",
+      ],
+      "mode": "outbound",
+      "name": "TodoOutboundWebhook",
+      "retry": 3,
+      "secret": "WEBHOOK_SECRET",
+      "targets": "WEBHOOK_URLS",
+      "type": "Webhook",
+    },
+  ],
 }
 `;
 

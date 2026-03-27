@@ -187,6 +187,44 @@ export interface ActionOnSuccess {
   sendEmail?: string; // template name (e.g. "welcome")
 }
 
+// ------ Webhook ------
+
+export type WebhookMode = "inbound" | "outbound";
+
+/**
+ * Signature verification strategy for inbound webhooks.
+ *   stripe-signature — Stripe's Svix/HMAC header verification
+ *   github-signature — GitHub's HMAC-SHA256 X-Hub-Signature-256 verification
+ *   hmac             — Generic HMAC-SHA256 verification (X-Webhook-Signature header)
+ */
+export type WebhookVerification =
+  | "stripe-signature"
+  | "github-signature"
+  | "hmac";
+
+export interface WebhookNode extends BaseNode {
+  type: "Webhook";
+  mode: WebhookMode;
+  /** Env var name holding the webhook signing secret (used by both inbound and outbound) */
+  secret?: string;
+  // ── Inbound-only ──────────────────────────────────────────────────────────
+  /** URL path where inbound webhook events are received (e.g. "/webhooks/stripe") */
+  path?: string;
+  /** User-supplied handler function (named or default import) */
+  fn?: ImportExpression;
+  /** Signature verification strategy for inbound webhooks */
+  verifyWith?: WebhookVerification;
+  // ── Outbound-only ─────────────────────────────────────────────────────────
+  /** Entity whose CRUD events trigger outbound dispatches */
+  entity?: string;
+  /** CRUD events that trigger dispatch: created | updated | deleted */
+  events?: string[];
+  /** Env var name holding comma-separated target URLs */
+  targets?: string;
+  /** Number of times to retry a failed dispatch (default: 0) */
+  retry?: number;
+}
+
 // ------ Cache ------
 
 export type CacheProvider = "memory" | "redis" | "valkey";
@@ -406,6 +444,7 @@ export interface VaspAST {
   storages?: StorageNode[];
   emails?: EmailNode[];
   caches?: CacheNode[];
+  webhooks?: WebhookNode[];
 }
 
 // ------ Union of all node types ------
@@ -427,6 +466,7 @@ export type VaspNode =
   | AdminNode
   | StorageNode
   | EmailNode
-  | CacheNode;
+  | CacheNode
+  | WebhookNode;
 
 export type NodeType = VaspNode["type"];

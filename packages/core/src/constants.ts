@@ -56,6 +56,12 @@ export const SUPPORTED_EMAIL_PROVIDERS = [
 
 export const SUPPORTED_CACHE_PROVIDERS = ["memory", "redis", "valkey"] as const;
 
+export const SUPPORTED_WEBHOOK_VERIFICATIONS = [
+  "stripe-signature",
+  "github-signature",
+  "hmac",
+] as const;
+
 export const SUPPORTED_MULTI_TENANT_STRATEGIES = [
   "row-level",
   "schema-level",

@@ -1178,3 +1178,119 @@ describe("SemanticValidator — cache blocks", () => {
     ).toThrow("E196_INVALIDATEON_UNKNOWN_OPERATION");
   });
 });
+
+describe("SemanticValidator — webhook blocks", () => {
+  it("passes with a valid inbound webhook block", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      webhook StripeWebhook {
+        path: "/webhooks/stripe"
+        secret: env(STRIPE_WEBHOOK_SECRET)
+        verifyWith: "stripe-signature"
+        fn: import { handleStripeWebhook } from "@src/webhooks/stripe.js"
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes with a valid inbound webhook without secret", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      webhook SimpleWebhook {
+        path: "/webhooks/simple"
+        fn: import { handleSimple } from "@src/webhooks/simple.js"
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes with a valid outbound webhook block", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Todo { entity: Task operations: [list, create, update, delete] }
+      webhook TaskWebhook {
+        entity: Task
+        events: [created, updated, deleted]
+        targets: env(WEBHOOK_URLS)
+        retry: 3
+        secret: env(WEBHOOK_SECRET)
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails on duplicate webhook names (E197)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      webhook StripeWebhook {
+        path: "/webhooks/stripe"
+        fn: import { handler } from "@src/webhooks/stripe.js"
+      }
+      webhook StripeWebhook {
+        path: "/webhooks/stripe2"
+        fn: import { handler } from "@src/webhooks/stripe.js"
+      }
+    `),
+    ).toThrow("E197_DUPLICATE_WEBHOOK");
+  });
+
+  it("fails on unknown verifyWith strategy (E198)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      webhook BadWebhook {
+        path: "/webhooks/bad"
+        secret: env(SECRET)
+        verifyWith: "unknown-strategy"
+        fn: import { handler } from "@src/webhooks/bad.js"
+      }
+    `),
+    ).toThrow("E198_UNKNOWN_WEBHOOK_VERIFICATION");
+  });
+
+  it("fails when verifyWith is set but secret is missing (E199)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      webhook BadWebhook {
+        path: "/webhooks/bad"
+        verifyWith: "stripe-signature"
+        fn: import { handler } from "@src/webhooks/bad.js"
+      }
+    `),
+    ).toThrow("E199_WEBHOOK_VERIFY_REQUIRES_SECRET");
+  });
+
+  it("fails when outbound webhook references unknown entity (E200)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      webhook GhostWebhook {
+        entity: Ghost
+        events: [created]
+        targets: env(WEBHOOK_URLS)
+      }
+    `),
+    ).toThrow("E200_WEBHOOK_UNKNOWN_ENTITY");
+  });
+
+  it("fails on unknown outbound event (E201)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      webhook TaskWebhook {
+        entity: Task
+        events: [created, published]
+        targets: env(WEBHOOK_URLS)
+      }
+    `),
+    ).toThrow("E201_WEBHOOK_UNKNOWN_EVENT");
+  });
+});

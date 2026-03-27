@@ -37,6 +37,19 @@ export class CrudGenerator extends BaseGenerator {
       ast.realtimes.map((rt) => [rt.entity, rt.name]),
     );
 
+    // Build a map of entity → outbound webhook blocks for auto-dispatch
+    const webhooksByEntity = new Map<
+      string,
+      { name: string; events: string[] }[]
+    >();
+    for (const wh of ast.webhooks ?? []) {
+      if (wh.mode === "outbound" && wh.entity) {
+        const list = webhooksByEntity.get(wh.entity) ?? [];
+        list.push({ name: wh.name, events: wh.events ?? [] });
+        webhooksByEntity.set(wh.entity, list);
+      }
+    }
+
     // Build entity map for relation resolution
     const entityMap = new Map(ast.entities.map((e) => [e.name, e]));
 
@@ -131,6 +144,18 @@ export class CrudGenerator extends BaseGenerator {
       const cacheImports = [...cacheImportMap.values()];
       const hasCacheInvalidation = cacheImports.length > 0;
 
+      // Outbound webhook dispatchers for this entity
+      const entityWebhooks = webhooksByEntity.get(crud.entity) ?? [];
+      const hasOutboundWebhooks = entityWebhooks.length > 0;
+      const outboundWebhookDispatchers = entityWebhooks.map((wh) => ({
+        name: wh.name,
+        camelName: toCamelCase(wh.name),
+        pascalName: toPascalCase(wh.name),
+        hasCreated: wh.events.includes("created"),
+        hasUpdated: wh.events.includes("updated"),
+        hasDeleted: wh.events.includes("deleted"),
+      }));
+
       this.write(
         `server/routes/crud/${toCamelCase(crud.entity)}.${ext}`,
         this.render("shared/server/routes/crud/_crud.hbs", {
@@ -161,6 +186,8 @@ export class CrudGenerator extends BaseGenerator {
           createCacheInvalidations,
           updateCacheInvalidations,
           deleteCacheInvalidations,
+          hasOutboundWebhooks,
+          outboundWebhookDispatchers,
         }),
       );
     }

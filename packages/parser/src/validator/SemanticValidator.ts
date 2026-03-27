@@ -20,6 +20,7 @@ import {
   SUPPORTED_REALTIME_EVENTS,
   SUPPORTED_FIELD_TYPES,
   SUPPORTED_STORAGE_PROVIDERS,
+  SUPPORTED_WEBHOOK_VERIFICATIONS,
 } from "@vasp-framework/core";
 
 export class SemanticValidator {
@@ -61,6 +62,7 @@ export class SemanticValidator {
     this.checkEmailOnSuccess(ast);
     this.checkMultiTenantConfig(ast);
     this.checkCacheBlocks(ast);
+    this.checkWebhookBlocks(ast);
     return [...this.diagnostics];
   }
 
@@ -1175,6 +1177,78 @@ export class SemanticValidator {
             hint: "Valid operations: create, update, delete, list",
             loc: query.loc,
           });
+        }
+      }
+    }
+  }
+
+  private checkWebhookBlocks(ast: VaspAST): void {
+    const seen = new Set<string>();
+    const entityNames = new Set(ast.entities.map((e) => e.name));
+    const validEvents = new Set(["created", "updated", "deleted"]);
+
+    for (const webhook of ast.webhooks ?? []) {
+      // E197: duplicate webhook block names
+      if (seen.has(webhook.name)) {
+        this.diagnostics.push({
+          code: "E197_DUPLICATE_WEBHOOK",
+          message: `Duplicate webhook block '${webhook.name}'`,
+          hint: "Each webhook block name must be unique",
+          loc: webhook.loc,
+        });
+      }
+      seen.add(webhook.name);
+
+      // Inbound-specific checks
+      if (webhook.mode === "inbound") {
+        // E198: validate verifyWith strategy
+        if (
+          webhook.verifyWith !== undefined &&
+          !(SUPPORTED_WEBHOOK_VERIFICATIONS as readonly string[]).includes(
+            webhook.verifyWith,
+          )
+        ) {
+          this.diagnostics.push({
+            code: "E198_UNKNOWN_WEBHOOK_VERIFICATION",
+            message: `Unknown verifyWith strategy '${webhook.verifyWith}' in webhook '${webhook.name}'`,
+            hint: `Supported strategies: ${SUPPORTED_WEBHOOK_VERIFICATIONS.join(", ")}`,
+            loc: webhook.loc,
+          });
+        }
+
+        // E199: inbound webhook with verifyWith must have a secret
+        if (webhook.verifyWith && !webhook.secret) {
+          this.diagnostics.push({
+            code: "E199_WEBHOOK_VERIFY_REQUIRES_SECRET",
+            message: `Inbound webhook '${webhook.name}' uses verifyWith but has no secret`,
+            hint: "Add: secret: env(MY_WEBHOOK_SECRET)",
+            loc: webhook.loc,
+          });
+        }
+      }
+
+      // Outbound-specific checks
+      if (webhook.mode === "outbound") {
+        // E200: outbound entity must be declared
+        if (webhook.entity && entityNames.size > 0 && !entityNames.has(webhook.entity)) {
+          this.diagnostics.push({
+            code: "E200_WEBHOOK_UNKNOWN_ENTITY",
+            message: `Outbound webhook '${webhook.name}' references unknown entity '${webhook.entity}'`,
+            hint: `Add an entity block for '${webhook.entity}', or fix the entity name`,
+            loc: webhook.loc,
+          });
+        }
+
+        // E201: validate events
+        for (const event of webhook.events ?? []) {
+          if (!validEvents.has(event)) {
+            this.diagnostics.push({
+              code: "E201_WEBHOOK_UNKNOWN_EVENT",
+              message: `Outbound webhook '${webhook.name}' has unknown event '${event}'`,
+              hint: "Valid events: created, updated, deleted",
+              loc: webhook.loc,
+            });
+          }
         }
       }
     }

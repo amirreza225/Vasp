@@ -11,6 +11,11 @@ import { requireAuth{{#if hasPermissions}}, PERMISSIONS{{/if}} } from '../../aut
 {{#if hasRealtime}}
 import { publish{{pascalCase realtimeName}} } from '../realtime/{{camelCase realtimeName}}.{{ext}}'
 {{/if}}
+{{#if hasOutboundWebhooks}}
+{{#each outboundWebhookDispatchers}}
+import { dispatch{{pascalName}} } from '../../webhooks/{{camelName}}.{{../ext}}'
+{{/each}}
+{{/if}}
 {{#if hasCacheInvalidation}}
 {{#each cacheImports}}
 import { invalidateCached as _invalidate{{pascalStore}} } from '../../cache/{{camelStore}}.{{../ext}}'
@@ -151,6 +156,13 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{#if hasRealtime}}
     publish{{pascalCase realtimeName}}('created', created)
 {{/if}}
+{{#if hasOutboundWebhooks}}
+{{#each outboundWebhookDispatchers}}
+{{#if hasCreated}}
+    dispatch{{pascalName}}('created', created)
+{{/if}}
+{{/each}}
+{{/if}}
 {{#if createCacheInvalidations}}
 {{#each createCacheInvalidations}}
     await _invalidate{{pascalStore}}('{{key}}')
@@ -208,6 +220,13 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{#if hasRealtime}}
     publish{{pascalCase realtimeName}}('updated', updated)
 {{/if}}
+{{#if hasOutboundWebhooks}}
+{{#each outboundWebhookDispatchers}}
+{{#if hasUpdated}}
+    dispatch{{pascalName}}('updated', updated)
+{{/if}}
+{{/each}}
+{{/if}}
 {{#if updateCacheInvalidations}}
 {{#each updateCacheInvalidations}}
     await _invalidate{{pascalStore}}('{{key}}')
@@ -233,6 +252,13 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     if (!deleted) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
 {{#if hasRealtime}}
     publish{{pascalCase realtimeName}}('deleted', deleted)
+{{/if}}
+{{#if hasOutboundWebhooks}}
+{{#each outboundWebhookDispatchers}}
+{{#if hasDeleted}}
+    dispatch{{pascalName}}('deleted', deleted)
+{{/if}}
+{{/each}}
 {{/if}}
 {{#if deleteCacheInvalidations}}
 {{#each deleteCacheInvalidations}}

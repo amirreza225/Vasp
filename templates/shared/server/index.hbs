@@ -46,6 +46,9 @@ import { adminRoutes } from './routes/admin/index.{{ext}}'
 {{#each storages}}
 import { {{camelCase name}}UploadRoutes } from './routes/storage/{{camelCase name}}.{{../ext}}'
 {{/each}}
+{{#each inboundWebhooks}}
+import { {{camelCase name}}Routes } from './routes/webhooks/{{camelCase name}}.{{../ext}}'
+{{/each}}
 
 const PORT = Number(process.env.PORT) || {{backendPort}}
 
@@ -148,6 +151,9 @@ const app = new Elysia()
 {{/if}}
 {{#each storages}}
   .use({{camelCase name}}UploadRoutes)
+{{/each}}
+{{#each inboundWebhooks}}
+  .use({{camelCase name}}Routes)
 {{/each}}
   .listen(PORT)
 

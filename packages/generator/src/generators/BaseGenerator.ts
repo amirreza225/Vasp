@@ -33,6 +33,9 @@ export abstract class BaseGenerator {
     const { ast, isTypeScript, isSsr, isSsg, isSpa, ext, mode } = this.ctx;
     const emails = ast.emails ?? [];
     const caches = ast.caches ?? [];
+    const webhooks = ast.webhooks ?? [];
+    const inboundWebhooks = webhooks.filter((w) => w.mode === "inbound");
+    const outboundWebhooks = webhooks.filter((w) => w.mode === "outbound");
     return {
       appName: ast.app.name,
       appTitle: ast.app.title,
@@ -71,6 +74,12 @@ export abstract class BaseGenerator {
       emails,
       hasCache: caches.length > 0,
       caches,
+      hasWebhook: webhooks.length > 0,
+      hasInboundWebhook: inboundWebhooks.length > 0,
+      hasOutboundWebhook: outboundWebhooks.length > 0,
+      webhooks,
+      inboundWebhooks,
+      outboundWebhooks,
       routes: ast.routes,
       pages: ast.pages,
       queries: ast.queries,

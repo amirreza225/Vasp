@@ -91,3 +91,18 @@ job sendWelcomeEmail {
     fn: import { sendWelcomeEmail } from "@src/jobs.js"
   }
 }
+
+webhook StripeWebhook {
+  path: "/webhooks/stripe"
+  secret: env(STRIPE_WEBHOOK_SECRET)
+  verifyWith: "stripe-signature"
+  fn: import { handleStripeWebhook } from "@src/webhooks/stripe.js"
+}
+
+webhook TodoOutboundWebhook {
+  entity: Todo
+  events: [created, updated, deleted]
+  targets: env(WEBHOOK_URLS)
+  retry: 3
+  secret: env(WEBHOOK_SECRET)
+}

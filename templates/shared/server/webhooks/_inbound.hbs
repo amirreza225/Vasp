@@ -1,0 +1,74 @@
+import { Elysia } from 'elysia'
+import { createHmac, timingSafeEqual } from 'node:crypto'
+{{#if fnIsDefault}}
+import {{fnExport}} from '{{importPath fnSource ext}}'
+{{else}}
+import { {{fnExport}} } from '{{importPath fnSource ext}}'
+{{/if}}
+
+{{#if isStripeSignature}}
+/**
+ * Verifies a Stripe webhook signature.
+ * Stripe sends a 'stripe-signature' header containing a timestamp and HMAC-SHA256 signature.
+ */
+function _verifyStripeSignature(rawBody, sigHeader, secret) {
+  const parts = sigHeader.split(',')
+  const ts = parts.find((p) => p.startsWith('t='))?.slice(2)
+  const v1 = parts.find((p) => p.startsWith('v1='))?.slice(3)
+  if (!ts || !v1) return false
+  const signed = ts + '.' + rawBody
+  const expected = createHmac('sha256', secret).update(signed).digest('hex')
+  return timingSafeEqual(Buffer.from(v1), Buffer.from(expected))
+}
+{{/if}}
+{{#if isGithubSignature}}
+/**
+ * Verifies a GitHub webhook signature.
+ * GitHub sends an 'x-hub-signature-256' header with format 'sha256=<hex>'.
+ */
+function _verifyGithubSignature(rawBody, sigHeader, secret) {
+  const sigHex = sigHeader.startsWith('sha256=') ? sigHeader.slice(7) : sigHeader
+  const expected = createHmac('sha256', secret).update(rawBody).digest('hex')
+  return timingSafeEqual(Buffer.from(sigHex), Buffer.from(expected))
+}
+{{/if}}
+{{#if isHmac}}
+/**
+ * Verifies a generic HMAC-SHA256 webhook signature.
+ * Expects an 'x-webhook-signature' header containing the hex-encoded HMAC.
+ */
+function _verifyHmacSignature(rawBody, sigHeader, secret) {
+  const expected = createHmac('sha256', secret).update(rawBody).digest('hex')
+  return timingSafeEqual(Buffer.from(sigHeader), Buffer.from(expected))
+}
+{{/if}}
+
+export const {{webhookConst}}Routes = new Elysia({ prefix: '{{path}}' })
+  .post('/', async ({ body, headers, request }) => {
+{{#if hasVerifyWith}}
+    const _rawBody = await request.clone().text()
+    const _secret = process.env.{{secretEnvVar}} ?? ''
+{{#if isStripeSignature}}
+    const _sig = headers['stripe-signature'] ?? ''
+    if (!_verifyStripeSignature(_rawBody, _sig, _secret)) {
+      return new Response('Invalid webhook signature', { status: 401 })
+    }
+{{/if}}
+{{#if isGithubSignature}}
+    const _sig = headers['x-hub-signature-256'] ?? ''
+    if (!_verifyGithubSignature(_rawBody, _sig, _secret)) {
+      return new Response('Invalid webhook signature', { status: 401 })
+    }
+{{/if}}
+{{#if isHmac}}
+    const _sig = headers['x-webhook-signature'] ?? ''
+    if (!_verifyHmacSignature(_rawBody, _sig, _secret)) {
+      return new Response('Invalid webhook signature', { status: 401 })
+    }
+{{/if}}
+{{else if hasSecret}}
+    // Optional: verify signature using process.env.{{secretEnvVar}}
+{{/if}}
+    await {{fnExport}}(body)
+    return { received: true }
+  })

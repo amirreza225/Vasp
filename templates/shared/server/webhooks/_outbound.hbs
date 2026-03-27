@@ -1,0 +1,72 @@
+import { createHmac } from 'node:crypto'
+
+/**
+ * Outbound webhook dispatcher: {{webhookName}}
+ * Entity: {{entity}}
+ * Events: {{join events ", "}}
+ * Targets env var: {{targetsEnvVar}}
+{{#if hasSecret}}
+ * Signs payloads with HMAC-SHA256 using env({{secretEnvVar}})
+{{/if}}
+{{#if hasRetry}}
+ * Retry count: {{retry}}
+{{/if}}
+ */
+
+function _getTargets() {
+  const raw = process.env.{{targetsEnvVar}} ?? ''
+  return raw
+    .split(',')
+    .map((u) => u.trim())
+    .filter(Boolean)
+}
+
+{{#if hasSecret}}
+function _signPayload(payload) {
+  const secret = process.env.{{secretEnvVar}} ?? ''
+  return createHmac('sha256', secret).update(payload).digest('hex')
+}
+{{/if}}
+
+async function _sendWithRetry(url, body, signature, attempt) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Vasp-Webhook-Event': body.event,
+{{#if hasSecret}}
+    'X-Webhook-Signature': signature,
+{{/if}}
+  }
+  try {
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+    if (!res.ok) throw new Error('HTTP ' + res.status)
+  } catch (err) {
+{{#if hasRetry}}
+    if (attempt < {{retry}}) {
+      await new Promise((r) => setTimeout(r, 500 * attempt))
+      return _sendWithRetry(url, body, signature, attempt + 1)
+    }
+{{/if}}
+    console.error('[{{webhookName}}] Failed to deliver webhook to ' + url + ':', err)
+  }
+}
+
+/**
+ * Dispatch a {{webhookName}} outbound webhook event to all configured targets.
+ * @param event - The event type: {{join events " | "}}
+ * @param data  - The entity payload to send
+ */
+export async function dispatch{{webhookPascal}}(event, data) {
+  const targets = _getTargets()
+  if (targets.length === 0) {
+    console.warn('[{{webhookName}}] No targets configured — set {{targetsEnvVar}} env var')
+    return
+  }
+  const body = { event, entity: '{{entity}}', data, timestamp: new Date().toISOString() }
+  const serialized = JSON.stringify(body)
+{{#if hasSecret}}
+  const signature = _signPayload(serialized)
+{{else}}
+  const signature = ''
+{{/if}}
+  await Promise.allSettled(targets.map((url) => _sendWithRetry(url, body, signature, 1)))
+}

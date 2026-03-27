@@ -47,6 +47,9 @@ import type {
   StorageNode,
   StorageProvider,
   VaspAST,
+  WebhookNode,
+  WebhookMode,
+  WebhookVerification,
 } from "@vasp-framework/core";
 import {
   ParseError,
@@ -226,11 +229,14 @@ class Parser {
           case TokenType.KW_CACHE:
             (ast.caches ??= []).push(this.parseCache());
             break;
+          case TokenType.KW_WEBHOOK:
+            (ast.webhooks ??= []).push(this.parseWebhook());
+            break;
           default:
             throw this.error(
               "E010_UNEXPECTED_TOKEN",
               `Unexpected token '${kw.value}' at top level`,
-              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, storage, email, or cache",
+              "Expected a declaration keyword: app, auth, entity, route, page, query, action, api, middleware, crud, realtime, job, seed, admin, storage, email, cache, or webhook",
               kw.loc,
             );
         }
@@ -1691,6 +1697,132 @@ class Parser {
       provider,
       ...(ttl !== undefined ? { ttl } : {}),
       ...(redis !== undefined ? { redis } : {}),
+    };
+  }
+
+  private parseWebhook(): WebhookNode {
+    const loc = this.consume(TokenType.KW_WEBHOOK).loc;
+    const name = this.consumeIdentifier();
+    this.consume(TokenType.LBRACE);
+
+    let secret: string | undefined;
+    // Inbound
+    let path: string | undefined;
+    let fn: ImportExpression | undefined;
+    let verifyWith: WebhookVerification | undefined;
+    // Outbound
+    let entity: string | undefined;
+    let events: string[] | undefined;
+    let targets: string | undefined;
+    let retry: number | undefined;
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier();
+      this.consume(TokenType.COLON);
+
+      switch (key.value) {
+        case "secret":
+          secret = this.parseEnvRef();
+          break;
+        case "path":
+          path = this.consumeString();
+          break;
+        case "fn":
+          fn = this.parseImportExpression();
+          break;
+        case "verifyWith":
+          verifyWith = this.consumeString() as WebhookVerification;
+          break;
+        case "entity":
+          entity = this.consumeIdentifier().value;
+          break;
+        case "events":
+          events = this.parseIdentifierArray();
+          break;
+        case "targets":
+          targets = this.parseEnvRef();
+          break;
+        case "retry": {
+          const tok = this.consume(TokenType.NUMBER);
+          retry = Number(tok.value);
+          break;
+        }
+        default:
+          throw this.error(
+            "E080_UNKNOWN_WEBHOOK_PROP",
+            `Unknown webhook property '${key.value}'`,
+            "Valid properties: secret, path, fn, verifyWith, entity, events, targets, retry",
+            key.loc,
+          );
+      }
+    }
+
+    this.consume(TokenType.RBRACE);
+
+    // Determine mode: inbound has `fn`, outbound has `entity`
+    const isInbound = fn !== undefined;
+    const isOutbound = entity !== undefined;
+
+    if (!isInbound && !isOutbound) {
+      throw this.error(
+        "E081_MISSING_WEBHOOK_MODE",
+        `Webhook block '${name.value}' must define either 'fn' (inbound) or 'entity' (outbound)`,
+        "Add: fn: import { handler } from \"@src/...\" for inbound, or entity: EntityName for outbound",
+        loc,
+      );
+    }
+
+    if (isInbound && isOutbound) {
+      throw this.error(
+        "E082_AMBIGUOUS_WEBHOOK_MODE",
+        `Webhook block '${name.value}' cannot define both 'fn' (inbound) and 'entity' (outbound)`,
+        "Use either fn or entity, not both",
+        loc,
+      );
+    }
+
+    const mode: WebhookMode = isInbound ? "inbound" : "outbound";
+
+    if (mode === "inbound" && !path) {
+      throw this.error(
+        "E083_INBOUND_WEBHOOK_MISSING_PATH",
+        `Inbound webhook '${name.value}' is missing a path`,
+        'Add: path: "/webhooks/my-webhook"',
+        loc,
+      );
+    }
+
+    if (mode === "outbound" && (!events || events.length === 0)) {
+      throw this.error(
+        "E084_OUTBOUND_WEBHOOK_MISSING_EVENTS",
+        `Outbound webhook '${name.value}' is missing events`,
+        "Add: events: [created, updated, deleted]",
+        loc,
+      );
+    }
+
+    if (mode === "outbound" && !targets) {
+      throw this.error(
+        "E085_OUTBOUND_WEBHOOK_MISSING_TARGETS",
+        `Outbound webhook '${name.value}' is missing targets`,
+        "Add: targets: env(WEBHOOK_URLS)",
+        loc,
+      );
+    }
+
+    return {
+      type: "Webhook",
+      name: name.value,
+      loc,
+      mode,
+      ...(secret !== undefined ? { secret } : {}),
+      ...(path !== undefined ? { path } : {}),
+      ...(fn !== undefined ? { fn } : {}),
+      ...(verifyWith !== undefined ? { verifyWith } : {}),
+      ...(entity !== undefined ? { entity } : {}),
+      ...(events !== undefined ? { events } : {}),
+      ...(targets !== undefined ? { targets } : {}),
+      ...(retry !== undefined ? { retry } : {}),
     };
   }
 
