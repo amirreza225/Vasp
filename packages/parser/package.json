@@ -1,6 +1,6 @@
 {
   "name": "@vasp-framework/parser",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "Lexer, parser, and semantic validator for the .vasp DSL",
   "license": "Apache-2.0",
   "type": "module",
@@ -22,7 +22,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@vasp-framework/core": "workspace:*"
+    "@vasp-framework/core": "1.3.4"
   },
   "devDependencies": {
     "typescript": "*",

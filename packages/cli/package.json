@@ -1,6 +1,6 @@
 {
   "name": "vasp-cli",
-  "version": "1.3.3",
+  "version": "1.3.4",
   "description": "The Vasp CLI — declarative full-stack framework for Vue developers",
   "license": "Apache-2.0",
   "type": "module",
@@ -18,9 +18,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@vasp-framework/core": "workspace:*",
-    "@vasp-framework/generator": "workspace:*",
-    "@vasp-framework/parser": "workspace:*",
+    "@vasp-framework/core": "1.3.4",
+    "@vasp-framework/generator": "1.3.4",
+    "@vasp-framework/parser": "1.3.4",
     "picocolors": "^1.1.0"
   },
   "devDependencies": {
