@@ -29,6 +29,8 @@ export class SemanticValidator {
    * when the file is otherwise valid.
    */
   collectDiagnostics(ast: VaspAST): ParseDiagnostic[] {
+    // Reset so the same instance can be safely called multiple times.
+    this.diagnostics.length = 0;
     this.checkAppExists(ast);
     this.checkDuplicateEntities(ast);
     this.checkDuplicateRoutes(ast);

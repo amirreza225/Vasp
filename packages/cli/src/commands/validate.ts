@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, watch } from "node:fs";
 import { join, resolve } from "node:path";
 import { parseAll, formatDiagnostics } from "@vasp-framework/parser";
+import pc from "picocolors";
 import { log } from "../utils/logger.js";
 
 interface ValidateOptions {
@@ -42,7 +43,8 @@ export async function validateCommand(args: string[]): Promise<void> {
       }, 100);
     });
 
-    // Keep the process alive until the user presses Ctrl+C
+    // Blocks forever — the fs.watch() callback keeps the event loop alive
+    // until the user sends SIGINT (Ctrl+C).
     await new Promise<never>(() => {});
   } else {
     const ok = runValidation(vaspFile, opts);
@@ -63,7 +65,7 @@ function runValidation(vaspFile: string, opts: ValidateOptions): boolean {
     const formatted = formatDiagnostics(errors, source, filename);
     console.error("\n" + formatted + "\n");
     console.error(
-      `\x1b[31m\x1b[1mValidation failed:\x1b[0m Found ${errors.length} error${errors.length === 1 ? "" : "s"} in ${filename}\n`,
+      `${pc.red(pc.bold("Validation failed:"))} Found ${errors.length} error${errors.length === 1 ? "" : "s"} in ${filename}\n`,
     );
   }
 
