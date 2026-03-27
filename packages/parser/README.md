@@ -2,7 +2,7 @@
 
 Lexer, recursive descent parser, and semantic validator for the `.vasp` DSL.
 
-**Version: 1.2.0**
+**Version: 1.2.9**
 
 This is an internal package used by `vasp-cli` and `@vasp-framework/generator`. You don't need to install it unless you're building custom Vasp tooling.
 
@@ -90,4 +90,4 @@ try {
 
 ## License
 
-[Apache 2.0](../../LICENSE)
+[Apache 2.0](https://github.com/amirreza225/Vasp/blob/main/LICENSE)

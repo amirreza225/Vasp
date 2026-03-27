@@ -1,6 +1,6 @@
 {
   "name": "@vasp-framework/core",
-  "version": "1.2.0",
+  "version": "1.2.9",
   "description": "Shared types, AST definitions, and error classes for the Vasp framework",
   "license": "Apache-2.0",
   "type": "module",

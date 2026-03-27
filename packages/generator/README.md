@@ -2,7 +2,7 @@
 
 Handlebars-based code generator for Vasp. Takes a `VaspAST` and writes a complete, production-ready full-stack project to disk.
 
-**Version: 1.2.0**
+**Version: 1.2.9**
 
 This is an internal package used by `vasp-cli`. You don't need to install it unless you're building custom Vasp tooling.
 
@@ -82,4 +82,4 @@ When a generator silently fails (e.g. early `BackendGenerator` error prevents la
 
 ## License
 
-[Apache 2.0](../../LICENSE)
+[Apache 2.0](https://github.com/amirreza225/Vasp/blob/main/LICENSE)

@@ -2,7 +2,7 @@
 
 Shared types, AST node definitions, error classes, and constants for the Vasp framework.
 
-**Version: 1.2.0**
+**Version: 1.2.9**
 
 This package is an internal dependency used by `@vasp-framework/parser`, `@vasp-framework/generator`, and `vasp-cli`. You don't need to install it directly unless you're building Vasp tooling.
 
@@ -112,7 +112,7 @@ interface EntityUniqueConstraint {
 ### Constants
 
 ```typescript
-VASP_VERSION                   // '1.2.0'
+VASP_VERSION                   // '1.2.9'
 DEFAULT_BACKEND_PORT           // 3001
 DEFAULT_SPA_PORT               // 5173
 DEFAULT_SSR_PORT               // 3000
@@ -133,4 +133,4 @@ SUPPORTED_MULTI_TENANT_STRATEGIES // ['row-level', 'schema-level', 'database-lev
 
 ## License
 
-[Apache 2.0](../../LICENSE)
+[Apache 2.0](https://github.com/amirreza225/Vasp/blob/main/LICENSE)

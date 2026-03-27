@@ -2,7 +2,7 @@
 
 Runtime composables and client utilities shipped into Vasp-generated apps.
 
-**Version: 1.2.0**
+**Version: 1.2.9**
 
 This package is automatically added as a dependency to every project created with `vasp new`. You don't install it manually — Vasp handles it.
 
@@ -93,4 +93,4 @@ The developer always sees the same `useVasp()` API regardless of mode.
 
 ## License
 
-[Apache 2.0](../../LICENSE)
+[Apache 2.0](https://github.com/amirreza225/Vasp/blob/main/LICENSE)

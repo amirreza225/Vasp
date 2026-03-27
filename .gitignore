@@ -151,3 +151,6 @@ playwright-report/
 vasp-analysis.md
 vasp-analysis-2.md
 packages/generator/src/__test_output__/
+
+#docs
+docs/*.md

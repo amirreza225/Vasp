@@ -2,7 +2,7 @@
 
 The official CLI for [Vasp](https://github.com/vasp-framework/vasp) — a declarative full-stack framework for Vue developers powered by Bun + Elysia.
 
-**Version: 1.2.0**
+**Version: 1.2.9**
 
 ## Installation
 
@@ -215,4 +215,4 @@ action createTodo {
 
 ## License
 
-[Apache 2.0](../../LICENSE)
+[Apache 2.0](https://github.com/amirreza225/Vasp/blob/main/LICENSE)
