@@ -15,7 +15,7 @@
  *  4. Verify the server stays healthy after uploads.
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFixtureState } from '../../lib/FixtureHarness.mts'
 
 const state = readFixtureState('project-hub')

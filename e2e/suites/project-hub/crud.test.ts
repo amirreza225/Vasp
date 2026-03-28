@@ -6,7 +6,7 @@
  * ProjectHub has complex entities with many field types.
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFixtureState, unwrap } from '../../lib/FixtureHarness.mts'
 import { crudSuite } from '../../lib/assertions/crud.mts'
 

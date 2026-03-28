@@ -9,7 +9,7 @@
  * Auth-protected CRUD routes are accessed via the E2E magic token.
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFixtureState, unwrap } from '../../lib/FixtureHarness.mts'
 import { authSuite } from '../../lib/assertions/auth.mts'
 import { crudSuite } from '../../lib/assertions/crud.mts'

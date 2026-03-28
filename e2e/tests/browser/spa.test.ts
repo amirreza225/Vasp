@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 
 /**
  * Browser tests for a Vasp-generated minimal SPA app.

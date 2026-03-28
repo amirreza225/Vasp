@@ -6,7 +6,7 @@
  * after generation is complete but before any network call is needed.
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 

@@ -15,7 +15,7 @@
  * so Mailpit tests are skipped unless the provider was overridden.
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFixtureState } from '../../lib/FixtureHarness.mts'
 import { mailpitMessages, mailpitClear } from '../../lib/docker-services.mts'
 

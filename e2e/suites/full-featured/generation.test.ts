@@ -7,7 +7,7 @@
 
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFixtureState } from '../../lib/FixtureHarness.mts'
 import { generationSuite } from '../../lib/assertions/generation.mts'
 

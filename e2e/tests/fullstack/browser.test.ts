@@ -14,7 +14,7 @@
  *   - Fail on any 5xx response from the backend
  */
 
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from '../../lib/test.mts'
 
 const BACKEND = process.env.E2E_BACKEND_URL ?? 'http://localhost:3001'
 const MAGIC = process.env.E2E_MAGIC_TOKEN ?? ''

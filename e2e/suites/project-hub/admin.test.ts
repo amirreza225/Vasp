@@ -10,7 +10,7 @@
  *  3. Admin API requires auth (magic token).
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFixtureState, unwrap } from '../../lib/FixtureHarness.mts'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'

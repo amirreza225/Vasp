@@ -5,7 +5,7 @@
  * workspaces (alpha + beta) via direct DB insert before the backend starts.
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFixtureState, unwrap } from '../../lib/FixtureHarness.mts'
 
 const state = readFixtureState('multi-tenant')

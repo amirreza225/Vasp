@@ -5,7 +5,7 @@
  * are reachable and return the expected response shapes.
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFixtureState, unwrap } from '../../lib/FixtureHarness.mts'
 
 const state = readFixtureState('full-featured')

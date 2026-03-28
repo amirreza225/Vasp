@@ -5,7 +5,7 @@
  * Users must be registered with a workspaceId (multi-tenant).
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFixtureState, unwrap } from '../../lib/FixtureHarness.mts'
 
 const state = readFixtureState('project-hub')

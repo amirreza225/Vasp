@@ -9,7 +9,7 @@
  *   generationSuite(readFixtureState('minimal'))
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../test.mts'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FixtureState } from '../types.mts'

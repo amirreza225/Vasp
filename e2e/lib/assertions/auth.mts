@@ -9,7 +9,7 @@
  *   authSuite({ backendUrl: state.backendUrl })
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../test.mts'
 import { unwrap } from '../FixtureHarness.mts'
 
 export interface AuthOptions {

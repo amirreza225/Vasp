@@ -5,7 +5,7 @@
  * Verifies the SPA loads and the page renders without JS errors.
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 import { readFixtureState } from '../../lib/FixtureHarness.mts'
 
 const state = readFixtureState('minimal')

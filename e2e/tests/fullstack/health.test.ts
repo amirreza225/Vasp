@@ -3,7 +3,7 @@
  * and exposes the expected meta endpoints.
  */
 
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 
 const BACKEND = process.env.E2E_BACKEND_URL ?? 'http://localhost:3001'
 

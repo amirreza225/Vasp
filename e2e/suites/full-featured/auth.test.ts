@@ -7,7 +7,7 @@
 
 import { readFixtureState } from '../../lib/FixtureHarness.mts'
 import { authSuite } from '../../lib/assertions/auth.mts'
-import { test, expect } from '@playwright/test'
+import { test, expect } from '../../lib/test.mts'
 
 const state = readFixtureState('full-featured')
 const BACKEND = state.backendUrl

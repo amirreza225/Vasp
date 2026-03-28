@@ -123,7 +123,8 @@ export class FrontendGenerator extends BaseGenerator {
   private generateSsr(): void {
     const { ext, ast } = this.ctx;
     const backendPort = DEFAULT_BACKEND_PORT;
-    const data = { backendPort };
+    const frontendPort = DEFAULT_SSR_PORT;
+    const data = { backendPort, frontendPort };
 
     // Nuxt config
     this.write(
