@@ -54,6 +54,8 @@ export function isPlaceholderValue(value: string): boolean {
 /**
  * Copy all files from a staging directory to the real output directory.
  * Optionally preserves `.env` if it already exists with non-placeholder values.
+ * `main.vasp` is always preserved when it already exists — it is the user's
+ * source of truth and must never be overwritten by `vasp generate`.
  */
 export function commitStagedFiles(
   stagingDir: string,
@@ -71,6 +73,11 @@ export function commitStagedFiles(
         protectedFiles.add(".env");
       }
     }
+  }
+
+  // main.vasp is the user's source of truth — never overwrite it once created.
+  if (existsSync(join(realDir, "main.vasp"))) {
+    protectedFiles.add("main.vasp");
   }
 
   copyDirRecursive(stagingDir, realDir, stagingDir, protectedFiles);

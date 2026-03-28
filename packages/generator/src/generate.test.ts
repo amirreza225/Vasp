@@ -2417,5 +2417,390 @@ describe("generate()", () => {
       expect(mainVasp).toContain("admin {");
       expect(mainVasp).toContain("entities: [Todo, User]");
     });
+
+    it("emits app.ui sub-block in main.vasp", () => {
+      const source = `
+        app A {
+          title: "T" db: Drizzle ssr: false typescript: false
+          ui: { theme: Lara primaryColor: blue darkModeSelector: ".dark" ripple: true }
+        }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-ui");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("ui: {");
+      expect(mainVasp).toContain("theme: Lara");
+      expect(mainVasp).toContain("primaryColor: blue");
+      expect(mainVasp).toContain('darkModeSelector: ".dark"');
+      expect(mainVasp).toContain("ripple: true");
+    });
+
+    it("emits app.multiTenant sub-block in main.vasp", () => {
+      const source = `
+        app A {
+          title: "T" db: Drizzle ssr: false typescript: false
+          multiTenant: { strategy: "row-level" tenantEntity: Workspace tenantField: id }
+        }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity Workspace { id: Int @id name: String }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-multitenant");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("multiTenant: {");
+      expect(mainVasp).toContain('strategy: "row-level"');
+      expect(mainVasp).toContain("tenantEntity: Workspace");
+      expect(mainVasp).toContain("tenantField: id");
+    });
+
+    it("emits auth permissions map in main.vasp", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        auth Auth {
+          userEntity: User
+          methods: [usernameAndPassword]
+          roles: [admin, member]
+          permissions: { task:create: [admin] task:read: [admin, member] }
+        }
+        entity User { id: Int @id email: String @unique }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-auth-permissions");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("permissions: {");
+      expect(mainVasp).toContain("task:create: [ admin ]");
+      expect(mainVasp).toContain("task:read: [ admin, member ]");
+    });
+
+    it("emits entity @@index and @@unique in main.vasp", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity Post {
+          id: Int @id
+          title: String
+          status: String
+          content: Text
+          @@index([title], type: fulltext)
+          @@index([status])
+          @@unique([title])
+        }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-indexes");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("@@index([title], type: fulltext)");
+      expect(mainVasp).toContain("@@index([status])");
+      expect(mainVasp).toContain("@@unique([title])");
+    });
+
+    it("emits @manyToMany and @storage field modifiers in main.vasp", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity Tag { id: Int @id name: String tasks: Task[] @manyToMany }
+        entity Task {
+          id: Int @id
+          title: String
+          tags: Tag[] @manyToMany
+          attachment: File @storage(TaskFiles) @nullable
+        }
+        storage TaskFiles { provider: local }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-manytomany");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("@manyToMany");
+      expect(mainVasp).toContain("@storage(TaskFiles)");
+    });
+
+    it("emits query cache config in main.vasp", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity Post { id: Int @id title: String }
+        crud Post { entity: Post operations: [list] }
+        cache AppCache { provider: memory ttl: 60 }
+        query getPosts {
+          fn: import { getPosts } from "@src/queries.js"
+          entities: [Post]
+          cache: { store: AppCache ttl: 120 key: "all-posts" invalidateOn: [Post:create, Post:update] }
+        }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-query-cache");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("cache: {");
+      expect(mainVasp).toContain("store: AppCache");
+      expect(mainVasp).toContain("ttl: 120");
+      expect(mainVasp).toContain('key: "all-posts"');
+      expect(mainVasp).toContain("invalidateOn: [Post:create, Post:update]");
+    });
+
+    it("emits crud list config, permissions, and ownership in main.vasp", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity Task { id: Int @id title: String status: String author: String }
+        auth Auth {
+          userEntity: Task
+          methods: [usernameAndPassword]
+          roles: [admin]
+          permissions: { task:read: [admin] }
+        }
+        crud Task {
+          entity: Task
+          operations: [list, create, update, delete]
+          ownership: author
+          list: { paginate: true sortable: [title] filterable: [status] search: [title] }
+          permissions: { list: task:read }
+        }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-crud-full");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("ownership: author");
+      expect(mainVasp).toContain("list: {");
+      expect(mainVasp).toContain("paginate: true");
+      expect(mainVasp).toContain("sortable: [title]");
+      expect(mainVasp).toContain("filterable: [status]");
+      expect(mainVasp).toContain("search: [title]");
+      expect(mainVasp).toContain("permissions: {");
+      expect(mainVasp).toContain("list: task:read");
+    });
+
+    it("emits job priority, retries, and deadLetter in main.vasp", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        job sendEmail {
+          executor: PgBoss
+          priority: 5
+          retries: { limit: 3 backoff: exponential delay: 1000 multiplier: 2 }
+          deadLetter: { queue: "failed-emails" }
+          perform: { fn: import { sendEmail } from "@src/jobs.js" }
+        }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-job-full");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("priority: 5");
+      expect(mainVasp).toContain("retries: {");
+      expect(mainVasp).toContain("limit: 3");
+      expect(mainVasp).toContain("backoff: exponential");
+      expect(mainVasp).toContain("delay: 1000");
+      expect(mainVasp).toContain("multiplier: 2");
+      expect(mainVasp).toContain("deadLetter: {");
+      expect(mainVasp).toContain('queue: "failed-emails"');
+    });
+
+    it("emits webhook blocks (inbound and outbound) in main.vasp", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity Todo { id: Int @id title: String }
+        crud Todo { entity: Todo operations: [list] }
+        webhook StripeWebhook {
+          path: "/webhooks/stripe"
+          secret: env(STRIPE_SECRET)
+          verifyWith: "stripe-signature"
+          fn: import { handleStripe } from "@src/webhooks/stripe.js"
+        }
+        webhook TodoOutbound {
+          entity: Todo
+          events: [created, updated]
+          targets: env(WEBHOOK_URLS)
+          retry: 3
+          secret: env(WEBHOOK_SECRET)
+        }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-webhooks");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("webhook StripeWebhook {");
+      expect(mainVasp).toContain('path: "/webhooks/stripe"');
+      expect(mainVasp).toContain("secret: env(STRIPE_SECRET)");
+      expect(mainVasp).toContain('verifyWith: "stripe-signature"');
+      expect(mainVasp).toContain("fn: import { handleStripe }");
+      expect(mainVasp).toContain("webhook TodoOutbound {");
+      expect(mainVasp).toContain("entity: Todo");
+      expect(mainVasp).toContain("events: [created, updated]");
+      expect(mainVasp).toContain("targets: env(WEBHOOK_URLS)");
+      expect(mainVasp).toContain("retry: 3");
+    });
+
+    it("emits storage and cache blocks in main.vasp", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        storage AvatarStorage {
+          provider: s3
+          bucket: "my-avatars"
+          maxSize: "5mb"
+          allowedTypes: ["image/jpeg", "image/png"]
+          publicPath: "/uploads"
+        }
+        cache RedisCache {
+          provider: redis
+          ttl: 300
+          redis: { url: env(REDIS_URL) }
+        }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-storage-cache");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("storage AvatarStorage {");
+      expect(mainVasp).toContain("provider: s3");
+      expect(mainVasp).toContain('bucket: "my-avatars"');
+      expect(mainVasp).toContain('maxSize: "5mb"');
+      expect(mainVasp).toContain('"image/jpeg"');
+      expect(mainVasp).toContain('publicPath: "/uploads"');
+      expect(mainVasp).toContain("cache RedisCache {");
+      expect(mainVasp).toContain("provider: redis");
+      expect(mainVasp).toContain("ttl: 300");
+      expect(mainVasp).toContain("url: env(REDIS_URL)");
+    });
+
+    it("emits observability block in main.vasp", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        observability {
+          tracing: true
+          metrics: true
+          logs: structured
+          exporter: otlp
+          errorTracking: sentry
+        }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-observability");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("observability {");
+      expect(mainVasp).toContain("tracing: true");
+      expect(mainVasp).toContain("metrics: true");
+      expect(mainVasp).toContain("logs: structured");
+      expect(mainVasp).toContain("exporter: otlp");
+      expect(mainVasp).toContain("errorTracking: sentry");
+    });
+
+    it("emits autoPage blocks in main.vasp", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+        entity Todo { id: Int @id title: String status: String done: Boolean content: Text @nullable createdAt: DateTime @default(now) updatedAt: DateTime @updatedAt }
+        action createTodo { fn: import { createTodo } from "@src/actions.js" entities: [Todo] }
+        autoPage TodoList {
+          entity: Todo
+          path: "/todos"
+          type: list
+          title: "Todo List"
+          columns: [id, title, status]
+          sortable: [title]
+          filterable: [status]
+          searchable: [title]
+          rowActions: [view, edit, delete]
+          topActions: [create]
+          paginate: true
+          pageSize: 20
+        }
+        autoPage CreateTodo {
+          entity: Todo
+          path: "/todos/create"
+          type: form
+          title: "Create Todo"
+          fields: [title, content, status, done]
+          layout: "2-column"
+          submitAction: createTodo
+          successRoute: "/todos"
+          auth: true
+        }
+        autoPage TodoDetail {
+          entity: Todo
+          path: "/todos/:id"
+          type: detail
+          title: "Todo Detail"
+          fields: [id, title, status, done, createdAt, updatedAt]
+        }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-autopages");
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(mainVasp).toContain("autoPage TodoList {");
+      expect(mainVasp).toContain("type: list");
+      expect(mainVasp).toContain('title: "Todo List"');
+      expect(mainVasp).toContain("columns: [id, title, status]");
+      expect(mainVasp).toContain("rowActions: [view, edit, delete]");
+      expect(mainVasp).toContain("topActions: [create]");
+      expect(mainVasp).toContain("paginate: true");
+      expect(mainVasp).toContain("pageSize: 20");
+      expect(mainVasp).toContain("autoPage CreateTodo {");
+      expect(mainVasp).toContain("type: form");
+      expect(mainVasp).toContain('layout: "2-column"');
+      expect(mainVasp).toContain("submitAction: createTodo");
+      expect(mainVasp).toContain('successRoute: "/todos"');
+      expect(mainVasp).toContain("auth: true");
+      expect(mainVasp).toContain("autoPage TodoDetail {");
+      expect(mainVasp).toContain("type: detail");
+    });
+
+    it("does NOT overwrite main.vasp when it already exists (vasp generate protection)", () => {
+      const { writeFileSync } = require("node:fs");
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/pages/P.vue" }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "main-vasp-protected");
+      mkdirSync(outputDir, { recursive: true });
+
+      // Pre-write a sentinel main.vasp simulating an existing user project
+      const sentinel = "// sentinel — must not be overwritten";
+      writeFileSync(join(outputDir, "main.vasp"), sentinel, "utf8");
+
+      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+      const afterGenerate = readFileSync(join(outputDir, "main.vasp"), "utf8");
+      expect(afterGenerate).toBe(sentinel);
+    });
   });
 });
