@@ -6,8 +6,8 @@
           {
             "type": "command",
             "command": "/Users/amirreza.alibeigi/Documents/GitHub/Vasp/.claude/hooks/stop-check.sh",
-            "timeout": 120,
-            "statusMessage": "Running project health checks..."
+            "timeout": 600,
+            "statusMessage": "Running project health checks and fullstack E2E tests..."
           }
         ]
       }

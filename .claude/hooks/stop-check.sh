@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# Stop hook: comprehensive project health checks
-# Runs: build, TSC type check, Handlebars template validation, JSON validation, Prettier format, Knip dead code
+# Stop hook: comprehensive project health checks + fullstack E2E tests
+# Runs: build, TSC type check, Handlebars template validation, JSON validation,
+#       Prettier format, Knip dead code detection, and (when Docker is available)
+#       the fullstack E2E test suite which is fed back to Claude.
 
-VASP_ROOT="/Users/amirreza.alibeigi/Documents/GitHub/Vasp"
+# Resolve repo root relative to this script's location so the hook works on
+# any machine regardless of the local checkout path.
+VASP_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 TSC="$VASP_ROOT/node_modules/.bin/tsc"
 PRETTIER="$VASP_ROOT/node_modules/.bin/prettier"
 KNIP="$VASP_ROOT/node_modules/.bin/knip"
@@ -96,6 +100,34 @@ $knip_out
 "
     fi
   }
+fi
+
+# --- 6. Fullstack E2E tests (runs when Docker is available) ---
+# Results are included in the hook output so Claude can read all errors from:
+#   generation, server startup, REST API, and browser interactions.
+if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
+  e2e_output=$(cd "$VASP_ROOT" && bun run test:e2e:fullstack 2>&1)
+  e2e_status=$?
+
+  if [[ $e2e_status -ne 0 ]]; then
+    ERRORS+="### Fullstack E2E tests failed (exit ${e2e_status}):
+$e2e_output
+
+"
+  else
+    # Include the summary lines so Claude knows tests passed and how many ran
+    e2e_summary=$(printf '%s\n' "$e2e_output" | grep -E '(passed|failed|skipped|flaky|error|✓|✗|×)' | tail -10) || true
+    if [[ -n "$e2e_summary" ]]; then
+      WARNINGS+="### Fullstack E2E tests passed:
+$e2e_summary
+
+"
+    fi
+  fi
+else
+  WARNINGS+="### Fullstack E2E tests skipped (Docker not available).
+
+"
 fi
 
 # --- Output ---

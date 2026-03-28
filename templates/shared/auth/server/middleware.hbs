@@ -37,7 +37,16 @@ export const PERMISSIONS{{#if isTypeScript}}: Record<string, string[]>{{/if}} = 
  * new Elysia().use(requireAuth).get('/protected', ({ user }) => user)
  */
 export const requireAuth = new Elysia({ name: 'require-auth' })
-  .resolve({ as: 'scoped' }, async ({ cookie }) => {
+  .resolve({ as: 'scoped' }, async ({ cookie, headers }) => {
+    // E2E magic token bypass — active only when E2E_MAGIC_TOKEN env var is set and
+    // NODE_ENV is not 'production'. Allows test suites to call auth-protected endpoints
+    // via  Authorization: Bearer <token>  without a full login flow.
+    if (process.env.NODE_ENV !== 'production' && process.env.E2E_MAGIC_TOKEN) {
+      const authHeader = {{#if isTypeScript}}(headers as Record<string, string | undefined>){{else}}headers{{/if}}?.authorization ?? ''
+      if (authHeader === 'Bearer ' + process.env.E2E_MAGIC_TOKEN) {
+        return { user: { id: 0, username: 'e2e-admin', email: 'e2e@vasp.test' } }
+      }
+    }
     const tokenValue = {{#if isTypeScript}}(cookie?.token?.value as string){{else}}cookie?.token?.value{{/if}} ?? ''
     if (!tokenValue) return { user: null }
     try {

@@ -145,8 +145,12 @@ packages/cli/templates/
 
 # Playwright browser test artifacts
 e2e/__pw_app__/
+e2e/__e2e_app__/
+e2e/__e2e_state__.json
+e2e/__e2e_logs__/
 test-results/
 playwright-report/
+playwright-report-fullstack/
 .playwright/
 vasp-analysis.md
 vasp-analysis-2.md

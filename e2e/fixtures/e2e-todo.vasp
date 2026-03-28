@@ -1,0 +1,41 @@
+// E2E fullstack fixture — SPA + TypeScript, auth + CRUD
+// Used by the fullstack Playwright E2E suite (playwright.fullstack.config.mts)
+
+app E2ETodo {
+  title: "E2E Todo App"
+  db: Drizzle
+  ssr: false
+  typescript: true
+}
+
+auth User {
+  userEntity: User
+  methods: [ usernameAndPassword ]
+}
+
+entity User {
+  id: Int @id
+  username: String @unique
+  email: String @unique
+}
+
+entity Todo {
+  id: Int @id
+  title: String
+  done: Boolean
+  createdAt: DateTime @default(now)
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+crud Todo {
+  entity: Todo
+  operations: [list, create, update, delete]
+}
