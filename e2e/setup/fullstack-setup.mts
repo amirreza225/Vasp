@@ -83,7 +83,9 @@ function runSync(
     cwd,
     encoding: 'utf8',
     timeout: timeoutMs,
-    // Pipe "yes\n" to stdin so interactive prompts (e.g., drizzle-kit push) are auto-confirmed
+    // Feed "y\n" to stdin so interactive prompts (e.g., drizzle-kit push asking for
+    // confirmation) are auto-confirmed.  The input is silently ignored by commands
+    // that don't read stdin, so this is safe to pass unconditionally.
     input: 'y\n',
     env: { ...process.env, ...extraEnv },
   })

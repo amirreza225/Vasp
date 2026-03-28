@@ -50,7 +50,9 @@ export function waitForPostgres(handle: PostgresHandle, timeoutMs = 30_000): voi
       { encoding: 'utf8', timeout: 5_000 },
     )
     if (check.status === 0) return
-    spawnSync('sleep', ['0.5'], { timeout: 2_000 })
+    // Synchronous sleep — Atomics.wait on a SharedArrayBuffer avoids spawning
+    // an external process and works cross-platform.
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 500)
   }
   throw new Error(`Postgres did not become ready within ${timeoutMs}ms`)
 }

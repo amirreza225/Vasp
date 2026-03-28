@@ -41,6 +41,10 @@ export const requireAuth = new Elysia({ name: 'require-auth' })
     // E2E magic token bypass — active only when E2E_MAGIC_TOKEN env var is set and
     // NODE_ENV is not 'production'. Allows test suites to call auth-protected endpoints
     // via  Authorization: Bearer <token>  without a full login flow.
+    //
+    // The injected synthetic user (id: 0) is a placeholder — CRUD operations will
+    // succeed because this fixture has no ownership filtering (hasOwnership = false).
+    // For fixtures with ownership or tenant filtering, use a real seeded user instead.
     if (process.env.NODE_ENV !== 'production' && process.env.E2E_MAGIC_TOKEN) {
       const authHeader = {{#if isTypeScript}}(headers as Record<string, string | undefined>){{else}}headers{{/if}}?.authorization ?? ''
       if (authHeader === 'Bearer ' + process.env.E2E_MAGIC_TOKEN) {
