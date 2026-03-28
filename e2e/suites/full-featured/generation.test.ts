@@ -77,7 +77,7 @@ test.describe('[full-featured] Generation — fixture-specific', () => {
     const exists =
       existsSync(join(appDir, 'server/routes/webhooks')) ||
       existsSync(join(appDir, 'server/webhooks'))
-    expect(generation_succeeded()).toBe(true) // at minimum, generation should succeed
+    expect(generationSucceeded()).toBe(true) // at minimum, generation should succeed
   })
 
   test('package.json includes drizzle-orm dependency', () => {
@@ -99,6 +99,6 @@ test.describe('[full-featured] Generation — fixture-specific', () => {
   })
 })
 
-function generation_succeeded() {
+function generationSucceeded() {
   return state.generation.regenExitCode === 0 || state.generation.exitCode === 0
 }

@@ -14,9 +14,9 @@ import { unwrap } from '../FixtureHarness.mts'
 
 export interface HealthOptions {
   backendUrl: string
-  /** Optional: if provided, the page title assertion is skipped when null. */
+  /** Reserved for future browser-level title assertions; not used by the health suite itself. */
   frontendUrl?: string | null
-  /** Optional: asserted in the health payload version field. */
+  /** Optional: appTitle is currently unused but reserved for future /api/health payload assertions. */
   appTitle?: string
 }
 

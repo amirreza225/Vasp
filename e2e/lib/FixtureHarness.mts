@@ -238,6 +238,7 @@ export class FixtureHarness {
       if (cfg.kafkaPort) {
         console.log(`[harness:${cfg.name}] Starting Kafka on port ${cfg.kafkaPort}…`)
         const kafkaHandle = startKafkaContainer(cfg.kafkaPort)
+        // waitForKafka is synchronous (uses spawnSync polling) — no await needed
         waitForKafka(kafkaHandle)
         state.services.kafka = kafkaHandle
         persist()
@@ -503,12 +504,12 @@ export class FixtureHarness {
         psqlExec(
           containerId,
           dbName,
-          `INSERT INTO task (title, done, "workspaceId") VALUES ('Alpha Task 1', false, ${workspaceAlphaId}), ('Alpha Task 2', true, ${workspaceAlphaId});`,
+          `INSERT INTO task (title, done, "workspaceId") VALUES ('Alpha Task 1', false, ${Number(workspaceAlphaId)}), ('Alpha Task 2', true, ${Number(workspaceAlphaId)});`,
         )
         psqlExec(
           containerId,
           dbName,
-          `INSERT INTO task (title, done, "workspaceId") VALUES ('Beta Task 1', false, ${workspaceBetaId});`,
+          `INSERT INTO task (title, done, "workspaceId") VALUES ('Beta Task 1', false, ${Number(workspaceBetaId)});`,
         )
       } catch {
         // Task table may not exist or have different schema — non-fatal for workspace seed

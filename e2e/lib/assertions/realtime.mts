@@ -61,6 +61,8 @@ async function openWebSocket(
     ws.onerror = (e) => {
       clearTimeout(timer)
       // Don't fail hard on error — some fixtures may not have WS support running yet
+      // Log for debugging but resolve so the test can check health gracefully
+      console.warn('[realtime] WebSocket connection error:', e)
       resolve()
     }
   })
