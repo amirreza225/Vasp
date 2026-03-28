@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Vasp is a declarative full-stack framework for Vue developers. A single `main.vasp` config file generates a complete production-ready app: Elysia backend, Vue 3 SPA (Vite) or Nuxt 4 SSR/SSG frontend, Drizzle ORM schema, auth, realtime, and background jobs.
 
+**Current mission**: Evolve Vasp from “excellent MVP generator” into a **mature, enterprise-grade declarative framework** that an LLM (like you) can confidently use to build complex, scalable, long-lived SaaS platforms with 100k+ users, compliance requirements, and multi-developer teams.
+
 ## Commands
 
 ```bash
