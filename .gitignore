@@ -148,9 +148,20 @@ e2e/__pw_app__/
 e2e/__e2e_app__/
 e2e/__e2e_state__.json
 e2e/__e2e_logs__/
+# New per-fixture suite artifacts
+e2e/__e2e_app_*__/
+e2e/__e2e_state_*__.json
+e2e/__e2e_logs_*__/
 test-results/
 playwright-report/
 playwright-report-fullstack/
+playwright-report-minimal/
+playwright-report-todo-app/
+playwright-report-e2e-todo/
+playwright-report-multi-tenant/
+playwright-report-full-featured/
+playwright-report-project-hub/
+playwright-report-all-suites/
 .playwright/
 vasp-analysis.md
 vasp-analysis-2.md
