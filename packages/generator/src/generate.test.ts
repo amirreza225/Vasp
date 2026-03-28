@@ -927,7 +927,7 @@ describe("generate()", () => {
     expect(stub).toContain("export async function cleanupActivityLogs");
   });
 
-  it("job stub: TypeScript stub uses typed (data: unknown) parameter", () => {
+  it("job stub: TypeScript stub uses typed (_data: unknown) parameter", () => {
     const source = `
       app A { title: "T" db: Drizzle ssr: false typescript: true }
       route R { path: "/" to: P }
@@ -949,7 +949,7 @@ describe("generate()", () => {
     expect(existsSync(join(outputDir, "src/jobs.ts"))).toBe(true);
     const stub = readFileSync(join(outputDir, "src/jobs.ts"), "utf8");
     expect(stub).toContain(
-      "export async function sendTaskNotification(data: unknown)",
+      "export async function sendTaskNotification(_data: unknown)",
     );
   });
 
@@ -1605,8 +1605,8 @@ describe("generate()", () => {
     });
 
     const stub = readFileSync(join(outputDir, "src/api.ts"), "utf8");
-    // TypeScript stub uses typed ctx parameter, not plain destructuring
-    expect(stub).toContain("ctx: { db: any; user?: any; args: any }");
+    // TypeScript stub uses typed _ctx parameter, not plain destructuring
+    expect(stub).toContain("_ctx: { db: any; user?: any; args: any }");
     expect(stub).not.toContain("({ db, user, args })");
   });
 

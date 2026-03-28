@@ -127,7 +127,7 @@ export class JobGenerator extends BaseGenerator {
       bySource.get(fn.source)!.push(fnName);
     }
 
-    const paramType = this.ctx.isTypeScript ? "(data: unknown)" : "(data)";
+    const paramType = this.ctx.isTypeScript ? "(_data: unknown)" : "(data)";
 
     for (const [source, fnNames] of bySource) {
       const relativePath = source.replace("@src/", "src/");

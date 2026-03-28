@@ -127,7 +127,7 @@ export class QueryActionGenerator extends BaseGenerator {
     }
 
     const paramType = this.ctx.isTypeScript
-      ? "(ctx: { db: any; user?: any; args: any })"
+      ? "(_ctx: { db: any; user?: any; args: any })"
       : "({ db, user, args })";
 
     for (const [source, fnNames] of bySource) {

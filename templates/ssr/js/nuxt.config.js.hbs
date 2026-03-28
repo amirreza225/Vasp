@@ -33,6 +33,7 @@ const AppTheme = definePreset({{ui.themeImportName}}, {
   },
   nitro: {
     ignore: ['server/**'],
+    scanDirs: [],
   },
   runtimeConfig: {
     backendUrl: process.env.BACKEND_URL || 'http://localhost:{{backendPort}}',
