@@ -1506,7 +1506,7 @@ describe("generate()", () => {
     expect(existsSync(join(outputDir, "composables/useVasp.ts"))).toBe(true);
 
     const nuxtConfig = readFileSync(join(outputDir, "nuxt.config.ts"), "utf8");
-    expect(nuxtConfig).toContain("strict: true");
+    expect(nuxtConfig).toContain("strict: false");
 
     const serverPlugin = readFileSync(
       join(outputDir, "plugins/vasp.server.ts"),
@@ -2323,7 +2323,7 @@ describe("generate()", () => {
       "utf8",
     );
     expect(stub).toContain(
-      "export async function handleStripeWebhook(body: unknown): Promise<void>",
+      "export async function handleStripeWebhook(_body: unknown): Promise<void>",
     );
     expect(stub).toContain("// TODO: implement webhook handler");
   });

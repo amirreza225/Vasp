@@ -1,14 +1,13 @@
 import { Queue, Worker, QueueEvents } from 'bullmq'
 import { Redis } from 'ioredis'
 
-const redisUrl = process.env.REDIS_URL
-if (!redisUrl) throw new Error('REDIS_URL is required for BullMQ job queue')
-
 // Singleton Redis connection shared across all BullMQ queues and workers
 let connection = undefined
 
 export function getRedisConnection() {
   if (!connection) {
+    const redisUrl = process.env.REDIS_URL
+    if (!redisUrl) throw new Error('REDIS_URL is required for BullMQ job queue')
     connection = new Redis(redisUrl, {
       maxRetriesPerRequest: null, // Required by BullMQ
     })

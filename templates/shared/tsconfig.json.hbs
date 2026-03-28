@@ -1,5 +1,11 @@
 {
+  {{#if isSsr}}
+  "extends": "./.nuxt/tsconfig.json",
+  {{/if}}
   "compilerOptions": {
+    {{#if isSsr}}
+    "baseUrl": ".",
+    {{/if}}
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -19,6 +25,6 @@
       "@vasp-framework/client": ["./src/vasp/client/index.ts"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", {{#unless isSsr}}"server/**/*.ts", {{/unless}}"shared/**/*.ts", "drizzle/**/*.ts"],
+  "include": [".nuxt/**/*", "src/**/*.ts", "src/**/*.vue", {{#unless isSsr}}"server/**/*.ts", {{/unless}}"shared/**/*.ts", "drizzle/**/*.ts"],
   "exclude": ["node_modules", "dist", ".vasp-gen"]
 }

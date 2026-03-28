@@ -17,7 +17,11 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+{{#if isSsr}}
+import { useAuth } from '../../composables/useAuth'
+{{else}}
 import { useAuth } from '../vasp/auth.js'
+{{/if}}
 
 const router = useRouter()
 const { register } = useAuth()
