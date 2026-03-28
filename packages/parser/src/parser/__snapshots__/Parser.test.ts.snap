@@ -71,7 +71,7 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
       "pageSize": 20,
       "pageType": "list",
       "paginate": true,
-      "path": "/todos",
+      "path": "/todo-list",
       "rowActions": [
         "view",
         "edit",

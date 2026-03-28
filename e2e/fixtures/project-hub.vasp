@@ -1,0 +1,925 @@
+// ProjectHub — complex fully-featured Vasp fixture
+// Showcases every DSL block type: app (env + multiTenant + ui), auth (roles + permissions),
+// entities (all field types, modifiers, indexes, manyToMany), routes, pages, queries (with cache),
+// actions (with onSuccess email), api (all methods), middleware (global + route), crud
+// (with list config + permissions + ownership), realtime, jobs (all 5 executors + schedules),
+// seed, storage (s3 + local), email (resend + templates), cache (memory + redis), webhook
+// (inbound + outbound), observability, admin, autoPages (list + form + detail with auth/roles)
+
+app ProjectHub {
+  title: "ProjectHub SaaS"
+  db: Drizzle
+  ssr: true
+  typescript: true
+
+  env: {
+    DATABASE_URL: required String @minLength(20)
+    JWT_SECRET: required String @minLength(32)
+    NODE_ENV: required Enum(development, staging, production) @default(development)
+    PORT: optional Int @min(1024) @max(65535) @default(3001)
+    LOG_LEVEL: optional Enum(debug, info, warn, error) @default(info)
+    REDIS_URL: optional String
+    S3_BUCKET: required String
+    S3_REGION: required String @default(us-east-1)
+    AWS_ACCESS_KEY_ID: required String
+    AWS_SECRET_ACCESS_KEY: required String
+    RESEND_API_KEY: required String
+    FROM_EMAIL: required String @startsWith(no-reply)
+    SENTRY_DSN: optional String
+    GITHUB_CLIENT_ID: optional String
+    GITHUB_CLIENT_SECRET: optional String
+    GOOGLE_CLIENT_ID: optional String
+    GOOGLE_CLIENT_SECRET: optional String
+    STRIPE_WEBHOOK_SECRET: optional String
+    GITHUB_WEBHOOK_SECRET: optional String
+    WEBHOOK_SIGNING_SECRET: optional String
+    RABBITMQ_URL: optional String
+    KAFKA_BROKERS: optional String
+  }
+
+  multiTenant: {
+    strategy: "row-level"
+    tenantEntity: Workspace
+    tenantField: id
+  }
+
+  ui: {
+    theme: Aura
+    primaryColor: indigo
+    darkModeSelector: ".dark"
+    ripple: true
+  }
+}
+
+// ─── Authentication ───────────────────────────────────────────────────────────
+
+auth Auth {
+  userEntity: User
+  methods: [ usernameAndPassword, google, github ]
+  roles: [ admin, manager, member, viewer ]
+  permissions: {
+    project:create: [ admin, manager ]
+    project:read:   [ admin, manager, member, viewer ]
+    project:update: [ admin, manager ]
+    project:delete: [ admin ]
+    task:create:    [ admin, manager, member ]
+    task:read:      [ admin, manager, member, viewer ]
+    task:update:    [ admin, manager, member ]
+    task:delete:    [ admin, manager ]
+    comment:create: [ admin, manager, member ]
+    comment:delete: [ admin, manager ]
+    report:view:    [ admin, manager ]
+    admin:access:   [ admin ]
+  }
+}
+
+// ─── Entities ─────────────────────────────────────────────────────────────────
+
+entity Workspace {
+  id:          Int      @id
+  slug:        String   @unique @validate(minLength: 3, maxLength: 60)
+  name:        String   @validate(minLength: 1, maxLength: 120)
+  plan:        Enum(free, pro, enterprise) @default(free)
+  isActive:    Boolean
+  logoUrl:     String   @nullable
+  settings:    Json     @nullable
+  trialEndsAt: DateTime @nullable
+  createdAt:   DateTime @default(now)
+  updatedAt:   DateTime @updatedAt
+  users:       User[]
+  projects:    Project[]
+
+  @@index([plan])
+}
+
+entity User {
+  id:          Int      @id
+  username:    String   @unique @validate(minLength: 2, maxLength: 50)
+  email:       String   @unique @validate(email)
+  role:        Enum(admin, manager, member, viewer) @default(member)
+  displayName: String   @nullable @validate(maxLength: 100)
+  bio:         Text     @nullable
+  avatar:      File     @storage(AvatarStorage) @nullable
+  isActive:    Boolean
+  lastLoginAt: DateTime @nullable
+  settings:    Json     @nullable
+  createdAt:   DateTime @default(now)
+  updatedAt:   DateTime @updatedAt
+  workspace:   Workspace @onDelete(cascade)
+  projects:    Project[]
+  tasks:       Task[]
+  comments:    Comment[]
+  activities:  ActivityLog[]
+}
+
+entity Project {
+  id:          Int      @id
+  name:        String   @validate(minLength: 1, maxLength: 120)
+  description: Text     @nullable
+  status:      Enum(planning, active, paused, completed, archived) @default(planning)
+  priority:    Enum(low, medium, high, critical) @default(medium)
+  isPublic:    Boolean
+  budget:      Float    @nullable @validate(min: 0)
+  dueDate:     DateTime @nullable
+  settings:    Json     @nullable
+  createdAt:   DateTime @default(now)
+  updatedAt:   DateTime @updatedAt
+  owner:       User     @onDelete(restrict)
+  workspace:   Workspace @onDelete(cascade)
+  tasks:       Task[]
+  labels:      Label[]
+
+  @@index([status])
+  @@index([priority])
+  @@unique([name])
+}
+
+entity Task {
+  id:             Int      @id
+  title:          String   @validate(minLength: 1, maxLength: 200)
+  description:    Text     @nullable
+  status:         Enum(todo, in_progress, review, done, cancelled) @default(todo)
+  priority:       Enum(low, medium, high, urgent) @default(medium)
+  estimatedHours: Float    @nullable @validate(min: 0, max: 999)
+  attachment:     File     @storage(TaskFiles) @nullable
+  dueDate:        DateTime @nullable
+  completedAt:    DateTime @nullable
+  metadata:       Json     @nullable
+  createdAt:      DateTime @default(now)
+  updatedAt:      DateTime @updatedAt
+  project:        Project  @onDelete(cascade)
+  assignee:       User     @nullable @onDelete(restrict)
+  tags:           Tag[]    @manyToMany
+  comments:       Comment[]
+
+  @@index([status])
+  @@index([priority])
+}
+
+entity Tag {
+  id:     Int    @id
+  name:   String @unique @validate(minLength: 1, maxLength: 30)
+  color:  String @nullable
+  tasks:  Task[] @manyToMany
+}
+
+entity Label {
+  id:          Int     @id
+  name:        String  @validate(minLength: 1, maxLength: 50)
+  color:       String  @nullable
+  description: Text    @nullable
+  project:     Project @onDelete(cascade)
+  createdAt:   DateTime @default(now)
+
+  @@index([name])
+}
+
+entity Comment {
+  id:        Int      @id
+  content:   Text     @validate(minLength: 1)
+  isEdited:  Boolean
+  editedAt:  DateTime @nullable
+  createdAt: DateTime @default(now)
+  updatedAt: DateTime @updatedAt
+  task:      Task     @onDelete(cascade)
+  author:    User     @onDelete(cascade)
+}
+
+entity ActivityLog {
+  id:         Int      @id
+  action:     String   @validate(minLength: 1, maxLength: 100)
+  entityType: String   @validate(minLength: 1, maxLength: 50)
+  entityId:   Int
+  details:    Json     @nullable
+  ipAddress:  String   @nullable
+  userAgent:  String   @nullable
+  createdAt:  DateTime @default(now)
+  user:       User     @onDelete(cascade)
+
+  @@index([entityType])
+  @@index([action])
+  @@index([entityType], type: fulltext)
+}
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
+
+route HomeRoute {
+  path: "/"
+  to: LandingPage
+}
+
+route DashboardRoute {
+  path: "/dashboard"
+  to: DashboardPage
+}
+
+route ProjectsRoute {
+  path: "/projects"
+  to: ProjectListPage
+}
+
+route ProjectDetailRoute {
+  path: "/projects/:id"
+  to: ProjectDetailPage
+}
+
+route TasksRoute {
+  path: "/tasks"
+  to: TaskListPage
+}
+
+route TaskDetailRoute {
+  path: "/tasks/:id"
+  to: TaskDetailPage
+}
+
+route BoardRoute {
+  path: "/board"
+  to: BoardPage
+}
+
+route SettingsRoute {
+  path: "/settings"
+  to: SettingsPage
+}
+
+route ProfileRoute {
+  path: "/profile"
+  to: ProfilePage
+}
+
+// ─── Pages ────────────────────────────────────────────────────────────────────
+
+page LandingPage {
+  component: import LandingPage from "@src/pages/LandingPage.vue"
+}
+
+page DashboardPage {
+  component: import DashboardPage from "@src/pages/DashboardPage.vue"
+}
+
+page ProjectListPage {
+  component: import ProjectListPage from "@src/pages/ProjectListPage.vue"
+}
+
+page ProjectDetailPage {
+  component: import ProjectDetailPage from "@src/pages/ProjectDetailPage.vue"
+}
+
+page TaskListPage {
+  component: import TaskListPage from "@src/pages/TaskListPage.vue"
+}
+
+page TaskDetailPage {
+  component: import TaskDetailPage from "@src/pages/TaskDetailPage.vue"
+}
+
+page BoardPage {
+  component: import BoardPage from "@src/pages/BoardPage.vue"
+}
+
+page SettingsPage {
+  component: import SettingsPage from "@src/pages/SettingsPage.vue"
+}
+
+page ProfilePage {
+  component: import ProfilePage from "@src/pages/ProfilePage.vue"
+}
+
+// ─── Queries ──────────────────────────────────────────────────────────────────
+
+query getWorkspace {
+  fn: import { getWorkspace } from "@src/queries/workspace.js"
+  entities: [Workspace]
+  auth: true
+  roles: [admin, manager]
+  cache: {
+    store: MemoryCache
+    ttl: 120
+    key: "workspace"
+    invalidateOn: [Project:create, Project:update]
+  }
+}
+
+query listProjects {
+  fn: import { listProjects } from "@src/queries/projects.js"
+  entities: [Project, User]
+  auth: true
+}
+
+query getProject {
+  fn: import { getProject } from "@src/queries/projects.js"
+  entities: [Project, Task, Label]
+  auth: true
+  cache: {
+    store: RedisCache
+    ttl: 60
+    invalidateOn: [Task:create, Task:update, Task:delete]
+  }
+}
+
+query listTasks {
+  fn: import { listTasks } from "@src/queries/tasks.js"
+  entities: [Task, Tag, User]
+  auth: true
+}
+
+query getTask {
+  fn: import { getTask } from "@src/queries/tasks.js"
+  entities: [Task, Comment, Tag, User]
+  auth: true
+  cache: {
+    store: RedisCache
+    ttl: 30
+  }
+}
+
+query listComments {
+  fn: import { listComments } from "@src/queries/comments.js"
+  entities: [Comment, User]
+  auth: true
+}
+
+query getDashboardStats {
+  fn: import { getDashboardStats } from "@src/queries/dashboard.js"
+  entities: [Project, Task, ActivityLog]
+  auth: true
+  roles: [admin, manager]
+  cache: {
+    store: MemoryCache
+    ttl: 300
+    key: "dashboard-stats"
+  }
+}
+
+query getActivityFeed {
+  fn: import { getActivityFeed } from "@src/queries/activity.js"
+  entities: [ActivityLog, User]
+  auth: true
+}
+
+// ─── Actions ──────────────────────────────────────────────────────────────────
+
+action createProject {
+  fn: import { createProject } from "@src/actions/projects.js"
+  entities: [Project, Workspace, ActivityLog]
+  auth: true
+  roles: [admin, manager]
+}
+
+action updateProject {
+  fn: import { updateProject } from "@src/actions/projects.js"
+  entities: [Project, ActivityLog]
+  auth: true
+  roles: [admin, manager]
+}
+
+action archiveProject {
+  fn: import { archiveProject } from "@src/actions/projects.js"
+  entities: [Project, ActivityLog]
+  auth: true
+  roles: [admin]
+}
+
+action createTask {
+  fn: import { createTask } from "@src/actions/tasks.js"
+  entities: [Task, Project, ActivityLog]
+  auth: true
+}
+
+action updateTask {
+  fn: import { updateTask } from "@src/actions/tasks.js"
+  entities: [Task, ActivityLog]
+  auth: true
+}
+
+action deleteTask {
+  fn: import { deleteTask } from "@src/actions/tasks.js"
+  entities: [Task, ActivityLog]
+  auth: true
+  roles: [admin, manager]
+}
+
+action assignTask {
+  fn: import { assignTask } from "@src/actions/tasks.js"
+  entities: [Task, User, ActivityLog]
+  auth: true
+  roles: [admin, manager]
+  onSuccess: {
+    sendEmail: taskAssigned
+  }
+}
+
+action createComment {
+  fn: import { createComment } from "@src/actions/comments.js"
+  entities: [Comment, Task, User]
+  auth: true
+}
+
+action deleteComment {
+  fn: import { deleteComment } from "@src/actions/comments.js"
+  entities: [Comment, ActivityLog]
+  auth: true
+  roles: [admin, manager]
+}
+
+action inviteUser {
+  fn: import { inviteUser } from "@src/actions/workspace.js"
+  entities: [User, Workspace, ActivityLog]
+  auth: true
+  roles: [admin]
+  onSuccess: {
+    sendEmail: workspaceInvite
+  }
+}
+
+action updateUserProfile {
+  fn: import { updateUserProfile } from "@src/actions/users.js"
+  entities: [User, ActivityLog]
+  auth: true
+}
+
+// ─── Custom API Endpoints ─────────────────────────────────────────────────────
+
+api healthCheck {
+  method: GET
+  path: "/api/health"
+  fn: import { healthCheck } from "@src/api/health.js"
+  auth: false
+}
+
+api getMetrics {
+  method: GET
+  path: "/api/metrics"
+  fn: import { getMetrics } from "@src/api/metrics.js"
+  auth: true
+  roles: [admin]
+}
+
+api exportProjectReport {
+  method: POST
+  path: "/api/projects/export"
+  fn: import { exportProjectReport } from "@src/api/reports.js"
+  auth: true
+  roles: [admin, manager]
+}
+
+api bulkUpdateTasks {
+  method: PATCH
+  path: "/api/tasks/bulk"
+  fn: import { bulkUpdateTasks } from "@src/api/tasks.js"
+  auth: true
+  roles: [admin, manager]
+}
+
+api archiveProject {
+  method: PUT
+  path: "/api/projects/:id/archive"
+  fn: import { archiveProjectApi } from "@src/api/projects.js"
+  auth: true
+  roles: [admin]
+}
+
+api deleteActivityLog {
+  method: DELETE
+  path: "/api/activity/:id"
+  fn: import { deleteActivityEntry } from "@src/api/activity.js"
+  auth: true
+  roles: [admin]
+}
+
+// ─── Middleware ───────────────────────────────────────────────────────────────
+
+middleware requestLogger {
+  fn: import { requestLogger } from "@src/middleware/logger.js"
+  scope: global
+}
+
+middleware tenantGuard {
+  fn: import { tenantGuard } from "@src/middleware/tenant.js"
+  scope: route
+}
+
+// ─── CRUD ─────────────────────────────────────────────────────────────────────
+
+crud Project {
+  entity: Project
+  operations: [list, create, update, delete]
+  ownership: owner
+  list: {
+    paginate: true
+    sortable: [createdAt, dueDate, priority]
+    filterable: [status, priority]
+    search: [name, description]
+  }
+  permissions: {
+    list:   project:read
+    create: project:create
+    update: project:update
+    delete: project:delete
+  }
+}
+
+crud Task {
+  entity: Task
+  operations: [list, create, update, delete]
+  list: {
+    paginate: true
+    sortable: [createdAt, dueDate, priority, status]
+    filterable: [status, priority]
+    search: [title, description]
+  }
+  permissions: {
+    list:   task:read
+    create: task:create
+    update: task:update
+    delete: task:delete
+  }
+}
+
+crud Comment {
+  entity: Comment
+  operations: [list, create, update, delete]
+  list: {
+    paginate: true
+    sortable: [createdAt]
+    filterable: []
+    search: [content]
+  }
+}
+
+crud Label {
+  entity: Label
+  operations: [list, create, update, delete]
+  list: {
+    paginate: false
+    sortable: [name]
+    filterable: []
+    search: [name]
+  }
+}
+
+crud Tag {
+  entity: Tag
+  operations: [list, create, update, delete]
+  list: {
+    paginate: false
+    sortable: [name]
+    filterable: []
+    search: [name]
+  }
+}
+
+crud ActivityLog {
+  entity: ActivityLog
+  operations: [list]
+  list: {
+    paginate: true
+    sortable: [createdAt]
+    filterable: [action, entityType]
+    search: [action, entityType]
+  }
+}
+
+// ─── Realtime ─────────────────────────────────────────────────────────────────
+
+realtime TaskChannel {
+  entity: Task
+  events: [created, updated, deleted]
+}
+
+realtime CommentChannel {
+  entity: Comment
+  events: [created, updated, deleted]
+}
+
+// ─── Background Jobs ──────────────────────────────────────────────────────────
+
+job sendTaskReminderEmail {
+  executor: PgBoss
+  priority: 5
+  retries: {
+    limit: 3
+    backoff: exponential
+    delay: 2000
+    multiplier: 2
+  }
+  deadLetter: {
+    queue: "failed-task-reminders"
+  }
+  perform: {
+    fn: import { sendTaskReminderEmail } from "@src/jobs/emails.js"
+  }
+  schedule: "0 8 * * *"
+}
+
+job generateWeeklyReport {
+  executor: BullMQ
+  priority: 3
+  retries: {
+    limit: 2
+    backoff: fixed
+    delay: 5000
+  }
+  deadLetter: {
+    queue: "failed-reports"
+  }
+  perform: {
+    fn: import { generateWeeklyReport } from "@src/jobs/reports.js"
+  }
+  schedule: "0 6 * * 1"
+}
+
+job syncExternalIntegration {
+  executor: RedisStreams
+  priority: 10
+  retries: {
+    limit: 5
+    backoff: exponential
+    delay: 1000
+    multiplier: 3
+  }
+  deadLetter: {
+    queue: "failed-sync"
+  }
+  perform: {
+    fn: import { syncExternalIntegration } from "@src/jobs/integrations.js"
+  }
+}
+
+job dispatchPartnerEvent {
+  executor: RabbitMQ
+  priority: 8
+  retries: {
+    limit: 4
+    backoff: exponential
+    delay: 3000
+    multiplier: 2
+  }
+  deadLetter: {
+    queue: "failed-partner-events"
+  }
+  perform: {
+    fn: import { dispatchPartnerEvent } from "@src/jobs/partners.js"
+  }
+}
+
+job indexSearchDocuments {
+  executor: Kafka
+  retries: {
+    limit: 3
+    backoff: fixed
+    delay: 1000
+  }
+  deadLetter: {
+    queue: "failed-search-indexing"
+  }
+  perform: {
+    fn: import { indexSearchDocuments } from "@src/jobs/search.js"
+  }
+}
+
+job cleanupExpiredSessions {
+  executor: PgBoss
+  priority: 1
+  retries: {
+    limit: 2
+    backoff: fixed
+    delay: 10000
+  }
+  perform: {
+    fn: import { cleanupExpiredSessions } from "@src/jobs/cleanup.js"
+  }
+  schedule: "0 3 * * *"
+}
+
+// ─── Seed ─────────────────────────────────────────────────────────────────────
+
+seed {
+  fn: import { seedProjectHub } from "@src/seed.js"
+}
+
+// ─── Storage ──────────────────────────────────────────────────────────────────
+
+storage AvatarStorage {
+  provider: s3
+  bucket: "projecthub-avatars"
+  maxSize: "5mb"
+  allowedTypes: ["image/jpeg", "image/png", "image/webp"]
+  publicPath: "/uploads/avatars"
+}
+
+storage TaskFiles {
+  provider: s3
+  bucket: "projecthub-task-files"
+  maxSize: "50mb"
+  allowedTypes: ["image/jpeg", "image/png", "application/pdf", "text/plain"]
+  publicPath: "/uploads/tasks"
+}
+
+storage ExportStorage {
+  provider: local
+  maxSize: "200mb"
+  allowedTypes: ["application/pdf", "text/csv", "application/vnd.ms-excel"]
+  publicPath: "/exports"
+}
+
+// ─── Email ────────────────────────────────────────────────────────────────────
+
+email Mailer {
+  provider: resend
+  from: "no-reply@projecthub.io"
+  templates: {
+    taskAssigned:    import { taskAssignedEmail }    from "@src/emails/taskAssigned.js"
+    workspaceInvite: import { workspaceInviteEmail } from "@src/emails/workspaceInvite.js"
+    weeklyDigest:    import { weeklyDigestEmail }    from "@src/emails/weeklyDigest.js"
+    taskDueSoon:     import { taskDueSoonEmail }     from "@src/emails/taskDueSoon.js"
+  }
+}
+
+// ─── Cache ────────────────────────────────────────────────────────────────────
+
+cache MemoryCache {
+  provider: memory
+  ttl: 60
+}
+
+cache RedisCache {
+  provider: redis
+  ttl: 300
+  redis: {
+    url: env(REDIS_URL)
+  }
+}
+
+// ─── Webhooks ─────────────────────────────────────────────────────────────────
+
+webhook GithubWebhook {
+  path: "/webhooks/github"
+  secret: env(GITHUB_WEBHOOK_SECRET)
+  verifyWith: "github-signature"
+  fn: import { handleGithubWebhook } from "@src/webhooks/github.js"
+}
+
+webhook StripePaymentWebhook {
+  path: "/webhooks/stripe"
+  secret: env(STRIPE_WEBHOOK_SECRET)
+  verifyWith: "stripe-signature"
+  fn: import { handleStripeWebhook } from "@src/webhooks/stripe.js"
+}
+
+webhook TaskOutboundWebhook {
+  entity: Task
+  events: [created, updated, deleted]
+  targets: env(WEBHOOK_SIGNING_SECRET)
+  retry: 3
+  secret: env(WEBHOOK_SIGNING_SECRET)
+}
+
+webhook CommentOutboundWebhook {
+  entity: Comment
+  events: [created, deleted]
+  targets: env(WEBHOOK_SIGNING_SECRET)
+  retry: 2
+  secret: env(WEBHOOK_SIGNING_SECRET)
+}
+
+// ─── Observability ────────────────────────────────────────────────────────────
+
+observability {
+  tracing: true
+  metrics: true
+  logs: structured
+  exporter: otlp
+  errorTracking: sentry
+}
+
+// ─── Admin Panel ──────────────────────────────────────────────────────────────
+
+admin {
+  entities: [Workspace, User, Project, Task, Tag, Label, ActivityLog]
+}
+
+// ─── Auto-generated Pages ─────────────────────────────────────────────────────
+
+autoPage AdminProjectList {
+  entity: Project
+  path: "/admin/projects"
+  type: list
+  title: "All Projects"
+  columns: [id, name, status, priority, createdAt, dueDate]
+  sortable: [name, createdAt, dueDate, priority]
+  filterable: [status, priority]
+  searchable: [name, description]
+  rowActions: [view, edit, delete]
+  topActions: [create, export]
+  paginate: true
+  pageSize: 25
+  auth: true
+  roles: [admin, manager]
+}
+
+autoPage AdminProjectCreate {
+  entity: Project
+  path: "/admin/projects/create"
+  type: form
+  title: "Create Project"
+  fields: [name, description, status, priority, dueDate, budget, isPublic]
+  layout: "2-column"
+  submitAction: createProject
+  successRoute: "/admin/projects"
+  auth: true
+  roles: [admin, manager]
+}
+
+autoPage AdminProjectDetail {
+  entity: Project
+  path: "/admin/projects/:id"
+  type: detail
+  title: "Project Details"
+  fields: [id, name, description, status, priority, budget, dueDate, isPublic, createdAt, updatedAt]
+  auth: true
+  roles: [admin, manager, member, viewer]
+}
+
+autoPage AdminTaskList {
+  entity: Task
+  path: "/admin/tasks"
+  type: list
+  title: "All Tasks"
+  columns: [id, title, status, priority, dueDate, createdAt]
+  sortable: [title, status, priority, createdAt, dueDate]
+  filterable: [status, priority]
+  searchable: [title, description]
+  rowActions: [view, edit, delete]
+  topActions: [create]
+  paginate: true
+  pageSize: 50
+  auth: true
+  roles: [admin, manager]
+}
+
+autoPage AdminTaskCreate {
+  entity: Task
+  path: "/admin/tasks/create"
+  type: form
+  title: "Create Task"
+  fields: [title, description, status, priority, estimatedHours, dueDate]
+  layout: "1-column"
+  submitAction: createTask
+  successRoute: "/admin/tasks"
+  auth: true
+}
+
+autoPage AdminTaskDetail {
+  entity: Task
+  path: "/admin/tasks/:id"
+  type: detail
+  title: "Task Details"
+  fields: [id, title, description, status, priority, estimatedHours, dueDate, completedAt, createdAt, updatedAt]
+  auth: true
+}
+
+autoPage AdminCommentList {
+  entity: Comment
+  path: "/admin/comments"
+  type: list
+  title: "Comments"
+  columns: [id, content, isEdited, createdAt]
+  sortable: [createdAt]
+  filterable: []
+  searchable: [content]
+  rowActions: [view, delete]
+  topActions: []
+  paginate: true
+  pageSize: 30
+  auth: true
+  roles: [admin]
+}
+
+autoPage AdminUserList {
+  entity: User
+  path: "/admin/users"
+  type: list
+  title: "Users"
+  columns: [id, username, email, role, isActive, createdAt]
+  sortable: [username, email, createdAt]
+  filterable: [role, isActive]
+  searchable: [username, email, displayName]
+  rowActions: [view, edit]
+  topActions: []
+  paginate: true
+  pageSize: 25
+  auth: true
+  roles: [admin]
+}
+
+autoPage AdminUserDetail {
+  entity: User
+  path: "/admin/users/:id"
+  type: detail
+  title: "User Details"
+  fields: [id, username, email, role, displayName, bio, isActive, lastLoginAt, createdAt, updatedAt]
+  auth: true
+  roles: [admin]
+}

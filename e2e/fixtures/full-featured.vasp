@@ -190,7 +190,7 @@ webhook TodoOutboundWebhook {
 
 autoPage TodoList {
   entity: Todo
-  path: "/todos"
+  path: "/todo-list"
   type: list
   title: "Todo List"
   columns: [id, title, status, done, createdAt]
