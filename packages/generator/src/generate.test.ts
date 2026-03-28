@@ -953,6 +953,34 @@ describe("generate()", () => {
     );
   });
 
+  it("job stub: TypeScript project with .js extension in vasp file writes stub at .ts path", () => {
+    // When typescript: true and the user writes "@src/jobs.js" (common pattern),
+    // the stub must be created at src/jobs.ts (matching what resolveServerImport produces)
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      job sendWelcome {
+        executor: PgBoss
+        perform: { fn: import { sendWelcome } from "@src/jobs.js" }
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "jobs-stub-ts-js-ext");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    // Stub must be at .ts, not .js — the server-side job worker imports @src/jobs.ts
+    expect(existsSync(join(outputDir, "src/jobs.ts"))).toBe(true);
+    expect(existsSync(join(outputDir, "src/jobs.js"))).toBe(false);
+    const stub = readFileSync(join(outputDir, "src/jobs.ts"), "utf8");
+    expect(stub).toContain("export async function sendWelcome(_data: unknown)");
+  });
+
   it("generates BullMQ setup file and worker with priority/retry/DLQ", () => {
     const source = `
       app A { title: "T" db: Drizzle ssr: false typescript: false }
@@ -2227,7 +2255,170 @@ describe("generate()", () => {
     expect(existsSync(join(outputDir, "tests/auth/login.test.js"))).toBe(true);
   });
 
-  describe("generateMainVasp() field and block serialization", () => {
+  it("webhook stub: inbound webhook handler function gets a src/ stub (JS project)", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list] }
+      webhook StripeWebhook {
+        path: "/webhooks/stripe"
+        secret: env(STRIPE_WEBHOOK_SECRET)
+        verifyWith: "stripe-signature"
+        fn: import { handleStripeWebhook } from "@src/webhooks/stripe.js"
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "webhook-stub-js");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    // Route handler must exist
+    expect(
+      existsSync(join(outputDir, "server/routes/webhooks/stripeWebhook.js")),
+    ).toBe(true);
+    // User-land stub must be created so the server import resolves on first run
+    expect(existsSync(join(outputDir, "src/webhooks/stripe.js"))).toBe(true);
+    const stub = readFileSync(
+      join(outputDir, "src/webhooks/stripe.js"),
+      "utf8",
+    );
+    expect(stub).toContain("export async function handleStripeWebhook");
+    expect(stub).toContain("// TODO: implement webhook handler");
+  });
+
+  it("webhook stub: inbound webhook handler gets a .ts stub for TypeScript projects (even with .js source)", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list] }
+      webhook StripeWebhook {
+        path: "/webhooks/stripe"
+        secret: env(STRIPE_WEBHOOK_SECRET)
+        verifyWith: "stripe-signature"
+        fn: import { handleStripeWebhook } from "@src/webhooks/stripe.js"
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "webhook-stub-ts");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    // Stub must be at .ts (matching what resolveServerImport produces), not .js
+    expect(existsSync(join(outputDir, "src/webhooks/stripe.ts"))).toBe(true);
+    expect(existsSync(join(outputDir, "src/webhooks/stripe.js"))).toBe(false);
+    const stub = readFileSync(
+      join(outputDir, "src/webhooks/stripe.ts"),
+      "utf8",
+    );
+    expect(stub).toContain(
+      "export async function handleStripeWebhook(body: unknown): Promise<void>",
+    );
+    expect(stub).toContain("// TODO: implement webhook handler");
+  });
+
+  it("webhook stub: multiple inbound webhooks sharing a source file emit all exports in one stub", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      webhook StripeWebhook {
+        path: "/webhooks/stripe"
+        fn: import { handleStripeWebhook } from "@src/webhooks/payments.js"
+      }
+      webhook GithubWebhook {
+        path: "/webhooks/github"
+        fn: import { handleGithubWebhook } from "@src/webhooks/payments.js"
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "webhook-stub-multi");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(existsSync(join(outputDir, "src/webhooks/payments.js"))).toBe(true);
+    const stub = readFileSync(
+      join(outputDir, "src/webhooks/payments.js"),
+      "utf8",
+    );
+    expect(stub).toContain("export async function handleStripeWebhook");
+    expect(stub).toContain("export async function handleGithubWebhook");
+  });
+
+  it("webhook stub: outbound webhooks do NOT create src/ stubs", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [list] }
+      webhook TodoOutbound {
+        entity: Todo
+        events: [created, updated]
+        targets: env(WEBHOOK_URLS)
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "webhook-stub-outbound-only");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    // Outbound handler in server/webhooks — no src/ stub needed
+    expect(
+      existsSync(join(outputDir, "server/webhooks/todoOutbound.js")),
+    ).toBe(true);
+    // No spurious src/ stubs for outbound webhooks
+    expect(existsSync(join(outputDir, "src/webhooks"))).toBe(false);
+  });
+
+  it("webhook stub: existing src/ file is not overwritten", () => {
+    const { writeFileSync } = require("node:fs");
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      webhook StripeWebhook {
+        path: "/webhooks/stripe"
+        fn: import { handleStripeWebhook } from "@src/webhooks/stripe.js"
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "webhook-stub-preserve");
+    mkdirSync(join(outputDir, "src/webhooks"), { recursive: true });
+    const existingContent = "// existing user implementation\nexport async function handleStripeWebhook() { return 'real' }\n";
+    writeFileSync(join(outputDir, "src/webhooks/stripe.js"), existingContent, "utf8");
+
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    // Existing file must not be overwritten
+    const after = readFileSync(join(outputDir, "src/webhooks/stripe.js"), "utf8");
+    expect(after).toBe(existingContent);
+  });
+
     it("preserves Enum variants in entity fields", () => {
       const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
@@ -2802,5 +2993,4 @@ describe("generate()", () => {
       const afterGenerate = readFileSync(join(outputDir, "main.vasp"), "utf8");
       expect(afterGenerate).toBe(sentinel);
     });
-  });
 });

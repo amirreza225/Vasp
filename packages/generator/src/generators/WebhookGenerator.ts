@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { BaseGenerator } from "./BaseGenerator.js";
 import { toCamelCase, toPascalCase } from "../template/TemplateEngine.js";
 
@@ -63,6 +65,43 @@ export class WebhookGenerator extends BaseGenerator {
           }),
         );
       }
+    }
+
+    // Generate src/ stub files for inbound webhook handler functions so the
+    // server import resolves on first run. Skips files that already exist.
+    this.generateWebhookStubs();
+  }
+
+  /** Groups inbound webhook handler functions by source file and writes stubs. */
+  private generateWebhookStubs(): void {
+    const bySource = new Map<string, string[]>();
+    for (const webhook of this.ctx.ast.webhooks ?? []) {
+      if (webhook.mode !== "inbound" || !webhook.fn) continue;
+      const { fn } = webhook;
+      if (!fn.source.startsWith("@src/")) continue;
+      const fnName = fn.kind === "named" ? fn.namedExport : fn.defaultExport;
+      if (!bySource.has(fn.source)) bySource.set(fn.source, []);
+      bySource.get(fn.source)!.push(fnName);
+    }
+
+    const paramType = this.ctx.isTypeScript
+      ? "(body: unknown): Promise<void>"
+      : "(body)";
+
+    for (const [source, fnNames] of bySource) {
+      let relativePath = source.replace("@src/", "src/");
+      if (this.ctx.isTypeScript && relativePath.endsWith(".js")) {
+        relativePath = relativePath.slice(0, -3) + ".ts";
+      }
+      if (existsSync(join(this.ctx.projectDir, relativePath))) continue;
+      const content =
+        fnNames
+          .map(
+            (name) =>
+              `export async function ${name}${paramType} {\n  // TODO: implement webhook handler\n}`,
+          )
+          .join("\n\n") + "\n";
+      this.write(relativePath, content);
     }
   }
 }
