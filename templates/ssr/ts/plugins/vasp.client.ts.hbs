@@ -4,7 +4,7 @@ import { $fetch } from 'ofetch'
 
 function getCsrfToken(): string | undefined {
   const match = document.cookie.match(/(?:^|;\s*)vasp-csrf=([^;]*)/)
-  return match ? decodeURIComponent(match[1]) : undefined
+  return match?.[1] !== undefined ? decodeURIComponent(match[1]) : undefined
 }
 
 export default defineNuxtPlugin((nuxtApp) => {
@@ -19,7 +19,7 @@ export default defineNuxtPlugin((nuxtApp) => {
       return $fetch<T>(`/actions/${name}`, {
         baseURL,
         method: 'POST',
-        body: args,
+        body: args as BodyInit | Record<string, any> | null | undefined,
         headers: { 'x-csrf-token': getCsrfToken() ?? '' },
       })
     },
