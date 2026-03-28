@@ -64,6 +64,12 @@ export class BackendGenerator extends BaseGenerator {
         `server/middleware/csrf.${this.ctx.ext}`,
         this.render("shared/server/middleware/csrf.hbs", data),
       );
+      if (this.ctx.isTypeScript) {
+        this.write(
+          `server/tsconfig.json`,
+          this.render("shared/server/tsconfig.server.json.hbs", data),
+        );
+      }
     }
   }
 

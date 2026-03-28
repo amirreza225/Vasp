@@ -38,7 +38,7 @@ export const PERMISSIONS{{#if isTypeScript}}: Record<string, string[]>{{/if}} = 
  */
 export const requireAuth = new Elysia({ name: 'require-auth' })
   .resolve({ as: 'scoped' }, async ({ cookie }) => {
-    const tokenValue = cookie?.token?.value ?? ''
+    const tokenValue = {{#if isTypeScript}}(cookie?.token?.value as string){{else}}cookie?.token?.value{{/if}} ?? ''
     if (!tokenValue) return { user: null }
     try {
       const { payload } = await jwtVerify(tokenValue, JWT_SECRET)

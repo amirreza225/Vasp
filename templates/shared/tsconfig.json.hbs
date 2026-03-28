@@ -19,6 +19,6 @@
       "@vasp-framework/client": ["./src/vasp/client/index.ts"]
     }
   },
-  "include": ["src/**/*.ts", "src/**/*.vue", "server/**/*.ts", "shared/**/*.ts", "drizzle/**/*.ts"],
+  "include": ["src/**/*.ts", "src/**/*.vue", {{#unless isSsr}}"server/**/*.ts", {{/unless}}"shared/**/*.ts", "drizzle/**/*.ts"],
   "exclude": ["node_modules", "dist", ".vasp-gen"]
 }

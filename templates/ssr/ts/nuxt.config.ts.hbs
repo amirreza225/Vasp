@@ -35,6 +35,9 @@ const AppTheme = definePreset({{ui.themeImportName}}, {
     '@src': '~/src',
     '@shared': '~/shared',
   },
+  nitro: {
+    ignore: ['server/**'],
+  },
   runtimeConfig: {
     backendUrl: process.env.BACKEND_URL || 'http://localhost:{{backendPort}}',
     public: {

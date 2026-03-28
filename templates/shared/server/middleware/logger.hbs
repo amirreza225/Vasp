@@ -92,7 +92,7 @@ export function logger() {
         {{/if}}
       }
     })
-    .onAfterHandle({ as: 'scoped' }, ({ request, requestId, requestStart, _span, set }) => {
+    .onAfterHandle({ as: 'scoped' }, ({ request, requestId, requestStart, {{#if hasObservability}}_span, {{/if}}set }) => {
       set.headers['x-request-id'] = requestId
       {{#if hasObservability}}
       const traceparent = getTraceparent()
@@ -144,7 +144,7 @@ export function logger() {
       )
       {{/if}}
     })
-    .onError({ as: 'scoped' }, ({ request, requestId, requestStart, _span, set, error }) => {
+    .onError({ as: 'scoped' }, ({ request, requestId, requestStart, {{#if hasObservability}}_span, {{/if}}set, error }) => {
       // requestId/requestStart/_span may be undefined when onError fires before .derive()
       // (e.g. 404, parse errors, pre-routing validation failures in Elysia 1.x)
       const rid = requestId ?? request.headers.get('x-request-id') ?? crypto.randomUUID()
