@@ -17,7 +17,7 @@ const AUTH = { Authorization: `Bearer ${MAGIC}` }
 crudSuite({
   backendUrl: BACKEND,
   entitySlug: 'todo',
-  sampleCreate: { title: 'E2E Full-Featured Todo', done: false, status: 'active', authorId: 0 },
+  sampleCreate: { title: 'E2E Full-Featured Todo', done: false, status: 'active' },
   sampleUpdate: { done: true },
   magicToken: MAGIC,
   needsAuth: true,
@@ -32,7 +32,7 @@ test.describe('[full-featured] Advanced CRUD list features', () => {
     // Pre-create items so there's something to page through
     for (let i = 0; i < 6; i++) {
       await request.post(base, {
-        data: { title: `Paginate ${i}`, done: false, status: 'active', authorId: 0 },
+        data: { title: `Paginate ${i}`, done: false, status: 'active' },
         headers: AUTH,
       })
     }
@@ -51,7 +51,7 @@ test.describe('[full-featured] Advanced CRUD list features', () => {
 
   test('?filter[status]=active returns items with matching status', async ({ request }) => {
     await request.post(base, {
-      data: { title: 'Filterable Active', done: false, status: 'active', authorId: 0 },
+      data: { title: 'Filterable Active', done: false, status: 'active' },
       headers: AUTH,
     })
     const res = await request.get(`${base}?filter[status]=active`, { headers: AUTH })
@@ -65,7 +65,7 @@ test.describe('[full-featured] Advanced CRUD list features', () => {
   test('?search=Searchable returns only matching items', async ({ request }) => {
     const marker = `SearchableUnique_${Date.now()}`
     await request.post(base, {
-      data: { title: marker, done: false, status: 'active', authorId: 0 },
+      data: { title: marker, done: false, status: 'active' },
       headers: AUTH,
     })
     const res = await request.get(`${base}?search=${encodeURIComponent(marker)}`, {
@@ -80,7 +80,7 @@ test.describe('[full-featured] Advanced CRUD list features', () => {
 
   test('Enum field (status) is stored and retrieved correctly', async ({ request }) => {
     const res = await request.post(base, {
-      data: { title: 'Enum Test', done: false, status: 'archived', authorId: 0 },
+      data: { title: 'Enum Test', done: false, status: 'archived' },
       headers: AUTH,
     })
     expect(res.status()).toBe(201)
@@ -90,7 +90,7 @@ test.describe('[full-featured] Advanced CRUD list features', () => {
 
   test('Text/nullable field (content) can be null', async ({ request }) => {
     const res = await request.post(base, {
-      data: { title: 'Nullable Content', done: false, status: 'active', content: null, authorId: 0 },
+      data: { title: 'Nullable Content', done: false, status: 'active', content: null },
       headers: AUTH,
     })
     expect(res.status()).toBe(201)

@@ -26,7 +26,7 @@ test.describe('[full-featured] Query handlers', () => {
   test('GET /api/queries/getTodoById is reachable (not 404)', async ({ request }) => {
     // Create a todo first to get a valid id
     const createRes = await request.post(CRUD_BASE, {
-      data: { title: 'Query By Id Todo', done: false, status: 'active', authorId: 0 },
+      data: { title: 'Query By Id Todo', done: false, status: 'active' },
       headers: AUTH,
     })
     const created = unwrap(await createRes.json()) as { id: number }
@@ -60,7 +60,7 @@ test.describe('[full-featured] Query handlers', () => {
 test.describe('[full-featured] Action handlers', () => {
   test('POST /api/actions/createTodo is reachable (not 404)', async ({ request }) => {
     const res = await request.post(`${BACKEND}/api/actions/createTodo`, {
-      data: { title: 'Action Create Todo', done: false, status: 'active', authorId: 0 },
+      data: { title: 'Action Create Todo', done: false, status: 'active' },
       headers: AUTH,
     })
     expect(res.status()).not.toBe(404)
@@ -70,7 +70,7 @@ test.describe('[full-featured] Action handlers', () => {
   test('POST /api/actions/deleteTodo is reachable (not 404)', async ({ request }) => {
     // Create a todo to delete
     const createRes = await request.post(CRUD_BASE, {
-      data: { title: 'Action Delete Todo', done: false, status: 'active', authorId: 0 },
+      data: { title: 'Action Delete Todo', done: false, status: 'active' },
       headers: AUTH,
     })
     const created = unwrap(await createRes.json()) as { id: number }
@@ -85,7 +85,7 @@ test.describe('[full-featured] Action handlers', () => {
 
   test('action endpoint response has { ok } field', async ({ request }) => {
     const res = await request.post(`${BACKEND}/api/actions/createTodo`, {
-      data: { title: 'Shape Check', done: false, status: 'active', authorId: 0 },
+      data: { title: 'Shape Check', done: false, status: 'active' },
       headers: AUTH,
     })
     if (res.status() === 404) return // route not mounted yet — skip

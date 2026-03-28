@@ -284,9 +284,11 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
           "isArray": false,
           "isRelation": true,
           "isUpdatedAt": false,
-          "modifiers": [],
+          "modifiers": [
+            "nullable",
+          ],
           "name": "author",
-          "nullable": false,
+          "nullable": true,
           "onDelete": "cascade",
           "relatedEntity": "User",
           "type": "User",

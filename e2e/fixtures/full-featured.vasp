@@ -32,7 +32,7 @@ entity Todo {
   content: Text @nullable
   metadata: Json @nullable
   status: Enum(active, inactive, archived)
-  author: User @onDelete(cascade)
+  author: User @nullable @onDelete(cascade)
   createdAt: DateTime @default(now)
   updatedAt: DateTime @updatedAt
 }
