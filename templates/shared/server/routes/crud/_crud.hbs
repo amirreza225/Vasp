@@ -59,7 +59,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     })
     const [countResult] = await db.select({ count: sql`count(*)::int` }).from({{camelCase entity}}s){{#if hasAnyRecordFilter}}.where({{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{camelCase entity}}s.{{tenantField}}, _tenantId), eq({{camelCase entity}}s.{{ownershipField}}, _ownerId)){{else}}eq({{camelCase entity}}s.{{tenantField}}, _tenantId){{/if}}{{else}}eq({{camelCase entity}}s.{{ownershipField}}, _ownerId){{/if}}){{/if}}
 {{#if paginate}}
-    return { items, total: countResult?.count ?? 0, page, limit }
+    return { items, total: countResult?.count ?? 0, page, limit, offset }
 {{else}}
     return { items, total: countResult?.count ?? 0, limit, offset }
 {{/if}}
@@ -128,7 +128,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     ])
 
 {{#if paginate}}
-    return { items: data, total: countResult[0]?.count ?? 0, page, limit }
+    return { items: data, total: countResult[0]?.count ?? 0, page, limit, offset }
 {{else}}
     return { items: data, total: countResult[0]?.count ?? 0, limit, offset }
 {{/if}}
