@@ -16,7 +16,7 @@ import type { DockerHandle, RabbitHandle, MinIOHandle, MailpitHandle } from './t
 
 const REDIS_IMAGE = 'redis:7-alpine'
 const RABBITMQ_IMAGE = 'rabbitmq:3.13-management-alpine'
-const KAFKA_IMAGE = 'bitnami/kafka:3.7'
+const KAFKA_IMAGE = 'apache/kafka:3.7.0'
 const MINIO_IMAGE = 'minio/minio:RELEASE.2024-07-13T01-52-12Z'
 const MAILPIT_IMAGE = 'axllent/mailpit:v1.18'
 
@@ -118,40 +118,45 @@ export async function waitForRabbitMQ(handle: RabbitHandle, timeoutMs = 60_000):
 // ── Kafka (KRaft, single-broker) ──────────────────────────────────────────────
 
 /**
- * Start a Kafka broker in KRaft mode (no ZooKeeper).
- * Uses Bitnami's Kafka image which defaults to KRaft.
+ * Start a Kafka broker in KRaft mode (no ZooKeeper) using the official
+ * apache/kafka image with --network host so that ADVERTISED_LISTENERS
+ * pointing at localhost:<port> is reachable both from the host and from
+ * inside the container (needed for the wait-for-ready probe).
+ *
+ * Controller listener occupies port+1 on the host network.
  */
 export function startKafkaContainer(port: number): DockerHandle {
   const name = `vasp-e2e-kafka-${port}`
-  const clusterId = 'vaspe2e0000000000000000'
+  const controllerPort = port + 1
+  const clusterId = 'MkU3OEVBNTcwNTJENDM2Qk'
   const containerId = dockerSync(
     [
       'run',
       '-d',
       '--name',
       name,
-      '-p',
-      `${port}:9092`,
+      '--network',
+      'host',
       '-e',
-      'KAFKA_CFG_NODE_ID=0',
+      'KAFKA_NODE_ID=0',
       '-e',
-      'KAFKA_CFG_PROCESS_ROLES=controller,broker',
+      'KAFKA_PROCESS_ROLES=broker,controller',
       '-e',
-      `KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@localhost:9093`,
+      `KAFKA_LISTENERS=PLAINTEXT://:${port},CONTROLLER://:${controllerPort}`,
       '-e',
-      'KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093',
+      `KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://localhost:${port}`,
       '-e',
-      `KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:${port}`,
+      `KAFKA_CONTROLLER_QUORUM_VOTERS=0@localhost:${controllerPort}`,
       '-e',
-      'KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT',
+      'KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT',
       '-e',
-      'KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER',
+      'KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER',
       '-e',
-      'KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT',
+      'KAFKA_INTER_BROKER_LISTENER_NAME=PLAINTEXT',
       '-e',
-      `KAFKA_KRAFT_CLUSTER_ID=${clusterId}`,
+      'KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1',
       '-e',
-      'ALLOW_PLAINTEXT_LISTENER=yes',
+      `KAFKA_CLUSTER_ID=${clusterId}`,
       KAFKA_IMAGE,
     ],
     'start Kafka container',
@@ -160,7 +165,7 @@ export function startKafkaContainer(port: number): DockerHandle {
   return { containerId, port }
 }
 
-/** Wait until Kafka's broker is reachable (polls /api/cluster via kafka-topics). */
+/** Wait until Kafka's broker is reachable (polls topic list via kafka-topics.sh). */
 export function waitForKafka(handle: DockerHandle, timeoutMs = 60_000): void {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
@@ -168,9 +173,9 @@ export function waitForKafka(handle: DockerHandle, timeoutMs = 60_000): void {
       [
         'exec',
         handle.containerId,
-        'kafka-topics.sh',
+        '/opt/kafka/bin/kafka-topics.sh',
         '--bootstrap-server',
-        `localhost:9092`,
+        `localhost:${handle.port}`,
         '--list',
       ],
       10_000,
