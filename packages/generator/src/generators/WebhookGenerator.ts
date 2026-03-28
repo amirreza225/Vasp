@@ -85,8 +85,8 @@ export class WebhookGenerator extends BaseGenerator {
     }
 
     const paramType = this.ctx.isTypeScript
-      ? "(body: unknown): Promise<void>"
-      : "(body)";
+      ? "(_body: unknown): Promise<void>"
+      : "(_body)";
 
     for (const [source, fnNames] of bySource) {
       let relativePath = source.replace("@src/", "src/");

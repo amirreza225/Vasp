@@ -2323,7 +2323,7 @@ describe("generate()", () => {
       "utf8",
     );
     expect(stub).toContain(
-      "export async function handleStripeWebhook(body: unknown): Promise<void>",
+      "export async function handleStripeWebhook(_body: unknown): Promise<void>",
     );
     expect(stub).toContain("// TODO: implement webhook handler");
   });
