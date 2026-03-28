@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { pgTable, text, integer, boolean, timestamp, doublePrecision, jsonb{{#if hasEnums}}, pgEnum{{/if}}{{#if hasAnyIndexes}}, index, uniqueIndex{{/if}} } from 'drizzle-orm/pg-core'
 {{#if hasAnyRelations}}
 import { relations } from 'drizzle-orm'

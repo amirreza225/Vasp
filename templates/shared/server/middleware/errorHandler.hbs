@@ -8,6 +8,12 @@ import { Elysia } from 'elysia'
  * @example throw new VaspError('NOT_FOUND', 'Recipe not found', 404)
  */
 export class VaspError extends Error {
+{{#if isTypeScript}}
+  code: string
+  statusCode: number
+  hint?: string
+
+{{/if}}
   constructor(
     code{{#if isTypeScript}}: string{{/if}},
     message{{#if isTypeScript}}: string{{/if}},

@@ -4,9 +4,7 @@ import './telemetry/index.{{ext}}'
 {{/if}}
 import { Elysia } from 'elysia'
 import { cors } from '@elysiajs/cors'
-import { staticPlugin } from '@elysiajs/static'
 import { swagger } from '@elysiajs/swagger'
-import { db } from './db/client.{{ext}}'
 import { logger } from './middleware/logger.{{ext}}'
 import { rateLimit } from './middleware/rateLimit.{{ext}}'
 import { errorHandler } from './middleware/errorHandler.{{ext}}'
@@ -106,7 +104,7 @@ if (!process.env.{{name}}?.trim()) process.env.{{name}} = '{{defaultValue}}'
   }
 }
 {{/if}}
-const app = new Elysia()
+export const app = new Elysia()
   .use(swagger({
     path: '/api/docs',
     documentation: {

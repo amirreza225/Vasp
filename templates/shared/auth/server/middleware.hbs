@@ -66,7 +66,7 @@ export function requireRole(roles{{#if isTypeScript}}: string[]{{/if}}) {
   return new Elysia({ name: 'require-role' })
     .use(requireAuth)
     .onBeforeHandle({ as: 'scoped' }, ({ user }) => {
-      const userRole = typeof user?.role === 'string' ? user.role : ''
+      const userRole = typeof {{#if isTypeScript}}(user as any){{else}}user{{/if}}?.role === 'string' ? {{#if isTypeScript}}(user as any){{else}}user{{/if}}.role : ''
       if (!roles.includes(userRole)) {
         throw new VaspError('AUTH_FORBIDDEN', 'Insufficient permissions', 403)
       }
@@ -85,7 +85,7 @@ export function requirePermission(permission{{#if isTypeScript}}: string{{/if}})
   return new Elysia({ name: `require-permission-${permission}` })
     .use(requireAuth)
     .onBeforeHandle({ as: 'scoped' }, ({ user }) => {
-      const userRole = typeof user?.role === 'string' ? user.role : ''
+      const userRole = typeof {{#if isTypeScript}}(user as any){{else}}user{{/if}}?.role === 'string' ? {{#if isTypeScript}}(user as any){{else}}user{{/if}}.role : ''
       const allowedRoles = PERMISSIONS[permission] ?? []
       if (!allowedRoles.includes(userRole)) {
         throw new VaspError('AUTH_FORBIDDEN', 'Insufficient permissions', 403)

@@ -18,13 +18,11 @@ if (connectionString.startsWith('postgres://user:password@localhost')) {
 const client = postgres(connectionString)
 
 // Verify database connectivity at startup
-try {
-  await client`SELECT 1`
-} catch (err) {
+client`SELECT 1`.catch((err) => {
   const message = err instanceof Error ? err.message : String(err)
   console.error('\n✗ Cannot connect to database. Verify DATABASE_URL in .env')
   console.error(`  ${message}\n`)
   process.exit(1)
-}
+})
 
 export const db = drizzle(client, { schema })

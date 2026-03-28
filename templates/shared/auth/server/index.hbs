@@ -28,7 +28,8 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
   .use(githubRoutes)
 {{/if}}
   .get('/me', async ({ jwt, cookie: { token }, set }) => {
-    const payload = await jwt.verify(token?.value ?? '')
+    const tokenValue = {{#if isTypeScript}}token?.value as string | undefined{{else}}token?.value{{/if}}
+    const payload = await jwt.verify(tokenValue ?? '')
     if (!payload || typeof payload.userId !== 'number') {
       set.status = 401
       return { error: 'Unauthorized' }
@@ -41,7 +42,7 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
     const { passwordHash: _ph, ...safeUser } = user
     return safeUser
   })
-  .post('/logout', ({ cookie: { token }, set }) => {
+  .post('/logout', ({ cookie: { token } }) => {
     token?.remove()
     return { ok: true }
   })
