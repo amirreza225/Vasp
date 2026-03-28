@@ -16,6 +16,9 @@ const AppTheme = definePreset({{ui.themeImportName}}, {
 {{/if}}export default defineNuxtConfig({
   compatibilityDate: '2024-11-01',
   devtools: { enabled: true },
+  devServer: {
+    port: {{frontendPort}},
+  },
   modules: ['@primevue/nuxt-module'],
   primevue: {
     options: {
