@@ -333,6 +333,13 @@ export function generationSuite(state: FixtureState): void {
         test(`middleware/auth.${ext} is generated (Q5 route protection)`, () => {
           expect(exists(`middleware/auth.${ext}`)).toBe(true)
         })
+
+        test('middleware/auth calls checkAuth() to hydrate session on SSR', () => {
+          const content = readFileSync(join(appDir, `middleware/auth.${ext}`), 'utf8')
+          // Without await checkAuth(), every SSR request starts with user=null and
+          // redirects to /login even when the browser sends a valid session cookie.
+          expect(content).toContain('await checkAuth()')
+        })
       }
 
       // Q3: Typed CRUD composables for SSR

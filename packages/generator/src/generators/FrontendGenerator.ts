@@ -228,12 +228,19 @@ export class FrontendGenerator extends BaseGenerator {
   }
 
   /** Converts a Vasp route path to a Nuxt pages/ file name.
-   *  "/" → "index.vue", "/about" → "about.vue", "/users/:id" → "users/[id].vue" */
+   *  "/" → "index.vue", "/about" → "about/index.vue", "/users/:id" → "users/[id]/index.vue"
+   *
+   * Index files are used instead of flat files (e.g. "about.vue") to prevent Nuxt from
+   * treating the page as a parent layout for sibling autoPage routes.  In Nuxt 4, when
+   * both "todos.vue" and a "todos/" directory exist, "todos.vue" is promoted to a parent
+   * layout and its middleware runs for ALL /todos/* routes — including auto-generated
+   * autoPage children that have no auth declaration.  Using "todos/index.vue" keeps the
+   * pages independent: the auth middleware on /todos does not cascade to /todos/create. */
   private routePathToNuxtFile(path: string): string {
     if (path === "/") return "index.vue";
     // Replace Express-style :param with Nuxt [param]
     const normalized = path.replace(/^\//, "").replace(/:([^/]+)/g, "[$1]");
-    return `${normalized}.vue`;
+    return `${normalized}/index.vue`;
   }
 
   private buildPagesMap(): Record<string, string> {

@@ -1461,7 +1461,7 @@ describe("generate()", () => {
     });
 
     expect(existsSync(join(outputDir, "pages/index.vue"))).toBe(true);
-    expect(existsSync(join(outputDir, "pages/about.vue"))).toBe(true);
+    expect(existsSync(join(outputDir, "pages/about/index.vue"))).toBe(true);
 
     const indexPage = readFileSync(join(outputDir, "pages/index.vue"), "utf8");
     expect(indexPage).toContain("<Home />");
@@ -1551,6 +1551,7 @@ describe("generate()", () => {
       "utf8",
     );
     expect(middleware).toContain("defineNuxtRouteMiddleware");
+    expect(middleware).toContain("await checkAuth()");
     expect(middleware).toContain("navigateTo('/login')");
   });
 
