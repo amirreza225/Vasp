@@ -202,6 +202,8 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
   }{{/if}})
 {{/if}}
   .get('/:id', async ({ params: { id }{{#if hasAnyRecordFilter}}, user{{/if}} }) => {
+    const numId = Number(id)
+    if (!Number.isFinite(numId)) throw new VaspError('INVALID_INPUT', 'Invalid id', 400)
 {{#if applyTenantFilter}}
     const _tenantId = user?.{{tenantField}}
     if (_tenantId == null) throw new VaspError('AUTH_REQUIRED', 'Missing tenant context', 401)
@@ -227,6 +229,8 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
   })
 {{#if (includes operations "update")}}
   .put('/:id', async ({ params: { id }, body{{#if needsAuth}}, user{{/if}} }) => {
+    const numId = Number(id)
+    if (!Number.isFinite(numId)) throw new VaspError('INVALID_INPUT', 'Invalid id', 400)
     const parsed = safeParse(Update{{pascalCase entity}}Schema, body)
     if (!parsed.success) {
       const firstIssue = parsed.issues?.[0]
@@ -274,6 +278,8 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{/if}}
 {{#if (includes operations "delete")}}
   .delete('/:id', async ({ params: { id }{{#if needsAuth}}, user{{/if}} }) => {
+    const numId = Number(id)
+    if (!Number.isFinite(numId)) throw new VaspError('INVALID_INPUT', 'Invalid id', 400)
 {{#if applyTenantFilter}}
     const _tenantId = user?.{{tenantField}}
     if (_tenantId == null) throw new VaspError('AUTH_REQUIRED', 'Missing tenant context', 401)
