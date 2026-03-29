@@ -239,8 +239,8 @@ export const FIXTURES: Record<string, FixtureConfig> = {
       columns: 'slug, name, plan, "isActive"',
       alphaValues: `'workspace-alpha', 'Workspace Alpha', 'free', true`,
       betaValues: `'workspace-beta', 'Workspace Beta', 'free', true`,
-      alphaTaskValues: `'Alpha Task 1', 'todo', 'medium', false, NOW(), NOW()`,
-      betaTaskValues: `'Beta Task 1', 'todo', 'low', false, NOW(), NOW()`,
+      alphaTaskValues: `'Alpha Task 1', 'todo', 'medium', false`,
+      betaTaskValues: `'Beta Task 1', 'todo', 'low', false`,
     },
     // Full infra: Redis, RabbitMQ, Kafka, MinIO, Mailpit
     redisPort: 26381,
@@ -278,6 +278,8 @@ export const FIXTURES: Record<string, FixtureConfig> = {
       WEBHOOK_SIGNING_SECRET: 'stub-webhook-signing-secret',
       SENTRY_DSN: '',
       LOG_LEVEL: 'warn',
+      // project-hub env block only allows Enum(development, staging, production) — not 'test'
+      NODE_ENV: 'development',
     },
   },
 }
