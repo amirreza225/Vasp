@@ -51,7 +51,7 @@ import { {{camelCase name}}UploadRoutes } from './routes/storage/{{camelCase nam
 {{#each inboundWebhooks}}
 import { {{camelCase name}}Routes } from './routes/webhooks/{{camelCase name}}.{{../ext}}'
 {{/each}}
-{{#if hasObservabilityMetrics}}
+{{#if hasObservabilityPrometheus}}
 import { getPrometheusMetrics } from './telemetry/metrics.{{ext}}'
 {{/if}}
 
@@ -124,7 +124,7 @@ export const app = new Elysia()
   .use(csrfProtection())
 {{/if}}
   .get('/api/health', () => ({ status: 'ok', version: '{{vaspVersion}}' }))
-{{#if hasObservabilityMetrics}}
+{{#if hasObservabilityPrometheus}}
   .get('/api/metrics', async ({ set }) => {
     const body = await getPrometheusMetrics()
     set.headers['content-type'] = 'text/plain; version=0.0.4; charset=utf-8'
