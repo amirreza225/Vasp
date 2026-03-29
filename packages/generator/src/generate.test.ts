@@ -1420,6 +1420,12 @@ describe("generate()", () => {
     expect(existsSync(join(outputDir, "plugins/vasp.js"))).toBe(true);
     expect(existsSync(join(outputDir, "composables/useVasp.js"))).toBe(true);
 
+    // app.vue must include PrimeVue global overlay components (Q6)
+    const appVue = readFileSync(join(outputDir, "app.vue"), "utf8");
+    expect(appVue).toContain("<Toast />");
+    expect(appVue).toContain("<ConfirmDialog />");
+    expect(appVue).toContain("<DynamicDialog />");
+
     const vaspPlugin = readFileSync(
       join(outputDir, "plugins/vasp.js"),
       "utf8",
