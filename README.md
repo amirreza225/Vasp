@@ -388,7 +388,7 @@ const todos = await $vasp.query('getTodos')
 await $vasp.action('createTodo', { text: 'Buy milk' })
 ```
 
-In SSR mode, Vasp automatically calls server functions directly during server render (zero network round-trip) and switches to HTTP on the client after hydration. The developer sees one API regardless of mode.
+In SSR mode, a single universal Nuxt plugin (`plugins/vasp.js`) handles both server and client. During SSR renders the plugin forwards the incoming request cookies to the Elysia backend via `useRequestHeaders`, so the user session is preserved. On the client after hydration, cookies are sent via `credentials: 'include'`. The developer sees one API regardless of mode.
 
 ### `useAuth()` Composable
 
@@ -501,7 +501,8 @@ vasp --version
 | Queries and Actions | Done |
 | CRUD endpoints (with pagination/sorting) | Done |
 | Realtime (WebSocket with auth & rooms) | Done |
-| Background jobs (PgBoss with cron scheduling) | Done |
+| Background jobs (PgBoss, BullMQ with cron scheduling) | Done |
+| Auto-generated pages (`autoPage` block — list/form/detail powered by PrimeVue 4) | Done |
 | Admin panel generation (Ant Design Vue, per-entity CRUD UI) | Done |
 | `vasp new` CLI command | Done |
 | `vasp new` interactive prompts (TypeScript / SSR / starter) | Done |
@@ -600,6 +601,7 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
    - `SeedGenerator` → database seed script
    - `StorageGenerator` → file upload endpoints (S3, R2, GCS, local)
    - `FrontendGenerator` → Vue 3 SPA (Vite) **or** Nuxt 4 SSR/SSG
+   - `AutoPageGenerator` → list/form/detail pages from `autoPage` blocks (PrimeVue 4)
    - `AdminGenerator` → standalone Ant Design Vue admin panel (when `admin` block is present)
 
    All output files are produced from [Handlebars](https://handlebarsjs.com) templates under `templates/`. There are four frontend template trees (SPA+JS, SPA+TS, SSR+JS, SSR+TS) plus a shared backend tree and an admin tree.

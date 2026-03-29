@@ -46,7 +46,8 @@ console.log(result.errors)         // [] on success
 | 13 | `SeedGenerator` | `server/db/seed.{js\|ts}` — wraps the user-supplied seed function |
 | 14 | `StorageGenerator` | `server/routes/storage/` — file upload endpoints (S3, R2, GCS, local) |
 | 15 | `FrontendGenerator` | Vue 3 + Vite (SPA) **or** Nuxt 4 (SSR/SSG) frontend |
-| 16 | `AdminGenerator` | `admin/` — standalone Ant Design Vue admin panel (only when `admin` block present) |
+| 16 | `AutoPageGenerator` | `pages/<path>.vue` — list/form/detail pages from `autoPage` blocks (PrimeVue 4) |
+| 17 | `AdminGenerator` | `admin/` — standalone Ant Design Vue admin panel (only when `admin` block present) |
 
 A failure in any generator aborts the pipeline and leaves the real output directory untouched (see Safe Regeneration below).
 

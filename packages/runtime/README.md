@@ -84,12 +84,13 @@ const todos = await $vasp.query('getTodos')
 
 ## SSR mode
 
-In SSR (Nuxt 4) mode, this package is **not used directly**. Instead, Vasp generates two Nuxt plugins:
+In SSR (Nuxt 4) mode, this package is **not used directly**. Instead, Vasp generates a single universal Nuxt plugin:
 
-- `plugins/vasp.server.js` — calls server functions directly during SSR render (zero HTTP overhead)
-- `plugins/vasp.client.js` — uses ofetch on the client after hydration
+- `plugins/vasp.js` / `plugins/vasp.ts` — uses ofetch on both server and client.  
+  On the server, incoming request cookies are automatically forwarded to the Elysia backend via `useRequestHeaders(['cookie'])`, preserving the user session across SSR renders.  
+  On the client after hydration, cookies are sent with `credentials: 'include'` as usual.
 
-The developer always sees the same `useVasp()` API regardless of mode.
+The developer always sees the same `useVasp()` / `$vasp` API regardless of mode.
 
 ## License
 

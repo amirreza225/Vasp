@@ -122,7 +122,7 @@ SUPPORTED_API_METHODS          // ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 SUPPORTED_MIDDLEWARE_SCOPES    // ['global', 'route']
 SUPPORTED_CRUD_OPERATIONS      // ['list', 'create', 'update', 'delete']
 SUPPORTED_REALTIME_EVENTS      // ['created', 'updated', 'deleted']
-SUPPORTED_JOB_EXECUTORS        // ['PgBoss']
+SUPPORTED_JOB_EXECUTORS        // ['PgBoss', 'BullMQ', 'RedisStreams', 'RabbitMQ', 'Kafka']
 
 SUPPORTED_FIELD_TYPES          // ['String', 'Int', 'Boolean', 'DateTime', 'Float', 'Text', 'Json', 'Enum', 'File']
 SUPPORTED_STORAGE_PROVIDERS    // ['local', 's3', 'r2', 'gcs']
