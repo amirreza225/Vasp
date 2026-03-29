@@ -484,7 +484,7 @@ export class FixtureHarness {
     const wsAlphaOut = psqlExec(
       containerId,
       dbName,
-      `INSERT INTO workspace (${alphaColumns}) VALUES (${alphaValues}) RETURNING id;`,
+      `INSERT INTO workspaces (${alphaColumns}) VALUES (${alphaValues}) RETURNING id;`,
     )
     const workspaceAlphaId = parseInsertedId(wsAlphaOut)
 
@@ -493,7 +493,7 @@ export class FixtureHarness {
     const wsBetaOut = psqlExec(
       containerId,
       dbName,
-      `INSERT INTO workspace (${alphaColumns}) VALUES (${betaValues}) RETURNING id;`,
+      `INSERT INTO workspaces (${alphaColumns}) VALUES (${betaValues}) RETURNING id;`,
     )
     const workspaceBetaId = parseInsertedId(wsBetaOut)
 
@@ -504,12 +504,12 @@ export class FixtureHarness {
         psqlExec(
           containerId,
           dbName,
-          `INSERT INTO task (title, done, "workspaceId") VALUES ('Alpha Task 1', false, ${Number(workspaceAlphaId)}), ('Alpha Task 2', true, ${Number(workspaceAlphaId)});`,
+          `INSERT INTO tasks (title, done, "workspaceId") VALUES ('Alpha Task 1', false, ${Number(workspaceAlphaId)}), ('Alpha Task 2', true, ${Number(workspaceAlphaId)});`,
         )
         psqlExec(
           containerId,
           dbName,
-          `INSERT INTO task (title, done, "workspaceId") VALUES ('Beta Task 1', false, ${Number(workspaceBetaId)});`,
+          `INSERT INTO tasks (title, done, "workspaceId") VALUES ('Beta Task 1', false, ${Number(workspaceBetaId)});`,
         )
       } catch {
         // Task table may not exist or have different schema — non-fatal for workspace seed

@@ -236,9 +236,9 @@ export const FIXTURES: Record<string, FixtureConfig> = {
     seedWorkspace: true,
     // Custom seed for Workspace (has required slug, name, isActive fields)
     workspaceSeed: {
-      columns: 'slug, name, plan, "isActive", "createdAt", "updatedAt"',
-      alphaValues: `'workspace-alpha', 'Workspace Alpha', 'free', true, NOW(), NOW()`,
-      betaValues: `'workspace-beta', 'Workspace Beta', 'free', true, NOW(), NOW()`,
+      columns: 'slug, name, plan, "isActive"',
+      alphaValues: `'workspace-alpha', 'Workspace Alpha', 'free', true`,
+      betaValues: `'workspace-beta', 'Workspace Beta', 'free', true`,
       alphaTaskValues: `'Alpha Task 1', 'todo', 'medium', false, NOW(), NOW()`,
       betaTaskValues: `'Beta Task 1', 'todo', 'low', false, NOW(), NOW()`,
     },
