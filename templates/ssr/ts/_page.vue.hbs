@@ -4,7 +4,7 @@
 
 <script setup lang="ts">
 import {{componentName}} from '{{componentSource}}'
-{{#if hasAuth}}
+{{#if isProtected}}
 definePageMeta({ middleware: 'auth' })
 {{/if}}
 </script>

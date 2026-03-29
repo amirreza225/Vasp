@@ -136,14 +136,12 @@ export class FrontendGenerator extends BaseGenerator {
     this.write(`app.vue`, this.render(`ssr/${ext}/app.vue.hbs`));
     this.write(`error.vue`, this.render(`ssr/${ext}/error.vue.hbs`));
 
-    // Dual-transport plugins
+    // Universal HTTP plugin — replaces the old server/client split plugins.
+    // Both SSR render and client-side hydration call the Elysia backend over HTTP,
+    // forwarding cookies server-side via useRequestHeaders for session continuity.
     this.write(
-      `plugins/vasp.server.${ext}`,
-      this.render(`ssr/${ext}/plugins/vasp.server.${ext}.hbs`),
-    );
-    this.write(
-      `plugins/vasp.client.${ext}`,
-      this.render(`ssr/${ext}/plugins/vasp.client.${ext}.hbs`),
+      `plugins/vasp.${ext}`,
+      this.render(`ssr/${ext}/plugins/vasp.${ext}.hbs`),
     );
 
     // Composables
@@ -151,6 +149,14 @@ export class FrontendGenerator extends BaseGenerator {
       `composables/useVasp.${ext}`,
       this.render(`ssr/${ext}/composables/useVasp.${ext}.hbs`),
     );
+
+    // Typed CRUD composables — auto-imported by Nuxt, parallel to the SPA's crud.ts
+    if (ast.cruds.length > 0) {
+      this.write(
+        `composables/crud.${ext}`,
+        this.render(`ssr/${ext}/composables/crud.${ext}.hbs`),
+      );
+    }
 
     // Auth composable + middleware (only when auth block present)
     if (ast.auth) {
@@ -164,29 +170,37 @@ export class FrontendGenerator extends BaseGenerator {
       );
     }
 
-    // Generate Nuxt pages from Vasp routes
+    // Generate Nuxt pages from Vasp routes.
+    // Routes are protected by default when an auth block exists unless explicitly
+    // overridden with `protected: false` in the route DSL block.
     const pagesMap = this.buildPagesMap();
     for (const route of ast.routes) {
       const pageFile = this.routePathToNuxtFile(route.path);
       const componentSource = pagesMap[route.to];
       if (!componentSource) continue;
       const componentName = this.extractComponentName(componentSource);
+      // A route is protected when auth exists AND the route's `protected` field is not explicitly false.
+      // Default-on: any route in an app with an auth block is protected unless the author writes
+      // `protected: false` in the route DSL block. Login/register pages bypass this via isProtected: false.
+      const isProtected = !!ast.auth && route.protected !== false;
       this.write(
         `pages/${pageFile}`,
         this.render(`ssr/${ext}/_page.vue.hbs`, {
           componentName,
           componentSource,
+          isProtected,
         }),
       );
     }
 
-    // Auth login/register pages
+    // Auth login/register pages — always public (never require auth middleware)
     if (ast.auth) {
       this.write(
         `pages/login.vue`,
         this.render(`ssr/${ext}/_page.vue.hbs`, {
           componentName: "LoginPage",
           componentSource: "@src/pages/Login.vue",
+          isProtected: false,
         }),
       );
       this.write(
@@ -194,6 +208,7 @@ export class FrontendGenerator extends BaseGenerator {
         this.render(`ssr/${ext}/_page.vue.hbs`, {
           componentName: "RegisterPage",
           componentSource: "@src/pages/Register.vue",
+          isProtected: false,
         }),
       );
     }

@@ -373,6 +373,8 @@ export interface RouteNode extends BaseNode {
   path: string; // URL path, e.g. "/"
   to: string; // name of the target PageNode
   params: string[]; // extracted route params, e.g. [":id"] → ["id"]
+  /** Whether this route requires authentication. Defaults to true when an auth block exists. */
+  protected?: boolean;
 }
 
 export interface PageNode extends BaseNode {

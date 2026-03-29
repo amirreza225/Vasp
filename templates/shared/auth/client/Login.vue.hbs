@@ -9,7 +9,11 @@
       </button>
       <p v-if="error" class="error">\{{ error }}</p>
     </form>
+{{#if isSsr}}
+    <p>Don't have an account? <NuxtLink to="/register">Register</NuxtLink></p>
+{{else}}
     <p>Don't have an account? <RouterLink to="/register">Register</RouterLink></p>
+{{/if}}
 {{#if (includes authMethods "google")}}
     <a href="/auth/google" class="oauth-btn">Continue with Google</a>
 {{/if}}
@@ -20,16 +24,17 @@
 </template>
 
 <script setup>
+{{#if isSsr}}
+{{! Nuxt auto-imports: ref, useAuth (from composables/), navigateTo }}
+const { login } = useAuth()
+{{else}}
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-{{#if isSsr}}
-import { useAuth } from '../../composables/useAuth'
-{{else}}
 import { useAuth } from '../vasp/auth.js'
-{{/if}}
 
 const router = useRouter()
 const { login } = useAuth()
+{{/if}}
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
@@ -40,7 +45,11 @@ async function handleLogin() {
   error.value = ''
   try {
     await login(username.value, password.value)
+{{#if isSsr}}
+    await navigateTo('/')
+{{else}}
     router.push('/')
+{{/if}}
   } catch (err) {
     error.value = err?.data?.error || err?.message || 'Login failed'
   } finally {

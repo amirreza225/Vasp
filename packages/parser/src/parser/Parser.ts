@@ -901,6 +901,7 @@ class Parser {
 
     let path = "";
     let to = "";
+    let routeProtected: boolean | undefined = undefined;
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -913,11 +914,14 @@ class Parser {
         case "to":
           to = this.consumeIdentifier().value;
           break;
+        case "protected":
+          routeProtected = this.consume(TokenType.BOOLEAN).value === "true";
+          break;
         default:
           throw this.error(
             "E014_UNKNOWN_PROP",
             `Unknown route property '${key.value}'`,
-            "Valid properties: path, to",
+            "Valid properties: path, to, protected",
             key.loc,
           );
       }
@@ -925,7 +929,9 @@ class Parser {
 
     this.consume(TokenType.RBRACE);
     const params = extractRouteParams(path);
-    return { type: "Route", name: name.value, loc, path, to, params };
+    const node: RouteNode = { type: "Route", name: name.value, loc, path, to, params };
+    if (routeProtected !== undefined) node.protected = routeProtected;
+    return node;
   }
 
   private parsePage(): PageNode {

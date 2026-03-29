@@ -1377,7 +1377,7 @@ describe("generate()", () => {
 
   // ── Phase 6: SSR / Nuxt 4 ──────────────────────────────────────────────
 
-  it("SSR JS: generates nuxt.config.js, app.vue, and dual-transport plugins", () => {
+  it("SSR JS: generates nuxt.config.js, app.vue, and universal HTTP plugin", () => {
     const source = `
       app SsrApp {
         title: "SSR App"
@@ -1416,25 +1416,18 @@ describe("generate()", () => {
 
     expect(existsSync(join(outputDir, "nuxt.config.js"))).toBe(true);
     expect(existsSync(join(outputDir, "app.vue"))).toBe(true);
-    expect(existsSync(join(outputDir, "plugins/vasp.server.js"))).toBe(true);
-    expect(existsSync(join(outputDir, "plugins/vasp.client.js"))).toBe(true);
+    // Single universal plugin replaces the old server/client split
+    expect(existsSync(join(outputDir, "plugins/vasp.js"))).toBe(true);
     expect(existsSync(join(outputDir, "composables/useVasp.js"))).toBe(true);
 
-    const serverPlugin = readFileSync(
-      join(outputDir, "plugins/vasp.server.js"),
+    const vaspPlugin = readFileSync(
+      join(outputDir, "plugins/vasp.js"),
       "utf8",
     );
-    expect(serverPlugin).toContain("defineNuxtPlugin");
-    expect(serverPlugin).toContain("getTodos");
-    expect(serverPlugin).toContain("Unknown query:");
-
-    const clientPlugin = readFileSync(
-      join(outputDir, "plugins/vasp.client.js"),
-      "utf8",
-    );
-    expect(clientPlugin).toContain("defineNuxtPlugin");
-    expect(clientPlugin).toContain("$fetch");
-    expect(clientPlugin).toContain("/queries/");
+    expect(vaspPlugin).toContain("defineNuxtPlugin");
+    expect(vaspPlugin).toContain("$fetch");
+    expect(vaspPlugin).toContain("/queries/");
+    expect(vaspPlugin).toContain("useRequestHeaders");
   });
 
   it("SSR JS: generates Nuxt pages/ files from vasp routes", () => {
@@ -1469,7 +1462,7 @@ describe("generate()", () => {
     expect(indexPage).toContain("import Home from '@src/pages/Home.vue'");
   });
 
-  it("SSR TS: generates nuxt.config.ts with typescript: true and typed plugins", () => {
+  it("SSR TS: generates nuxt.config.ts with typescript: true and universal HTTP plugin", () => {
     const source = `
       app SsrTsApp {
         title: "SSR TS App"
@@ -1501,19 +1494,19 @@ describe("generate()", () => {
     });
 
     expect(existsSync(join(outputDir, "nuxt.config.ts"))).toBe(true);
-    expect(existsSync(join(outputDir, "plugins/vasp.server.ts"))).toBe(true);
-    expect(existsSync(join(outputDir, "plugins/vasp.client.ts"))).toBe(true);
+    // Single universal plugin replaces the old server/client split
+    expect(existsSync(join(outputDir, "plugins/vasp.ts"))).toBe(true);
     expect(existsSync(join(outputDir, "composables/useVasp.ts"))).toBe(true);
 
     const nuxtConfig = readFileSync(join(outputDir, "nuxt.config.ts"), "utf8");
     expect(nuxtConfig).toContain("strict: false");
 
-    const serverPlugin = readFileSync(
-      join(outputDir, "plugins/vasp.server.ts"),
+    const vaspPlugin = readFileSync(
+      join(outputDir, "plugins/vasp.ts"),
       "utf8",
     );
-    expect(serverPlugin).toContain("Promise<T>");
-    expect(serverPlugin).toContain("getTodos");
+    expect(vaspPlugin).toContain("Promise<T>");
+    expect(vaspPlugin).toContain("useRequestHeaders");
   });
 
   it("SSR: generates auth composable and route middleware when auth block present", () => {

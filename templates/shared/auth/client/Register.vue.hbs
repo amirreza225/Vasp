@@ -10,21 +10,26 @@
       </button>
       <p v-if="error" class="error">\{{ error }}</p>
     </form>
+{{#if isSsr}}
+    <p>Already have an account? <NuxtLink to="/login">Login</NuxtLink></p>
+{{else}}
     <p>Already have an account? <RouterLink to="/login">Login</RouterLink></p>
+{{/if}}
   </div>
 </template>
 
 <script setup>
+{{#if isSsr}}
+{{! Nuxt auto-imports: ref, useAuth (from composables/), navigateTo }}
+const { register } = useAuth()
+{{else}}
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-{{#if isSsr}}
-import { useAuth } from '../../composables/useAuth'
-{{else}}
 import { useAuth } from '../vasp/auth.js'
-{{/if}}
 
 const router = useRouter()
 const { register } = useAuth()
+{{/if}}
 const username = ref('')
 const email = ref('')
 const password = ref('')
@@ -36,7 +41,11 @@ async function handleRegister() {
   error.value = ''
   try {
     await register(username.value, password.value, email.value || undefined)
+{{#if isSsr}}
+    await navigateTo('/')
+{{else}}
     router.push('/')
+{{/if}}
   } catch (err) {
     error.value = err?.data?.error || err?.message || 'Registration failed'
   } finally {
