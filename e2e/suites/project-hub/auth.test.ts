@@ -62,7 +62,7 @@ test.describe('[project-hub] Auth', () => {
 
   test('GET /api/auth/me returns user with expected fields', async ({ request }) => {
     const meSuffix = `me_${Date.now()}`
-    const meUser = `e2ephmе_${meSuffix}`
+    const meUser = `e2ephme_${meSuffix}`
     await request.post(`${BACKEND}/api/auth/register`, {
       data: {
         username: meUser,
