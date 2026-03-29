@@ -47,7 +47,7 @@ A stop hook (`.claude/hooks/stop-check.sh`) runs automatically on session end: T
 |---------|----------|---------|
 | `packages/core` | `@vasp-framework/core` | `VaspAST` types, errors, constants — source of truth |
 | `packages/parser` | `@vasp-framework/parser` | `Lexer`, `Parser`, `SemanticValidator` |
-| `packages/generator` | `@vasp-framework/generator` | 16 generators + `TemplateEngine` (Handlebars) |
+| `packages/generator` | `@vasp-framework/generator` | 19 generators + `TemplateEngine` (Handlebars) |
 | `packages/runtime` | `@vasp-framework/runtime` | `$vasp`/`useQuery`/`useAction`/`useAuth` composables shipped into generated apps |
 | `packages/cli` | `vasp-cli` | CLI commands (`vasp new`, `vasp generate`, `vasp start`, etc.) |
 
@@ -58,21 +58,24 @@ Defined in `packages/generator/src/generate.ts`:
 1. `ScaffoldGenerator` — package.json, tsconfig, .env, README
 2. `DrizzleSchemaGenerator` — DB schema (entities, enums, relations)
 3. `BackendGenerator` — Elysia server entry, DB client, middleware, Swagger
-4. `AuthGenerator` — auth routes + Login/Register Vue components
-5. `MiddlewareGenerator` — custom middleware blocks
-6. `CacheGenerator` — cache store setup (memory/Redis/Valkey)
-7. `QueryActionGenerator` — query/action server handlers
-8. `ApiGenerator` — custom API endpoints
-9. `CrudGenerator` — REST CRUD endpoints
-10. `RealtimeGenerator` — WebSocket channels
-11. `JobGenerator` — PgBoss background jobs
-12. `EmailGenerator` — email provider setup
-13. `SeedGenerator` — DB seed script
-14. `StorageGenerator` — file upload endpoints
-15. `FrontendGenerator` — Vue SPA (Vite) or Nuxt 4 SSR/SSG
-16. `AdminGenerator` — standalone Vue 3 + Ant Design admin panel
+4. `ObservabilityGenerator` — OpenTelemetry tracing, Prometheus/OTLP metrics, structured logging, error tracking (Sentry/Datadog)
+5. `AuthGenerator` — auth routes + Login/Register Vue components
+6. `MiddlewareGenerator` — custom middleware blocks
+7. `CacheGenerator` — cache store setup (memory/Redis/Valkey)
+8. `QueryActionGenerator` — query/action server handlers
+9. `ApiGenerator` — custom API endpoints
+10. `CrudGenerator` — REST CRUD endpoints
+11. `RealtimeGenerator` — WebSocket channels
+12. `AutoPageGenerator` — list/form/detail pages from `autoPage` blocks (PrimeVue 4)
+13. `JobGenerator` — PgBoss/BullMQ/RedisStreams/RabbitMQ/Kafka background jobs
+14. `EmailGenerator` — email provider setup
+15. `SeedGenerator` — DB seed script
+16. `StorageGenerator` — file upload endpoints
+17. `WebhookGenerator` — inbound webhook receivers + outbound CRUD event dispatchers
+18. `FrontendGenerator` — Vue SPA (Vite) or Nuxt 4 SSR/SSG
+19. `AdminGenerator` — standalone Vue 3 + Ant Design admin panel
 
-All generators extend `BaseGenerator`. `baseData()` exposes the following to every template: `appName`, `appTitle`, `isTypeScript`, `isSsr`, `isSsg`, `isSpa`, `ext`, `mode`, `hasAuth`, `hasAdmin`, `adminEntities`, `hasAnyRelations`, `hasRealtime`, `hasJobs`, `hasStorage`, `storages`, `hasEmail`, `hasEmailResend`, `hasEmailSendgrid`, `hasEmailSmtp`, `emails`, `hasCache`, `caches`, `routes`, `pages`, `queries`, `actions`, `apis`, `middlewares`, `cruds`, `realtimes`, `jobs`, `seed`, `auth`, `multiTenant`, `hasMultiTenant`, `isRowLevelTenant`. `GeneratorContext` carries `{ ast, outputDir, templateDir, isTypeScript, isSsr, isSsg, isSpa, mode, ext, logger }`.
+All generators extend `BaseGenerator`. `baseData()` exposes the following to every template: `appName`, `appTitle`, `isTypeScript`, `isSsr`, `isSsg`, `isSpa`, `ext`, `mode`, `hasAuth`, `hasAdmin`, `adminEntities`, `hasAnyRelations`, `hasRealtime`, `hasJobs`, `hasPgBossJobs`, `hasBullMQJobs`, `hasRedisStreamsJobs`, `hasRabbitMQJobs`, `hasKafkaJobs`, `hasRedisJobs`, `hasStorage`, `storages`, `hasEmail`, `hasEmailResend`, `hasEmailSendgrid`, `hasEmailSmtp`, `emails`, `hasCache`, `caches`, `hasCacheRedis`, `needsRedis`, `hasWebhook`, `hasInboundWebhook`, `hasOutboundWebhook`, `webhooks`, `inboundWebhooks`, `outboundWebhooks`, `routes`, `pages`, `queries`, `actions`, `apis`, `middlewares`, `cruds`, `realtimes`, `jobs`, `seed`, `auth`, `multiTenant`, `hasMultiTenant`, `isRowLevelTenant`, `observability`, `hasObservability`, `hasObservabilityTracing`, `hasObservabilityMetrics`, `observabilityLogs`, `observabilityExporter`, `observabilityErrorTracking`, `hasObservabilityOtlp`, `hasObservabilityPrometheus`, `hasObservabilitySentry`, `hasObservabilityDatadog`, `hasStructuredLogs`, `autoPages`, `hasAutoPages`, `ui`. `GeneratorContext` carries `{ ast, outputDir, templateDir, isTypeScript, isSsr, isSsg, isSpa, mode, ext, logger }`.
 
 ### Template System
 
@@ -115,6 +118,10 @@ import { Parser } from './Parser'      // ❌ breaks ESM resolution
 
 **Template path resolution** — always use `resolveTemplateDir()` from `packages/cli/src/utils/template-dir.ts` instead of `import.meta.dirname`-relative paths. It handles both dev (4 levels up) and published binary (`../templates`).
 
+**SSR Nuxt plugin** — SSR apps get a single unified `plugins/vasp.{ext}` (not the old split `vasp.server` / `vasp.client`). During server-side rendering it forwards the incoming request cookies to the Elysia backend via `useRequestHeaders(['cookie'])`; on the client after hydration it uses `credentials: 'include'`. The auth middleware uses `await checkAuth()` before reading `user.value` — without it every SSR request sees `user = null` (fresh `useState`) and redirects to `/login`.
+
+**SSR route file naming** — `routePathToNuxtFile()` emits index files (e.g. `todos/index.vue`, not `todos.vue`) to prevent Nuxt from promoting route pages to parent layouts when `autoPage` children exist in the same directory.
+
 **Auth middleware** — uses `jose.jwtVerify()` directly for JWT verification. `@elysiajs/jwt` is only used in `plugin.hbs` for **signing**. Never use `@elysiajs/jwt`'s `jwt.verify()` inside `.resolve()` in a plugin.
 
 **Elysia 1.x scoping** — `.resolve()`, `.onBeforeHandle()`, and `.derive()` default to **local** scope. Use `{ as: 'scoped' }` when values must propagate to parent routes.
@@ -129,13 +136,13 @@ import { Parser } from './Parser'      // ❌ breaks ESM resolution
 
 **Rate limiting** — every generated server includes `server/middleware/rateLimit.{ext}`, an IP-based sliding-window limiter. Configurable via `RATE_LIMIT_MAX` (default 100) and `RATE_LIMIT_WINDOW_MS` (default 60000) env vars.
 
-## DSL Block Types (17 total)
+## DSL Block Types (20 total)
 
 Full reference: `e2e/fixtures/full-featured.vasp`
 
 | Block | Required | Key constraints |
 |-------|----------|----------------|
-| `app` | Yes (exactly 1) | `ssr: false\|true\|"ssg"`, `typescript: false\|true`; optional `env:` sub-block and `multiTenant:` sub-block — see below |
+| `app` | Yes (exactly 1) | `ssr: false\|true\|"ssg"`, `typescript: false\|true`; optional `env:` sub-block, `multiTenant:` sub-block, and `ui:` sub-block — see below |
 | `auth` | No | `userEntity`, `methods: [usernameAndPassword, google, github]`, optional `roles`, `permissions` |
 | `entity` | No | Field modifiers: `@id`, `@unique`, `@default(now)`, `@nullable`, `@updatedAt`, `@manyToMany`, `@storage(Name)`, `@validate(…)`, `@onDelete(cascade\|restrict\|setNull)`; table-level: `@@index([fields])`, `@@unique([fields])` |
 | `route` | No | `path`, `to: <PageName>` — page must be declared |
@@ -143,7 +150,7 @@ Full reference: `e2e/fixtures/full-featured.vasp`
 | `query` / `action` | No | `fn: import …`, `entities: […]`, optional `auth: true`, `roles: […]`, `cache: { store, ttl?, key?, invalidateOn? }` |
 | `crud` | No | `entity`, `operations: [list, create, update, delete]`, optional `list: { paginate, sortable, filterable, search }`, optional `permissions` map |
 | `realtime` | No | Requires matching `crud` block with same entity |
-| `job` | No | `executor: PgBoss`, optional `schedule` (cron) |
+| `job` | No | `executor: PgBoss\|BullMQ\|RedisStreams\|RabbitMQ\|Kafka`, optional `schedule` (cron) |
 | `api` | No | `method: GET\|POST\|PUT\|PATCH\|DELETE`, `path`, `fn: import …`, optional `auth: true`, `roles: […]` |
 | `middleware` | No | `fn: import …`, `scope: global\|route` |
 | `storage` | No | `provider: local\|s3\|r2\|gcs`, optional `bucket`, `maxSize`, `allowedTypes`, `publicPath` |
@@ -151,12 +158,17 @@ Full reference: `e2e/fixtures/full-featured.vasp`
 | `cache` | No | `provider: memory\|redis\|valkey`, optional `ttl` (seconds, default 60), optional `redis: { url: ENV_VAR_NAME }` |
 | `seed` | No | `fn: import { seedFn } from "@src/…"` — runs via `vasp db seed` |
 | `admin` | No | `entities: [EntityName, …]` |
+| `autoPage` | No | `entity`, `pageType: list\|form\|detail`; optional `title`, `fields`, `rowActions`, `topActions`, `layout`, `auth`, `roles` — generates PrimeVue 4 powered pages |
+| `webhook` | No | `mode: inbound\|outbound`; inbound: `path`, `fn: import …`, optional `verifyWith: stripe-signature\|github-signature\|hmac`, `secret`; outbound: `entity`, `events: [created\|updated\|deleted]`, `targets`, optional `retry`, `secret` |
+| `observability` | No | `tracing: bool`, `metrics: bool`, `logs: console\|structured`, `exporter: console\|otlp\|prometheus`, `errorTracking: none\|sentry\|datadog` |
 
 **`app.env` sub-block** — declares typed env vars with startup validation. Each entry: `VAR_NAME: required|optional Type`. Supported types: `String`, `Int`, `Boolean`, `Enum(val1, val2, …)`. Optional modifiers: `@default(value)`, `@minLength(n)`, `@maxLength(n)`, `@startsWith("prefix")`, `@endsWith("suffix")`, `@min(n)`, `@max(n)`. The AST type is `Record<string, EnvVarDefinition>` in `packages/core/src/types/ast.ts`. `BackendGenerator` renders these into startup validation code in `templates/shared/server/index.hbs`.
 
 **`app.multiTenant` sub-block** — opt-in multi-tenancy: `strategy: row-level|schema-level|database-level`, `tenantEntity: <EntityName>`, `tenantField: <fieldName>`. Exposed to templates via `multiTenant`, `hasMultiTenant`, `isRowLevelTenant` in `baseData()`.
 
-Semantic errors E100–E115 are in `packages/parser/src/validator/SemanticValidator.ts`.
+**`app.ui` sub-block** — PrimeVue 4 theming: `theme: Aura|Lara|Nora|Material`, `primaryColor: <palette>` (17 named colors: blue, indigo, violet, purple, fuchsia, pink, rose, red, orange, amber, yellow, lime, green, emerald, teal, cyan, sky), `darkModeSelector: "<css-selector>"` (default: `".app-dark"`), `ripple: bool` (default: true). Exposed to templates via `ui` object in `baseData()`. Omit entirely to get Aura + system defaults.
+
+Semantic errors E100–E126 are in `packages/parser/src/validator/SemanticValidator.ts`.
 
 Supported field types (`SUPPORTED_FIELD_TYPES` in `packages/core/src/constants.ts`): `String`, `Int`, `Boolean`, `DateTime`, `Float`, `Text`, `Json`, `Enum`, `File`. `File` fields require `@storage(StorageName)`.
 
@@ -213,6 +225,9 @@ Every step is required — missing any causes TypeScript errors or silent runtim
 | Fix storage generation | `generator/src/generators/StorageGenerator.ts` | Generator + `templates/shared/storage/**/*.hbs` |
 | Fix email generation | `generator/src/generators/EmailGenerator.ts` | Generator + `templates/shared/email/**/*.hbs` |
 | Fix admin panel | `generator/src/generators/AdminGenerator.ts` | `templates/admin/**/*.hbs` |
+| Fix autoPage generation | `generator/src/generators/AutoPageGenerator.ts` | `templates/autopages/**/*.hbs` |
+| Fix webhook generation | `generator/src/generators/WebhookGenerator.ts` | `templates/shared/webhooks/**/*.hbs` |
+| Fix observability generation | `generator/src/generators/ObservabilityGenerator.ts` | `templates/shared/observability/**/*.hbs` |
 | Fix CLI command | `cli/src/commands/<command>.ts` | Same file |
 | Fix runtime composable | `runtime/src/client/composables/use<Name>.ts` | Same file |
 | Fix template helper | `generator/src/template/TemplateEngine.ts` | Same file |
