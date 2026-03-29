@@ -23,5 +23,5 @@
       "@vasp-framework/runtime": ["./packages/runtime/src/index.ts"]
     }
   },
-  "exclude": ["node_modules", "**/node_modules", "**/dist", "**/*.test.ts"]
+  "exclude": ["node_modules", "**/node_modules", "**/dist", "**/*.test.ts", "e2e"]
 }
