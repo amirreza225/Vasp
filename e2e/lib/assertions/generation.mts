@@ -299,15 +299,48 @@ export function generationSuite(state: FixtureState): void {
       })
 
       test('app.vue is generated', () => {
-        expect(exists('app.vue') || exists('app.vue')).toBe(true)
+        expect(exists('app.vue')).toBe(true)
       })
 
-      test('Nuxt client plugin is generated', () => {
-        expect(
-          exists(`plugins/vasp.client.${ext}`) ||
-            exists(`plugins/vasp.server.${ext}`),
-        ).toBe(true)
+      test('app.vue includes PrimeVue global overlay components (Q6)', () => {
+        const content = readFileSync(join(appDir, 'app.vue'), 'utf8')
+        expect(content).toContain('<Toast />')
+        expect(content).toContain('<ConfirmDialog />')
+        expect(content).toContain('<DynamicDialog />')
       })
+
+      // Q1: Single universal plugin replaces the old vasp.server / vasp.client split
+      test('universal Nuxt plugin is generated (plugins/vasp)', () => {
+        expect(exists(`plugins/vasp.${ext}`)).toBe(true)
+      })
+
+      test('old split plugins are NOT generated (vasp.client / vasp.server)', () => {
+        expect(exists(`plugins/vasp.client.${ext}`)).toBe(false)
+        expect(exists(`plugins/vasp.server.${ext}`)).toBe(false)
+      })
+
+      test(`composables/useVasp.${ext} is generated`, () => {
+        expect(exists(`composables/useVasp.${ext}`)).toBe(true)
+      })
+
+      // Q2: SSR auth uses useState — useAuth composable is the SSR-safe auth API
+      if (capabilities.hasAuth) {
+        test(`composables/useAuth.${ext} is generated (Q2 useState auth)`, () => {
+          expect(exists(`composables/useAuth.${ext}`)).toBe(true)
+        })
+
+        // Q5: per-route auth middleware
+        test(`middleware/auth.${ext} is generated (Q5 route protection)`, () => {
+          expect(exists(`middleware/auth.${ext}`)).toBe(true)
+        })
+      }
+
+      // Q3: Typed CRUD composables for SSR
+      if (capabilities.hasCrud) {
+        test(`composables/crud.${ext} is generated (Q3 typed CRUD composables)`, () => {
+          expect(exists(`composables/crud.${ext}`)).toBe(true)
+        })
+      }
     }
 
     // ── Multi-tenant ───────────────────────────────────────────────────────
