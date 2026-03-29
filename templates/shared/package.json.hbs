@@ -55,7 +55,8 @@
     "@sentry/bun": "^9.0.0"{{/if}}{{#if hasObservabilityDatadog}},
     "dd-trace": "^5.0.0"{{/if}}{{/if}}{{#if hasCloudStorage}},
     "@aws-sdk/client-s3": "^3.0.0",
-    "@aws-sdk/s3-request-presigner": "^3.0.0"{{/if}}
+    "@aws-sdk/s3-request-presigner": "^3.0.0"{{/if}}{{#if hasCacheRedis}},
+    "redis": "^4.0.0"{{/if}}
   },
   "devDependencies": {
     "drizzle-kit": "^0.28.0",
