@@ -82,6 +82,9 @@ export abstract class BaseGenerator {
           (j) => j.executor === "BullMQ" || j.executor === "RedisStreams",
         ) || caches.some((c) => c.provider === "redis" || c.provider === "valkey"),
       hasStorage: (ast.storages?.length ?? 0) > 0,
+      hasCloudStorage: (ast.storages ?? []).some((s) =>
+        ["s3", "r2", "gcs"].includes(s.provider),
+      ),
       storages: ast.storages ?? [],
       hasEmail: emails.length > 0,
       hasEmailResend: emails.some((e) => e.provider === "resend"),
