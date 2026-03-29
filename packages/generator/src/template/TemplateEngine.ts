@@ -99,6 +99,12 @@ export class TemplateEngine {
         Array.isArray(arr) && arr.includes(item),
     );
 
+    /** or helper: {{#if (or a b c)}} — returns true if any argument is truthy */
+    this.hbs.registerHelper("or", (...args: unknown[]) => {
+      args.pop(); // remove Handlebars options object
+      return args.some(Boolean);
+    });
+
     /** importName: extracts the exported name from an ImportExpression */
     this.hbs.registerHelper(
       "importName",

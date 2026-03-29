@@ -17,7 +17,7 @@ import type { DockerHandle, RabbitHandle, MinIOHandle, MailpitHandle } from './t
 const REDIS_IMAGE = 'redis:7-alpine'
 const RABBITMQ_IMAGE = 'rabbitmq:3.13-management-alpine'
 const KAFKA_IMAGE = 'apache/kafka:3.7.0'
-const MINIO_IMAGE = 'minio/minio:RELEASE.2024-07-13T01-52-12Z'
+const MINIO_IMAGE = 'minio/minio:RELEASE.2024-12-18T13-15-44Z'
 const MAILPIT_IMAGE = 'axllent/mailpit:v1.18'
 
 const MINIO_ROOT_USER = 'vaspe2euser'

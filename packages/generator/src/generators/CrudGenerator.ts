@@ -95,7 +95,15 @@ export class CrudGenerator extends BaseGenerator {
       const deletePermission = crudPerms["delete"] ?? "";
 
       // Ownership-based resource-level access control (IDOR prevention)
-      const ownershipField = crud.ownership ?? "";
+      // If the ownership field is a relation (e.g. `owner: User`), the actual
+      // DB column is `{name}Id` (e.g. `ownerId`), not the relation name.
+      const rawOwnership = crud.ownership ?? "";
+      const ownerRelationField = (entity?.fields ?? []).find(
+        (f) => f.name === rawOwnership && f.isRelation && !f.isArray,
+      );
+      const ownershipField = ownerRelationField
+        ? `${toCamelCase(rawOwnership)}Id`
+        : rawOwnership;
       const hasOwnership = !!crud.ownership;
       // hasAnyRecordFilter: when true, single-record endpoints (GET/:id, PUT/:id,
       // DELETE/:id) append an extra AND condition to scope the query to the

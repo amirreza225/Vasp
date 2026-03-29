@@ -80,7 +80,7 @@ entity Workspace {
   slug:        String   @unique @validate(minLength: 3, maxLength: 60)
   name:        String   @validate(minLength: 1, maxLength: 120)
   plan:        Enum(free, pro, enterprise) @default(free)
-  isActive:    Boolean
+  isActive:    Boolean   @default(true)
   logoUrl:     String   @nullable
   settings:    Json     @nullable
   trialEndsAt: DateTime @nullable
@@ -100,7 +100,7 @@ entity User {
   displayName: String   @nullable @validate(maxLength: 100)
   bio:         Text     @nullable
   avatar:      File     @storage(AvatarStorage) @nullable
-  isActive:    Boolean
+  isActive:    Boolean   @default(true)
   lastLoginAt: DateTime @nullable
   settings:    Json     @nullable
   createdAt:   DateTime @default(now)

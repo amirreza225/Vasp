@@ -5,14 +5,22 @@ import { ref } from 'vue'
 import type {
 {{#each cruds}}
   {{pascalCase entity}},
+{{#if (includes operations "create")}}
   Create{{pascalCase entity}}Input,
+{{/if}}
+{{#if (includes operations "update")}}
   Update{{pascalCase entity}}Input,
+{{/if}}
 {{/each}}
 } from './types.js'
 import {
 {{#each cruds}}
+{{#if (includes operations "create")}}
   Create{{pascalCase entity}}Schema,
+{{/if}}
+{{#if (includes operations "update")}}
   Update{{pascalCase entity}}Schema,
+{{/if}}
 {{/each}}
 } from '{{importPath "@shared/validation.js" ext}}'
 import { notifyError } from '../useVaspNotifications.js'

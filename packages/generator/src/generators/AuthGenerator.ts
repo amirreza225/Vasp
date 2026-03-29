@@ -1,5 +1,6 @@
 import { DEFAULT_BACKEND_PORT } from "@vasp-framework/core";
 import { BaseGenerator } from "./BaseGenerator.js";
+import { toCamelCase } from "../template/TemplateEngine.js";
 
 export class AuthGenerator extends BaseGenerator {
   run(): void {
@@ -17,11 +18,24 @@ export class AuthGenerator extends BaseGenerator {
       ([name, roles]) => ({ name, roles }),
     );
 
+    // Collect many-to-one relation fields on the user entity.
+    // These generate {name}Id FK columns in the DB that the register endpoint
+    // may need to accept (e.g. workspaceId when User belongs to a Workspace).
+    const userEntity = ast.entities.find(
+      (e) => e.name === ast.auth!.userEntity,
+    );
+    const userFkFields = (userEntity?.fields ?? [])
+      .filter((f) => f.isRelation && !f.isArray)
+      .map((f) => ({ fieldName: `${toCamelCase(f.name)}Id` }));
+    const hasUserFkFields = userFkFields.length > 0;
+
     const data = {
       authMethods,
       backendPort: DEFAULT_BACKEND_PORT,
       hasPermissions,
       permissionEntries,
+      userFkFields,
+      hasUserFkFields,
     };
 
     // Server: auth plugin (JWT + cookie — separate file to avoid circular imports)

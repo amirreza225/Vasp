@@ -16,7 +16,10 @@ export class MiddlewareGenerator extends BaseGenerator {
     for (const fn of fns) {
       if (!fn.source.startsWith("@src/")) continue;
 
-      const relativePath = fn.source.replace("@src/", "src/");
+      let relativePath = fn.source.replace("@src/", "src/");
+      if (this.ctx.isTypeScript && relativePath.endsWith(".js")) {
+        relativePath = relativePath.slice(0, -3) + ".ts";
+      }
       if (existsSync(join(this.ctx.projectDir, relativePath))) continue;
 
       const content =

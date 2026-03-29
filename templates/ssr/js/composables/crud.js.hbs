@@ -5,8 +5,12 @@ import { $fetch } from 'ofetch'
 import { safeParse } from 'valibot'
 import {
 {{#each cruds}}
+{{#if (includes operations "create")}}
   Create{{pascalCase entity}}Schema,
+{{/if}}
+{{#if (includes operations "update")}}
   Update{{pascalCase entity}}Schema,
+{{/if}}
 {{/each}}
 } from '@shared/validation.js'
 
@@ -31,12 +35,14 @@ export function use{{pascalCase entity}}Crud() {
   const loading = ref(false)
   const error = ref(null)
 
+{{#if (or (includes operations "create") (includes operations "update") (includes operations "delete"))}}
   function getCsrfToken() {
     if (import.meta.server) return undefined
     const match = document.cookie.match(/(?:^|;\s*)vasp-csrf=([^;]*)/)
     return match ? decodeURIComponent(match[1]) : undefined
   }
 
+{{/if}}
   const fail = (err) => {
     error.value = err instanceof Error ? err.message : 'Request failed'
   }
