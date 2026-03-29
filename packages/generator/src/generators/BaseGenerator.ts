@@ -74,6 +74,13 @@ export abstract class BaseGenerator {
       hasRedisJobs: ast.jobs.some(
         (j) => j.executor === "BullMQ" || j.executor === "RedisStreams",
       ),
+      hasCacheRedis: caches.some(
+        (c) => c.provider === "redis" || c.provider === "valkey",
+      ),
+      needsRedis:
+        ast.jobs.some(
+          (j) => j.executor === "BullMQ" || j.executor === "RedisStreams",
+        ) || caches.some((c) => c.provider === "redis" || c.provider === "valkey"),
       hasStorage: (ast.storages?.length ?? 0) > 0,
       storages: ast.storages ?? [],
       hasEmail: emails.length > 0,
