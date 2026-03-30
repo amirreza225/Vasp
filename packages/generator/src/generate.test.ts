@@ -2993,4 +2993,58 @@ describe("generate()", () => {
       const afterGenerate = readFileSync(join(outputDir, "main.vasp"), "utf8");
       expect(afterGenerate).toBe(sentinel);
     });
+
+  // ── Stale mode-switching file cleanup ────────────────────────────────────────
+
+  it("re-generating as SSR removes stale vite.config.js left from a prior SPA scaffold", () => {
+    const { writeFileSync } = require("node:fs");
+    const spaSource = `
+      app SpaApp { title: "SPA" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `;
+    const ssrSource = `
+      app SsrApp { title: "SSR" db: Drizzle ssr: true typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/Home.vue" }
+    `;
+    const outputDir = join(TMP_DIR, "stale-vite-cleanup");
+    mkdirSync(outputDir, { recursive: true });
+
+    // First generate as SPA — produces vite.config.js + index.html
+    generate(parse(spaSource), { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    expect(existsSync(join(outputDir, "vite.config.js"))).toBe(true);
+    expect(existsSync(join(outputDir, "index.html"))).toBe(true);
+
+    // Re-generate as SSR — stale SPA files must be removed
+    generate(parse(ssrSource), { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    expect(existsSync(join(outputDir, "vite.config.js"))).toBe(false);
+    expect(existsSync(join(outputDir, "index.html"))).toBe(false);
+    expect(existsSync(join(outputDir, "nuxt.config.js"))).toBe(true);
+  });
+
+  it("re-generating as SPA removes stale nuxt.config.ts left from a prior SSR scaffold", () => {
+    const { writeFileSync } = require("node:fs");
+    const ssrSource = `
+      app SsrApp2 { title: "SSR2" db: Drizzle ssr: true typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/Home.vue" }
+    `;
+    const spaSource = `
+      app SpaApp2 { title: "SPA2" db: Drizzle ssr: false typescript: true }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/Home.vue" }
+    `;
+    const outputDir = join(TMP_DIR, "stale-nuxt-cleanup");
+    mkdirSync(outputDir, { recursive: true });
+
+    // First generate as SSR — produces nuxt.config.ts
+    generate(parse(ssrSource), { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    expect(existsSync(join(outputDir, "nuxt.config.ts"))).toBe(true);
+
+    // Re-generate as SPA — stale nuxt.config.ts must be removed
+    generate(parse(spaSource), { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    expect(existsSync(join(outputDir, "nuxt.config.ts"))).toBe(false);
+    expect(existsSync(join(outputDir, "vite.config.ts"))).toBe(true);
+  });
 });

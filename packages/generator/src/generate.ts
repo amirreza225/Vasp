@@ -102,6 +102,29 @@ export function generate(
       rmSync(staleRouterPath);
     }
 
+    // Remove stale mode-specific root config files when the app mode has changed.
+    //
+    // Scenario: `vasp new` scaffolds a SPA (default) and writes vite.config.js + index.html.
+    // Later, `vasp generate --force` regenerates the same directory as SSR/SSG — it writes
+    // nuxt.config.{ext} but cannot remove the old vite.config.js via staging alone because
+    // commitStagedFiles only adds/updates files, it never deletes from the real output dir.
+    // Nuxt 4 explicitly warns when it finds a vite.config.* in the project root:
+    //   "Using vite.config.js is not supported together with Nuxt."
+    const isSsrMode = ast.app.ssr === true || ast.app.ssr === "ssg";
+    if (isSsrMode) {
+      // SPA artifacts that are invalid in an SSR/SSG project
+      for (const stale of ["vite.config.js", "vite.config.ts", "index.html"]) {
+        const p = join(realOutputDir, stale);
+        if (existsSync(p)) rmSync(p);
+      }
+    } else {
+      // SSR/SSG artifacts that are invalid in a SPA project
+      for (const stale of ["nuxt.config.js", "nuxt.config.ts"]) {
+        const p = join(realOutputDir, stale);
+        if (existsSync(p)) rmSync(p);
+      }
+    }
+
     // Persist manifest to real output dir
     manifest.save(realOutputDir);
 
