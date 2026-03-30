@@ -1506,3 +1506,425 @@ describe("SemanticValidator — autoPage checks", () => {
     ).toThrow("E_AUTOPAGE_DUPLICATE");
   });
 });
+
+describe("SemanticValidator — CRUD column refs (E204)", () => {
+  it("passes when list.columns references a declared field", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String status: String }
+      crud Task {
+        entity: Task
+        operations: [list]
+        list: {
+          paginate: false
+          sortable: []
+          filterable: []
+          search: []
+          columns: {
+            title { label: "Title" }
+            status { filterable: true }
+          }
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes when list.columns references createdAt / updatedAt", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Task {
+        entity: Task
+        operations: [list]
+        list: {
+          paginate: false
+          sortable: []
+          filterable: []
+          search: []
+          columns: {
+            createdAt { sortable: true }
+            updatedAt { hidden: true }
+          }
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes when list.columns references a synthetic FK column (authorId)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity User { id: Int @id }
+      entity Task { id: Int @id author: User @onDelete(cascade) }
+      crud Task {
+        entity: Task
+        operations: [list]
+        list: {
+          paginate: false
+          sortable: []
+          filterable: []
+          search: []
+          columns: { authorId { label: "Author" } }
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails when list.columns references an unknown field (E204)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Task {
+        entity: Task
+        operations: [list]
+        list: {
+          paginate: false
+          sortable: []
+          filterable: []
+          search: []
+          columns: { ghostField { label: "Ghost" } }
+        }
+      }
+    `),
+    ).toThrow("E204_CRUD_COLUMN_UNKNOWN_FIELD");
+  });
+
+  it("skips column check when entity has no entity block (already reported by E111)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      crud Ghost {
+        entity: Ghost
+        operations: [list]
+        list: {
+          paginate: false
+          sortable: []
+          filterable: []
+          search: []
+          columns: { anything { label: "X" } }
+        }
+      }
+    `),
+    ).not.toThrow("E204_CRUD_COLUMN_UNKNOWN_FIELD");
+  });
+});
+
+describe("SemanticValidator — CRUD form field refs (E205)", () => {
+  it("passes when form.sections.fields references declared entity fields", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String priority: Int }
+      crud Task {
+        entity: Task
+        operations: [create, update]
+        form: {
+          layout: "2-column"
+          sections: {
+            main { fields: [title, priority] }
+          }
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes when form.steps.fields references declared entity fields", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Task {
+        entity: Task
+        operations: [create]
+        form: {
+          layout: "steps"
+          steps: {
+            step1 { fields: [title] }
+          }
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails when form.sections.fields references an unknown field (E205)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Task {
+        entity: Task
+        operations: [create]
+        form: {
+          layout: "1-column"
+          sections: {
+            main { fields: [title, nonExistent] }
+          }
+        }
+      }
+    `),
+    ).toThrow("E205_CRUD_FORM_UNKNOWN_FIELD");
+  });
+
+  it("fails when form.steps.fields references an unknown field (E205)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Task {
+        entity: Task
+        operations: [create]
+        form: {
+          layout: "steps"
+          steps: {
+            s1 { fields: [title, badField] }
+          }
+        }
+      }
+    `),
+    ).toThrow("E205_CRUD_FORM_UNKNOWN_FIELD");
+  });
+});
+
+describe("SemanticValidator — CRUD form operations (E206)", () => {
+  it("passes when form config is set and operations include create", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Task {
+        entity: Task
+        operations: [create]
+        form: { layout: "1-column" }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes when form config is set and operations include update", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Task {
+        entity: Task
+        operations: [list, update]
+        form: { layout: "2-column" }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails when form config is set but only list/delete operations (E206)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Task {
+        entity: Task
+        operations: [list, delete]
+        form: { layout: "1-column" }
+      }
+    `),
+    ).toThrow("E206_FORM_CONFIG_REQUIRES_WRITE_OP");
+  });
+
+  it("fails when form config is set on list-only crud (E206)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Task {
+        entity: Task
+        operations: [list]
+        form: { layout: "tabs" }
+      }
+    `),
+    ).toThrow("E206_FORM_CONFIG_REQUIRES_WRITE_OP");
+  });
+
+  it("does not report E206 when no form config is present", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+      crud Task {
+        entity: Task
+        operations: [list]
+      }
+    `),
+    ).not.toThrow();
+  });
+});
+
+describe("SemanticValidator — field config validate rules (E207–E210)", () => {
+  it("passes valid minLength/maxLength/pattern on String field", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity User {
+        id: Int @id
+        username: String {
+          validate: { minLength: 3, maxLength: 32, pattern: "^[a-z]+" }
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes valid min/max on Int field", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Product {
+        id: Int @id
+        priority: Int {
+          validate: { min: 1, max: 5 }
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes valid min/max on Float field", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Product {
+        id: Int @id
+        rating: Float {
+          validate: { min: 0, max: 5 }
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails when minLength is used on an Int field (E207)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        priority: Int {
+          validate: { minLength: 1 }
+        }
+      }
+    `),
+    ).toThrow("E207_FIELD_CONFIG_VALIDATE_STRING_RULE");
+  });
+
+  it("fails when maxLength is used on a Boolean field (E207)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        done: Boolean {
+          validate: { maxLength: 10 }
+        }
+      }
+    `),
+    ).toThrow("E207_FIELD_CONFIG_VALIDATE_STRING_RULE");
+  });
+
+  it("fails when min is used on a String field (E208)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        title: String {
+          validate: { min: 0 }
+        }
+      }
+    `),
+    ).toThrow("E208_FIELD_CONFIG_VALIDATE_NUMERIC_RULE");
+  });
+
+  it("fails when max is used on a DateTime field (E208)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        dueDate: DateTime {
+          validate: { max: 100 }
+        }
+      }
+    `),
+    ).toThrow("E208_FIELD_CONFIG_VALIDATE_NUMERIC_RULE");
+  });
+
+  it("fails when minLength > maxLength (E209)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity User {
+        id: Int @id
+        username: String {
+          validate: { minLength: 20, maxLength: 5 }
+        }
+      }
+    `),
+    ).toThrow("E209_FIELD_CONFIG_VALIDATE_LENGTH_ORDER");
+  });
+
+  it("passes when minLength == maxLength (boundary)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity User {
+        id: Int @id
+        pin: String {
+          validate: { minLength: 4, maxLength: 4 }
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("fails when min > max (E210)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        priority: Int {
+          validate: { min: 10, max: 1 }
+        }
+      }
+    `),
+    ).toThrow("E210_FIELD_CONFIG_VALIDATE_RANGE_ORDER");
+  });
+
+  it("passes when min == max (boundary)", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task {
+        id: Int @id
+        priority: Int {
+          validate: { min: 5, max: 5 }
+        }
+      }
+    `),
+    ).not.toThrow();
+  });
+
+  it("does not report errors for fields without a config block", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Task { id: Int @id title: String }
+    `),
+    ).not.toThrow();
+  });
+});

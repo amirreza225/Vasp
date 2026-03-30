@@ -71,6 +71,10 @@ export class SemanticValidator {
     this.checkWebhookBlocks(ast);
     this.checkObservabilityBlock(ast);
     this.checkAutoPages(ast);
+    this.checkCrudColumnRefs(ast);
+    this.checkCrudFormFieldRefs(ast);
+    this.checkCrudFormOperations(ast);
+    this.checkFieldConfigValidation(ast);
     return [...this.diagnostics];
   }
 
@@ -1425,6 +1429,201 @@ export class SemanticValidator {
         });
       }
       allPaths.add(ap.path);
+    }
+  }
+
+  /**
+   * E204 — Validate that every key in `crud.list.columns` references a field
+   * that actually exists on the entity. Recognises the same field set as
+   * `checkEntityIndexFields`: scalar fields, auto-appended `createdAt` /
+   * `updatedAt`, and synthetic FK columns (`{relName}Id`).
+   */
+  private checkCrudColumnRefs(ast: VaspAST): void {
+    const entityMap = new Map(ast.entities.map((e) => [e.name, e]));
+
+    for (const crud of ast.cruds) {
+      const columns = crud.listConfig?.columns;
+      if (!columns || Object.keys(columns).length === 0) continue;
+
+      const entity = entityMap.get(crud.entity);
+      if (!entity) continue; // unknown entity is already reported by checkCrudEntities
+
+      // Build the complete set of addressable field names (same rules as @@index check)
+      const fieldKeys = new Set<string>();
+      for (const f of entity.fields) {
+        if (f.isRelation && !f.isArray) {
+          fieldKeys.add(`${f.name}Id`); // synthetic FK column
+        } else if (!f.isArray) {
+          fieldKeys.add(f.name);
+        }
+      }
+      fieldKeys.add("createdAt");
+      fieldKeys.add("updatedAt");
+
+      for (const colName of Object.keys(columns)) {
+        if (!fieldKeys.has(colName)) {
+          this.diagnostics.push({
+            code: "E204_CRUD_COLUMN_UNKNOWN_FIELD",
+            message: `crud '${crud.name}' list.columns references unknown field '${colName}' on entity '${crud.entity}'`,
+            hint: `Valid fields: ${[...fieldKeys].join(", ")}`,
+            loc: crud.loc,
+          });
+        }
+      }
+    }
+  }
+
+  /**
+   * E205 — Validate that every field name listed inside `form.sections[*].fields`
+   * and `form.steps[*].fields` exists on the entity (same field set as E204).
+   */
+  private checkCrudFormFieldRefs(ast: VaspAST): void {
+    const entityMap = new Map(ast.entities.map((e) => [e.name, e]));
+
+    for (const crud of ast.cruds) {
+      const formConfig = crud.formConfig;
+      if (!formConfig) continue;
+
+      const entity = entityMap.get(crud.entity);
+      if (!entity) continue;
+
+      const fieldKeys = new Set<string>();
+      for (const f of entity.fields) {
+        if (f.isRelation && !f.isArray) {
+          fieldKeys.add(`${f.name}Id`);
+        } else if (!f.isArray) {
+          fieldKeys.add(f.name);
+        }
+      }
+      fieldKeys.add("createdAt");
+      fieldKeys.add("updatedAt");
+
+      const checkFieldList = (
+        fields: string[] | undefined,
+        context: string,
+      ): void => {
+        for (const fieldName of fields ?? []) {
+          if (!fieldKeys.has(fieldName)) {
+            this.diagnostics.push({
+              code: "E205_CRUD_FORM_UNKNOWN_FIELD",
+              message: `crud '${crud.name}' ${context} references unknown field '${fieldName}' on entity '${crud.entity}'`,
+              hint: `Valid fields: ${[...fieldKeys].join(", ")}`,
+              loc: crud.loc,
+            });
+          }
+        }
+      };
+
+      for (const [sectionName, section] of Object.entries(
+        formConfig.sections ?? {},
+      )) {
+        checkFieldList(section.fields, `form.sections.${sectionName}.fields`);
+      }
+      for (const [stepName, step] of Object.entries(formConfig.steps ?? {})) {
+        checkFieldList(step.fields, `form.steps.${stepName}.fields`);
+      }
+    }
+  }
+
+  /**
+   * E206 — A `form` config block is only meaningful when the crud has a
+   * `create` or `update` operation. Emit an error when neither is present so
+   * the user knows the config will have no effect.
+   */
+  private checkCrudFormOperations(ast: VaspAST): void {
+    for (const crud of ast.cruds) {
+      if (!crud.formConfig) continue;
+      const hasFormOp =
+        crud.operations.includes("create") || crud.operations.includes("update");
+      if (!hasFormOp) {
+        this.diagnostics.push({
+          code: "E206_FORM_CONFIG_REQUIRES_WRITE_OP",
+          message: `crud '${crud.name}' defines a form config but operations includes neither 'create' nor 'update'`,
+          hint:
+            "Add 'create' or 'update' to operations, or remove the form config block",
+          loc: crud.loc,
+        });
+      }
+    }
+  }
+
+  /**
+   * E207–E210 — Validate that the `validate {}` sub-block inside a field
+   * config block uses rules that are compatible with the field's type.
+   *
+   *  E207: minLength / maxLength / pattern are String/Text-only rules
+   *  E208: min / max are Int/Float-only rules
+   *  E209: minLength must be ≤ maxLength
+   *  E210: min must be ≤ max
+   */
+  private checkFieldConfigValidation(ast: VaspAST): void {
+    const stringRules = new Set(["minLength", "maxLength", "pattern"]);
+    const numericRules = new Set(["min", "max"]);
+
+    for (const entity of ast.entities) {
+      for (const field of entity.fields) {
+        const validate = field.config?.validate;
+        if (!validate) continue;
+
+        const isStringType = field.type === "String" || field.type === "Text";
+        const isNumericType = field.type === "Int" || field.type === "Float";
+
+        // E207: string-only rules used on non-string fields
+        if (!isStringType) {
+          for (const rule of stringRules) {
+            if (rule in validate && (validate as Record<string, unknown>)[rule] !== undefined) {
+              this.diagnostics.push({
+                code: "E207_FIELD_CONFIG_VALIDATE_STRING_RULE",
+                message: `Field config validate rule '${rule}' on field '${field.name}' in entity '${entity.name}' requires a String or Text field`,
+                hint: `'${rule}' can only be used on String or Text fields`,
+                loc: entity.loc,
+              });
+            }
+          }
+        }
+
+        // E208: numeric-only rules used on non-numeric fields
+        if (!isNumericType) {
+          for (const rule of numericRules) {
+            if (rule in validate && (validate as Record<string, unknown>)[rule] !== undefined) {
+              this.diagnostics.push({
+                code: "E208_FIELD_CONFIG_VALIDATE_NUMERIC_RULE",
+                message: `Field config validate rule '${rule}' on field '${field.name}' in entity '${entity.name}' requires an Int or Float field`,
+                hint: `'${rule}' can only be used on Int or Float fields`,
+                loc: entity.loc,
+              });
+            }
+          }
+        }
+
+        // E209: minLength must not exceed maxLength
+        if (
+          validate.minLength != null &&
+          validate.maxLength != null &&
+          validate.minLength > validate.maxLength
+        ) {
+          this.diagnostics.push({
+            code: "E209_FIELD_CONFIG_VALIDATE_LENGTH_ORDER",
+            message: `Field '${field.name}' in entity '${entity.name}' has config.validate.minLength (${validate.minLength}) greater than maxLength (${validate.maxLength})`,
+            hint: "minLength must be less than or equal to maxLength",
+            loc: entity.loc,
+          });
+        }
+
+        // E210: min must not exceed max
+        if (
+          validate.min != null &&
+          validate.max != null &&
+          validate.min > validate.max
+        ) {
+          this.diagnostics.push({
+            code: "E210_FIELD_CONFIG_VALIDATE_RANGE_ORDER",
+            message: `Field '${field.name}' in entity '${entity.name}' has config.validate.min (${validate.min}) greater than max (${validate.max})`,
+            hint: "min must be less than or equal to max",
+            loc: entity.loc,
+          });
+        }
+      }
     }
   }
 }
