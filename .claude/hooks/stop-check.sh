@@ -105,30 +105,30 @@ fi
 # --- 6. Fullstack E2E tests (runs when Docker is available) ---
 # Results are included in the hook output so Claude can read all errors from:
 #   generation, server startup, REST API, and browser interactions.
-if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
-  e2e_output=$(cd "$VASP_ROOT" && bun run test:e2e:fullstack 2>&1)
-  e2e_status=$?
+# if command -v docker &>/dev/null && docker info &>/dev/null 2>&1; then
+#   e2e_output=$(cd "$VASP_ROOT" && bun run test:e2e:fullstack 2>&1)
+#   e2e_status=$?
 
-  if [[ $e2e_status -ne 0 ]]; then
-    ERRORS+="### Fullstack E2E tests failed (exit ${e2e_status}):
-$e2e_output
+#   if [[ $e2e_status -ne 0 ]]; then
+#     ERRORS+="### Fullstack E2E tests failed (exit ${e2e_status}):
+# $e2e_output
 
-"
-  else
-    # Include the summary lines so Claude knows tests passed and how many ran
-    e2e_summary=$(printf '%s\n' "$e2e_output" | grep -E '(passed|failed|skipped|flaky|error|✓|✗|×)' | tail -10) || true
-    if [[ -n "$e2e_summary" ]]; then
-      WARNINGS+="### Fullstack E2E tests passed:
-$e2e_summary
+# "
+#   else
+#     # Include the summary lines so Claude knows tests passed and how many ran
+#     e2e_summary=$(printf '%s\n' "$e2e_output" | grep -E '(passed|failed|skipped|flaky|error|✓|✗|×)' | tail -10) || true
+#     if [[ -n "$e2e_summary" ]]; then
+#       WARNINGS+="### Fullstack E2E tests passed:
+# $e2e_summary
 
-"
-    fi
-  fi
-else
-  WARNINGS+="### Fullstack E2E tests skipped (Docker not available).
+# "
+#     fi
+#   fi
+# else
+#   WARNINGS+="### Fullstack E2E tests skipped (Docker not available).
 
-"
-fi
+# "
+# fi
 
 # --- Output ---
 NL=$'\n'

@@ -29,6 +29,12 @@ export class AuthGenerator extends BaseGenerator {
       .map((f) => ({ fieldName: `${toCamelCase(f.name)}Id` }));
     const hasUserFkFields = userFkFields.length > 0;
 
+    // Detect password field name (either 'password' or 'passwordHash')
+    const passwordField = userEntity?.fields.find(
+      (f) => f.name === "password" || f.name === "passwordHash",
+    );
+    const passwordFieldName = passwordField?.name || "passwordHash";
+
     const data = {
       authMethods,
       backendPort: DEFAULT_BACKEND_PORT,
@@ -36,6 +42,7 @@ export class AuthGenerator extends BaseGenerator {
       permissionEntries,
       userFkFields,
       hasUserFkFields,
+      passwordFieldName,
     };
 
     // Server: auth plugin (JWT + cookie — separate file to avoid circular imports)
