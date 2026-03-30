@@ -1,7 +1,17 @@
-.vscode/**
-.vscodeignore
-src/**
-tsconfig.json
-node_modules/**
-.gitignore
-*.vsix
+# Exclude the entire parent monorepo — prevents invalid relative paths in the VSIX.
+# vsce uses minimatch; `**` alone does not match `../` or `../../` prefixes,
+# so each traversal depth needs its own explicit pattern.
+../../**
+../**
+
+# Exclude everything inside this package, then re-allow only what the extension needs.
+**
+!dist/**
+!icons/**
+!language-configuration.json
+!language-server/dist/**
+!snippets/**
+!syntaxes/**
+!package.json
+!README.md
+!CHANGELOG.md
