@@ -141,7 +141,7 @@ function psqlExec(
 ): string {
   const result = spawnSync(
     'docker',
-    ['exec', containerId, 'psql', '-U', PG_USER, '-d', dbName, '-c', sql],
+    ['exec', containerId, 'psql', '-h', 'localhost', '-U', PG_USER, '-d', dbName, '-c', sql],
     { encoding: 'utf8', timeout: timeoutMs },
   )
   if (result.status !== 0) {

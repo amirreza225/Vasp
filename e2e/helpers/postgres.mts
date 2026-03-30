@@ -46,7 +46,7 @@ export function waitForPostgres(handle: PostgresHandle, timeoutMs = 30_000): voi
   while (Date.now() < deadline) {
     const check = spawnSync(
       'docker',
-      ['exec', handle.containerId, 'pg_isready', '-U', PG_USER, '-d', 'postgres'],
+      ['exec', handle.containerId, 'pg_isready', '-h', 'localhost', '-U', PG_USER, '-d', 'postgres'],
       { encoding: 'utf8', timeout: 5_000 },
     )
     if (check.status === 0) return
@@ -61,7 +61,7 @@ export function waitForPostgres(handle: PostgresHandle, timeoutMs = 30_000): voi
 export function createDatabase(handle: PostgresHandle, dbName: string): string {
   const result = spawnSync(
     'docker',
-    ['exec', handle.containerId, 'psql', '-U', PG_USER, '-d', 'postgres', '-c', `CREATE DATABASE "${dbName}";`],
+    ['exec', handle.containerId, 'psql', '-h', 'localhost', '-U', PG_USER, '-d', 'postgres', '-c', `CREATE DATABASE "${dbName}";`],
     { encoding: 'utf8', timeout: 15_000 },
   )
   if (result.status !== 0) {
@@ -74,7 +74,7 @@ export function createDatabase(handle: PostgresHandle, dbName: string): string {
 export function dropDatabase(handle: PostgresHandle, dbName: string): void {
   spawnSync(
     'docker',
-    ['exec', handle.containerId, 'psql', '-U', PG_USER, '-d', 'postgres', '-c', `DROP DATABASE IF EXISTS "${dbName}";`],
+    ['exec', handle.containerId, 'psql', '-h', 'localhost', '-U', PG_USER, '-d', 'postgres', '-c', `DROP DATABASE IF EXISTS "${dbName}";`],
     { encoding: 'utf8', timeout: 15_000 },
   )
 }
