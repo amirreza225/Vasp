@@ -119,6 +119,32 @@ export const SUPPORTED_AUTOPAGE_LAYOUTS = [
   "wizard",
 ] as const;
 
+/**
+ * Valid layout values for the `form {}` sub-block inside a `crud` block.
+ * Unlike AutoPage layouts (which use "wizard"), CRUD form layouts use "steps"
+ * to match the DSL keyword used to declare step definitions.
+ */
+export const SUPPORTED_FORM_LAYOUTS = [
+  "1-column",
+  "2-column",
+  "tabs",
+  "steps",
+] as const;
+
+/**
+ * Valid rule keys inside the `validate {}` sub-block of a field config block.
+ * Used by the parser and language server for validation and completions.
+ */
+export const FIELD_VALIDATE_RULES = [
+  "required",
+  "minLength",
+  "maxLength",
+  "min",
+  "max",
+  "pattern",
+  "custom",
+] as const;
+
 export const SUPPORTED_UI_THEMES = [
   "Aura",
   "Lara",

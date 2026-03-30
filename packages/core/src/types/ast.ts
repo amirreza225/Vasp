@@ -70,11 +70,36 @@ export type CrudPermissions = Record<string, string>;
 
 export type CrudOperation = "list" | "create" | "update" | "delete";
 
+export interface CrudColumnConfig {
+  label?: string;
+  width?: string;
+  sortable?: boolean;
+  filterable?: boolean;
+  hidden?: boolean;
+}
+
 export interface CrudListConfig {
   paginate: boolean;
   sortable: string[];
   filterable: string[];
   search: string[];
+  /** Per-column display configuration declared in `columns {}` sub-block */
+  columns?: Record<string, CrudColumnConfig>;
+}
+
+export interface CrudFormSection {
+  label?: string;
+  fields: string[];
+}
+
+export type CrudFormLayout = "1-column" | "2-column" | "tabs" | "steps";
+
+export interface CrudFormConfig {
+  layout?: CrudFormLayout;
+  /** Named sections for single-page forms (`form { layout: "2-column" }`) */
+  sections?: Record<string, CrudFormSection>;
+  /** Named steps for wizard-style forms (`form { layout: "steps" }`) */
+  steps?: Record<string, CrudFormSection>;
 }
 
 // ------ Realtime ------
@@ -130,6 +155,46 @@ export interface FieldValidation {
   max?: number;
 }
 
+/**
+ * Validation constraints declared in a field's nested `validate {}` config block.
+ * This is distinct from `FieldValidation` (used by the `@validate(…)` modifier).
+ * The config block form allows declaring `required` and a custom validator import.
+ */
+export interface FieldValidateConfig {
+  required?: boolean;
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  /** Regex pattern string the value must match */
+  pattern?: string;
+  /** Import path to a custom async validator function */
+  custom?: string;
+}
+
+/**
+ * Field-level display hints declared inside a field's `{ … }` config block.
+ * These are used by generated UI components (AutoPage, CRUD forms, admin panel)
+ * to populate labels, placeholders, and Valibot validation rules.
+ *
+ * @example
+ * ```vasp
+ * title: String {
+ *   label:       "Task Title"
+ *   placeholder: "Enter a task name…"
+ *   validate { required: true, minLength: 3, maxLength: 120 }
+ * }
+ * ```
+ */
+export interface EntityFieldConfig {
+  label?: string;
+  placeholder?: string;
+  description?: string;
+  /** Inline default override (alternative to the `@default(…)` modifier) */
+  default?: string | number | boolean;
+  validate?: FieldValidateConfig;
+}
+
 export type OnDeleteBehavior = "cascade" | "restrict" | "set null";
 
 export interface FieldNode {
@@ -159,6 +224,11 @@ export interface FieldNode {
   isManyToMany?: boolean;
   /** Storage block name from @storage(StorageName) modifier — only for File fields */
   storageBlock?: string;
+  /**
+   * Field-level display hints declared inside the field's `{ … }` config block.
+   * Present only when the field has an explicit config block in the v2 DSL.
+   */
+  config?: EntityFieldConfig;
 }
 
 // ------ Storage ------
@@ -413,6 +483,8 @@ export interface CrudNode extends BaseNode {
   entity: string;
   operations: CrudOperation[];
   listConfig?: CrudListConfig;
+  /** Form layout and section/step configuration declared in `form {}` sub-block */
+  formConfig?: CrudFormConfig;
   /** Per-operation permission requirements: operation → permission name */
   permissions?: CrudPermissions;
   /**
