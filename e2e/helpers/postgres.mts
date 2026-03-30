@@ -29,7 +29,7 @@ export function startPostgresContainer(port: number): PostgresHandle {
       '-e', `POSTGRES_USER=${PG_USER}`,
       '-e', `POSTGRES_PASSWORD=${PG_PASS}`,
       '-e', 'POSTGRES_DB=postgres',
-      '-p', `${port}:25106`,
+      '-p', `${port}:5432`,
       PG_IMAGE,
     ],
     { encoding: 'utf8', timeout: 30_000 },
