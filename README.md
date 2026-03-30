@@ -200,7 +200,73 @@ entity Product {
 }
 ```
 
-### CRUD List Configuration
+### CRUD Nested Sub-Blocks (v2 DSL)
+
+Inline field config and CRUD sub-blocks give you per-field UI metadata and rich list/form control without any extra code:
+
+```vasp
+entity Todo {
+  id:    Int    @id
+  title: String {
+    label:       "Task Title"
+    placeholder: "Enter a task name…"
+    description: "The primary text of the todo item"
+    validate {
+      minLength: 3
+      maxLength: 120
+      required:  true
+    }
+  }
+  priority: Enum(low, medium, high) {
+    label:   "Priority"
+    default: "medium"
+  }
+  done:      Boolean  { label: "Completed"  default: false }
+  createdAt: DateTime @default(now)
+}
+
+crud Todo {
+  entity:     Todo
+  operations: [list, create, update, delete]
+
+  list {
+    paginate:   true
+    sortable:   [title, createdAt, priority]
+    filterable: [done, priority]
+    search:     [title]
+
+    columns {
+      title    { label: "Task"     width: "40%"   sortable: true  }
+      priority { label: "Priority" width: "120px" filterable: true }
+      done     { label: "Done"     width: "80px"                  }
+    }
+  }
+
+  form {
+    layout: "2-column"   // 1-column | 2-column | tabs | steps
+
+    sections {
+      basics { label: "Basic Info"  fields: [title, priority] }
+      status { label: "Status"      fields: [done]            }
+    }
+  }
+
+  permissions {
+    list:   [admin, user]
+    create: [admin, user]
+    update: [admin]
+    delete: [admin]
+  }
+}
+```
+
+Upgrade an existing v1 file automatically:
+
+```bash
+vasp migrate           # creates main.vasp.bak, rewrites flat props to nested blocks
+```
+
+### CRUD List Configuration (legacy flat syntax still supported)
 
 ```vasp
 crud Post {
@@ -467,6 +533,7 @@ vasp add job    <name>        # Add a background job + function stub
 vasp add auth                 # Add auth block (+ User entity if missing)
 vasp add api    <name>        # Add a custom API endpoint + handler stub
 vasp generate [--force] [--dry-run]   # Regenerate from main.vasp (preserves user changes)
+vasp validate [--watch] [--strict]    # Validate main.vasp without generating
 vasp start            # Start dev server (auto-migrates schema, opens browser)
 vasp build            # Production build
 vasp db push          # Push schema to database
@@ -474,11 +541,11 @@ vasp db generate      # Generate a migration
 vasp db migrate       # Run pending migrations
 vasp db studio        # Open Drizzle Studio
 vasp db seed          # Seed the database
+vasp migrate          # Upgrade v1 .vasp file to v2 nested DSL syntax
 vasp migrate-to-ts    # Upgrade an existing JS project to TypeScript
 vasp enable-ssr       # Switch a SPA project to SSR/SSG
 vasp deploy --target=<docker|fly|railway>   # Generate deployment config files
 vasp eject            # Remove Vasp framework dependency (one-way)
-vasp validate         # Parse and validate main.vasp, show any errors
 vasp --version
 ```
 
@@ -538,6 +605,58 @@ vasp --version
 | Role-based access control (roles + permissions on auth/query/action/crud) | Done |
 | Field validation (`@validate` — email, url, uuid, minLength, maxLength, min, max) | Done |
 | Entity-level indexes (`@@index`, `@@unique`, fulltext) | Done |
+| v2 DSL nested entity field config (`label`, `placeholder`, `validate {}`) | Done |
+| v2 DSL nested CRUD sub-blocks (`list {}`, `form {}`, `columns {}`, `sections {}`, `steps {}`) | Done |
+| `vasp migrate` — auto-upgrade v1 → v2 DSL syntax | Done |
+| VS Code extension (syntax highlighting, snippets, diagnostics, completions, hover, go-to-definition) | Done |
+| Language server (`@vasp-framework/language-server` — Chevrotain, LSP, multi-file workspace) | Done |
+
+---
+
+## VS Code Extension
+
+Install the Vasp VS Code extension for first-class editor support:
+
+```bash
+# Install from the VS Code Marketplace (once published)
+code --install-extension vasp-framework.vasp-vscode
+
+# Or install from a locally built .vsix (see packages/vscode-extension/README.md)
+code --install-extension vasp-vscode-0.1.0.vsix
+```
+
+**Features:**
+
+| Feature | Details |
+|---------|---------|
+| Syntax highlighting | All 20 block types, `@modifiers`, primitive/executor/provider types, strings, booleans |
+| Code snippets | 22 snippets with tab-stops for every block type |
+| Diagnostics | Real-time parse errors + semantic validation (300 ms debounce) |
+| Completions | 15 context states — entity names, page names, executor/provider enums with auto-insert snippets |
+| Hover docs | Inline Markdown documentation for every keyword |
+| Go-to-Definition | Jump to entity/page declarations across all `.vasp` files in the workspace |
+
+**Building the extension from source:**
+
+```bash
+# 1. Build the language server
+cd packages/language-server && bun run build
+
+# 2. Build the extension host
+cd packages/vscode-extension && bun run build
+
+# 3. Copy the language server into the extension directory
+mkdir -p packages/vscode-extension/language-server
+cp -r packages/language-server/dist packages/vscode-extension/language-server/dist
+
+# 4. Package as .vsix
+cd packages/vscode-extension && npx @vscode/vsce package
+
+# 5. Install
+code --install-extension packages/vscode-extension/vasp-vscode-0.1.0.vsix
+```
+
+See [`packages/vscode-extension/README.md`](packages/vscode-extension/README.md) for the complete build guide including dev-mode F5 launch config and Marketplace publishing instructions.
 
 ---
 
@@ -547,11 +666,13 @@ Vasp is a Bun monorepo with the following packages:
 
 | Package | Description |
 |---|---|
-| `vasp` (CLI) | The `vasp` binary — `vasp new`, `vasp migrate-to-ts`, etc. |
-| `@vasp-framework/parser` | Lexer, parser, and semantic validator for the `.vasp` DSL |
+| `vasp` (CLI) | The `vasp` binary — `vasp new`, `vasp migrate`, `vasp migrate-to-ts`, etc. |
+| `@vasp-framework/parser` | Lexer, parser, and semantic validator for the `.vasp` DSL (v2 nested syntax) |
 | `@vasp-framework/generator` | Generates Elysia backend, Vue/Nuxt frontend, and client SDK from a parsed AST |
 | `@vasp-framework/core` | Shared types, AST definitions, and error classes |
 | `@vasp-framework/runtime` | Runtime composables (`useVasp`, `useQuery`, `useAction`, `useAuth`) shipped into generated apps |
+| `@vasp-framework/language-server` | Chevrotain-based LSP server — diagnostics, completions, hover, go-to-definition |
+| `vasp-vscode` | VS Code extension — syntax highlighting, snippets, LSP client |
 
 ---
 

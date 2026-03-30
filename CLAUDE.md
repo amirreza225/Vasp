@@ -29,6 +29,21 @@ bun run test packages/parser/src/parser/Parser.test.ts
 
 # Build CLI binary only
 cd packages/cli && bun run build   # Output: dist/vasp
+
+# Build language server
+cd packages/language-server && bun run build   # Output: dist/server.js
+
+# Build VS Code extension
+cd packages/vscode-extension && bun run build  # Output: dist/extension.js
+
+# Package VS Code extension as .vsix
+mkdir -p packages/vscode-extension/language-server
+cp -r packages/language-server/dist packages/vscode-extension/language-server/dist
+cd packages/vscode-extension && npx @vscode/vsce package
+# → vasp-vscode-0.1.0.vsix
+
+# Install the .vsix into VS Code
+code --install-extension packages/vscode-extension/vasp-vscode-0.1.0.vsix
 ```
 
 A stop hook (`.claude/hooks/stop-check.sh`) runs automatically on session end: TSC, Handlebars validation, JSON validation, Prettier, and Knip. It outputs `decision: block` if errors are found — fix them before finishing.
@@ -49,7 +64,9 @@ A stop hook (`.claude/hooks/stop-check.sh`) runs automatically on session end: T
 | `packages/parser` | `@vasp-framework/parser` | `Lexer`, `Parser`, `SemanticValidator` |
 | `packages/generator` | `@vasp-framework/generator` | 19 generators + `TemplateEngine` (Handlebars) |
 | `packages/runtime` | `@vasp-framework/runtime` | `$vasp`/`useQuery`/`useAction`/`useAuth` composables shipped into generated apps |
-| `packages/cli` | `vasp-cli` | CLI commands (`vasp new`, `vasp generate`, `vasp start`, etc.) |
+| `packages/cli` | `vasp-cli` | CLI commands (`vasp new`, `vasp generate`, `vasp migrate`, `vasp start`, etc.) |
+| `packages/language-server` | `@vasp-framework/language-server` | Chevrotain LSP — diagnostics, completions, hover, go-to-definition for `.vasp` files |
+| `packages/vscode-extension` | `vasp-vscode` | VS Code extension — TextMate grammar, snippets, LSP client |
 
 ### Generator Execution Order
 
@@ -75,7 +92,7 @@ Defined in `packages/generator/src/generate.ts`:
 18. `FrontendGenerator` — Vue SPA (Vite) or Nuxt 4 SSR/SSG
 19. `AdminGenerator` — standalone Vue 3 + Ant Design admin panel
 
-All generators extend `BaseGenerator`. `baseData()` exposes the following to every template: `appName`, `appTitle`, `isTypeScript`, `isSsr`, `isSsg`, `isSpa`, `ext`, `mode`, `hasAuth`, `hasAdmin`, `adminEntities`, `hasAnyRelations`, `hasRealtime`, `hasJobs`, `hasPgBossJobs`, `hasBullMQJobs`, `hasRedisStreamsJobs`, `hasRabbitMQJobs`, `hasKafkaJobs`, `hasRedisJobs`, `hasStorage`, `storages`, `hasEmail`, `hasEmailResend`, `hasEmailSendgrid`, `hasEmailSmtp`, `emails`, `hasCache`, `caches`, `hasCacheRedis`, `needsRedis`, `hasWebhook`, `hasInboundWebhook`, `hasOutboundWebhook`, `webhooks`, `inboundWebhooks`, `outboundWebhooks`, `routes`, `pages`, `queries`, `actions`, `apis`, `middlewares`, `cruds`, `realtimes`, `jobs`, `seed`, `auth`, `multiTenant`, `hasMultiTenant`, `isRowLevelTenant`, `observability`, `hasObservability`, `hasObservabilityTracing`, `hasObservabilityMetrics`, `observabilityLogs`, `observabilityExporter`, `observabilityErrorTracking`, `hasObservabilityOtlp`, `hasObservabilityPrometheus`, `hasObservabilitySentry`, `hasObservabilityDatadog`, `hasStructuredLogs`, `autoPages`, `hasAutoPages`, `ui`. `GeneratorContext` carries `{ ast, outputDir, templateDir, isTypeScript, isSsr, isSsg, isSpa, mode, ext, logger }`.
+All generators extend `BaseGenerator`. `baseData()` exposes the following to every template: `appName`, `appTitle`, `isTypeScript`, `isSsr`, `isSsg`, `isSpa`, `ext`, `mode`, `hasAuth`, `hasAdmin`, `adminEntities`, `hasAnyRelations`, `hasRealtime`, `hasJobs`, `hasPgBossJobs`, `hasBullMQJobs`, `hasRedisStreamsJobs`, `hasRabbitMQJobs`, `hasKafkaJobs`, `hasRedisJobs`, `hasStorage`, `storages`, `hasEmail`, `hasEmailResend`, `hasEmailSendgrid`, `hasEmailSmtp`, `emails`, `hasCache`, `caches`, `hasCacheRedis`, `needsRedis`, `hasWebhook`, `hasInboundWebhook`, `hasOutboundWebhook`, `webhooks`, `inboundWebhooks`, `outboundWebhooks`, `routes`, `pages`, `queries`, `actions`, `apis`, `middlewares`, `cruds`, `hasCrudListConfig`, `hasCrudFormConfig`, `realtimes`, `jobs`, `seed`, `auth`, `multiTenant`, `hasMultiTenant`, `isRowLevelTenant`, `observability`, `hasObservability`, `hasObservabilityTracing`, `hasObservabilityMetrics`, `observabilityLogs`, `observabilityExporter`, `observabilityErrorTracking`, `hasObservabilityOtlp`, `hasObservabilityPrometheus`, `hasObservabilitySentry`, `hasObservabilityDatadog`, `hasStructuredLogs`, `autoPages`, `hasAutoPages`, `ui`. `GeneratorContext` carries `{ ast, outputDir, templateDir, isTypeScript, isSsr, isSsg, isSpa, mode, ext, logger }`.
 
 ### Template System
 
@@ -144,11 +161,11 @@ Full reference: `e2e/fixtures/full-featured.vasp`
 |-------|----------|----------------|
 | `app` | Yes (exactly 1) | `ssr: false\|true\|"ssg"`, `typescript: false\|true`; optional `env:` sub-block, `multiTenant:` sub-block, and `ui:` sub-block — see below |
 | `auth` | No | `userEntity`, `methods: [usernameAndPassword, google, github]`, optional `roles`, `permissions` |
-| `entity` | No | Field modifiers: `@id`, `@unique`, `@default(now)`, `@nullable`, `@updatedAt`, `@manyToMany`, `@storage(Name)`, `@validate(…)`, `@onDelete(cascade\|restrict\|setNull)`; table-level: `@@index([fields])`, `@@unique([fields])` |
+| `entity` | No | Field modifiers: `@id`, `@unique`, `@default(now)`, `@nullable`, `@updatedAt`, `@manyToMany`, `@storage(Name)`, `@validate(…)`, `@onDelete(cascade\|restrict\|setNull)`; table-level: `@@index([fields])`, `@@unique([fields])`; **v2**: each field can have an inline `{ label, placeholder, description, default, validate { required, minLength, maxLength, min, max, pattern, custom } }` config block |
 | `route` | No | `path`, `to: <PageName>` — page must be declared |
 | `page` | No | `component: import X from "@src/…"` |
 | `query` / `action` | No | `fn: import …`, `entities: […]`, optional `auth: true`, `roles: […]`, `cache: { store, ttl?, key?, invalidateOn? }` |
-| `crud` | No | `entity`, `operations: [list, create, update, delete]`, optional `list: { paginate, sortable, filterable, search }`, optional `permissions` map |
+| `crud` | No | `entity`, `operations: [list, create, update, delete]`; **v2 nested**: `list { paginate, sortable, filterable, search, columns { fieldName { label, width, sortable, filterable, hidden } } }`, `form { layout: 1-column\|2-column\|tabs\|steps, sections { name { label, fields } }, steps { name { label, fields } } }`, `permissions` map |
 | `realtime` | No | Requires matching `crud` block with same entity |
 | `job` | No | `executor: PgBoss\|BullMQ\|RedisStreams\|RabbitMQ\|Kafka`, optional `schedule` (cron) |
 | `api` | No | `method: GET\|POST\|PUT\|PATCH\|DELETE`, `path`, `fn: import …`, optional `auth: true`, `roles: […]` |
@@ -231,3 +248,33 @@ Every step is required — missing any causes TypeScript errors or silent runtim
 | Fix CLI command | `cli/src/commands/<command>.ts` | Same file |
 | Fix runtime composable | `runtime/src/client/composables/use<Name>.ts` | Same file |
 | Fix template helper | `generator/src/template/TemplateEngine.ts` | Same file |
+| Fix language server grammar | `language-server/src/grammar/VaspParser.ts` + `VaspLexer.ts` | Same files |
+| Fix language server completions | `language-server/src/features/completions.ts` | Same file |
+| Fix language server hover | `language-server/src/features/hover.ts` + `utils/vasp-docs.ts` | Same files |
+| Fix VS Code extension | `vscode-extension/src/extension.ts`, `client.ts` | Same files |
+| Fix syntax highlighting | `vscode-extension/syntaxes/vasp.tmLanguage.json` | Same file |
+| Add/fix snippet | `vscode-extension/snippets/vasp.json` | Same file |
+
+## VS Code Extension — Build & Run
+
+See [`packages/vscode-extension/README.md`](packages/vscode-extension/README.md) for the full guide. Quick reference:
+
+```bash
+# 1. Build language server + extension
+cd packages/language-server  && bun run build
+cd packages/vscode-extension && bun run build
+
+# 2. Run in dev mode (F5 in VS Code, requires .vscode/launch.json)
+# Set VASP_LS_PATH env var to point to the built server:
+export VASP_LS_PATH=$(pwd)/packages/language-server/dist/server.js
+
+# 3. Package as installable .vsix
+mkdir -p packages/vscode-extension/language-server
+cp -r packages/language-server/dist packages/vscode-extension/language-server/dist
+cd packages/vscode-extension && npx @vscode/vsce package
+
+# 4. Install
+code --install-extension packages/vscode-extension/vasp-vscode-0.1.0.vsix
+```
+
+The extension activates on `onLanguage:vasp` (any `.vasp` file). It spawns the language server as a child Node/Bun process via stdio transport. `VASP_LS_PATH` env var overrides the default server path of `language-server/dist/server.js` relative to the extension root — useful in monorepo dev mode when the dist is not co-located.
