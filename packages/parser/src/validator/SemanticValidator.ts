@@ -1570,8 +1570,9 @@ export class SemanticValidator {
 
         // E207: string-only rules used on non-string fields
         if (!isStringType) {
+          const validateObj = validate as Record<string, unknown>;
           for (const rule of stringRules) {
-            if (rule in validate && (validate as Record<string, unknown>)[rule] !== undefined) {
+            if (validateObj[rule] !== undefined) {
               this.diagnostics.push({
                 code: "E207_FIELD_CONFIG_VALIDATE_STRING_RULE",
                 message: `Field config validate rule '${rule}' on field '${field.name}' in entity '${entity.name}' requires a String or Text field`,
@@ -1584,8 +1585,9 @@ export class SemanticValidator {
 
         // E208: numeric-only rules used on non-numeric fields
         if (!isNumericType) {
+          const validateObj = validate as Record<string, unknown>;
           for (const rule of numericRules) {
-            if (rule in validate && (validate as Record<string, unknown>)[rule] !== undefined) {
+            if (validateObj[rule] !== undefined) {
               this.diagnostics.push({
                 code: "E208_FIELD_CONFIG_VALIDATE_NUMERIC_RULE",
                 message: `Field config validate rule '${rule}' on field '${field.name}' in entity '${entity.name}' requires an Int or Float field`,

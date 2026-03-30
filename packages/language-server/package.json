@@ -1,0 +1,34 @@
+{
+  "name": "@vasp-framework/language-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LSP language server for the Vasp DSL — diagnostics, completions, hover, and go-to-definition",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/server.js",
+  "exports": {
+    ".": {
+      "import": "./dist/server.js",
+      "types": "./dist/server.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@vasp-framework/core": "workspace:*",
+    "@vasp-framework/parser": "workspace:*",
+    "chevrotain": "^12.0.0",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12"
+  },
+  "devDependencies": {
+    "typescript": "*",
+    "vitest": "^2.0.0"
+  }
+}
