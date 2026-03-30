@@ -385,6 +385,148 @@ describe("Parser — entity block", () => {
       `),
     ).toThrow("E169_UNKNOWN_TABLE_DIRECTIVE");
   });
+
+  it("parses field config block with label and placeholder", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Todo {
+        id: Int @id
+        title: String {
+          label: "Task Title"
+          placeholder: "Enter a task name…"
+        }
+      }
+    `);
+    const field = ast.entities[0]?.fields[1];
+    expect(field?.name).toBe("title");
+    expect(field?.config).toEqual({
+      label: "Task Title",
+      placeholder: "Enter a task name…",
+    });
+  });
+
+  it("parses field config block with all properties", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Task {
+        id: Int @id
+        priority: Int {
+          label: "Priority"
+          description: "Higher is more urgent"
+          default: 1
+          validate: {
+            required: true
+            min: 1
+            max: 5
+          }
+        }
+      }
+    `);
+    const field = ast.entities[0]?.fields[1];
+    expect(field?.config).toEqual({
+      label: "Priority",
+      description: "Higher is more urgent",
+      default: 1,
+      validate: {
+        required: true,
+        min: 1,
+        max: 5,
+      },
+    });
+  });
+
+  it("parses field config block with string default", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Task {
+        id: Int @id
+        title: String {
+          default: "Untitled"
+        }
+      }
+    `);
+    expect(ast.entities[0]?.fields[1]?.config?.default).toBe("Untitled");
+  });
+
+  it("parses field config block with boolean default", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Task {
+        id: Int @id
+        done: Boolean {
+          default: false
+        }
+      }
+    `);
+    expect(ast.entities[0]?.fields[1]?.config?.default).toBe(false);
+  });
+
+  it("parses field config block with full validate sub-block", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User {
+        id: Int @id
+        username: String {
+          validate: {
+            required: true
+            minLength: 3
+            maxLength: 32
+            pattern: "^[a-z][a-z0-9_]+$"
+            custom: "@src/validators/username.js"
+          }
+        }
+      }
+    `);
+    expect(ast.entities[0]?.fields[1]?.config?.validate).toEqual({
+      required: true,
+      minLength: 3,
+      maxLength: 32,
+      pattern: "^[a-z][a-z0-9_]+$",
+      custom: "@src/validators/username.js",
+    });
+  });
+
+  it("parses field config block alongside @modifiers", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Post {
+        id: Int @id
+        title: String @unique {
+          label: "Post Title"
+        }
+      }
+    `);
+    const field = ast.entities[0]?.fields[1];
+    expect(field?.modifiers).toContain("unique");
+    expect(field?.config?.label).toBe("Post Title");
+  });
+
+  it("fields without config block have config=undefined", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Todo { id: Int @id title: String }
+    `);
+    expect(ast.entities[0]?.fields[0]?.config).toBeUndefined();
+    expect(ast.entities[0]?.fields[1]?.config).toBeUndefined();
+  });
+
+  it("throws E172 on unknown field config property", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        entity Todo { id: Int @id title: String { unknown: "x" } }
+      `),
+    ).toThrow("E172_UNKNOWN_FIELD_CONFIG_PROP");
+  });
+
+  it("throws E171 on unknown validate sub-property", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        entity Todo { id: Int @id title: String { validate: { foo: true } } }
+      `),
+    ).toThrow("E171_UNKNOWN_VALIDATE_CONFIG_PROP");
+  });
 });
 
 describe("Parser — route and page", () => {
@@ -668,6 +810,198 @@ describe("Parser — crud", () => {
       }
     `),
     ).toThrow("E021_UNKNOWN_PROP");
+  });
+
+  it("parses crud with columns config inside list", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Task {
+        entity: Task
+        operations: [list, create, update, delete]
+        list: {
+          paginate: true
+          sortable: [title]
+          filterable: []
+          search: []
+          columns: {
+            title { label: "Task Title", width: "40%", sortable: true }
+            done  { label: "Done", hidden: false }
+          }
+        }
+      }
+    `);
+    expect(ast.cruds[0]?.listConfig?.columns).toEqual({
+      title: { label: "Task Title", width: "40%", sortable: true },
+      done: { label: "Done", hidden: false },
+    });
+  });
+
+  it("parses crud list with columns — only supplied props present", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Task {
+        entity: Task
+        operations: [list]
+        list: {
+          paginate: false
+          sortable: []
+          filterable: []
+          search: []
+          columns: {
+            status { filterable: true }
+          }
+        }
+      }
+    `);
+    const col = ast.cruds[0]?.listConfig?.columns?.["status"];
+    expect(col).toEqual({ filterable: true });
+    expect(col?.label).toBeUndefined();
+  });
+
+  it("parses crud without columns — columns is undefined", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Task {
+        entity: Task
+        operations: [list]
+        list: { paginate: false sortable: [] filterable: [] search: [] }
+      }
+    `);
+    expect(ast.cruds[0]?.listConfig?.columns).toBeUndefined();
+  });
+
+  it("throws E173 on unknown column config property", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        crud Task {
+          entity: Task
+          operations: [list]
+          list: {
+            paginate: false sortable: [] filterable: [] search: []
+            columns: { title { unknown: "x" } }
+          }
+        }
+      `),
+    ).toThrow("E173_UNKNOWN_COLUMN_CONFIG_PROP");
+  });
+
+  it("parses crud with form config (2-column layout with sections)", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Task {
+        entity: Task
+        operations: [list, create, update, delete]
+        form: {
+          layout: "2-column"
+          sections: {
+            basics { label: "Basic Info", fields: [title, priority] }
+            meta   { fields: [status, dueDate] }
+          }
+        }
+      }
+    `);
+    const form = ast.cruds[0]?.formConfig;
+    expect(form?.layout).toBe("2-column");
+    expect(form?.sections).toEqual({
+      basics: { label: "Basic Info", fields: ["title", "priority"] },
+      meta: { fields: ["status", "dueDate"] },
+    });
+    expect(form?.steps).toBeUndefined();
+  });
+
+  it("parses crud with form config (steps layout)", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Task {
+        entity: Task
+        operations: [create]
+        form: {
+          layout: "steps"
+          steps: {
+            basics { label: "Step 1", fields: [title] }
+            details { label: "Step 2", fields: [description, priority] }
+          }
+        }
+      }
+    `);
+    const form = ast.cruds[0]?.formConfig;
+    expect(form?.layout).toBe("steps");
+    expect(form?.steps?.["basics"]).toEqual({
+      label: "Step 1",
+      fields: ["title"],
+    });
+    expect(form?.steps?.["details"]).toEqual({
+      label: "Step 2",
+      fields: ["description", "priority"],
+    });
+  });
+
+  it("parses crud with only form layout (no sections/steps)", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Task {
+        entity: Task
+        operations: [create, update]
+        form: {
+          layout: "1-column"
+        }
+      }
+    `);
+    const form = ast.cruds[0]?.formConfig;
+    expect(form?.layout).toBe("1-column");
+    expect(form?.sections).toBeUndefined();
+    expect(form?.steps).toBeUndefined();
+  });
+
+  it("parses crud without form config — formConfig is undefined", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      crud Todo { entity: Todo operations: [list] }
+    `);
+    expect(ast.cruds[0]?.formConfig).toBeUndefined();
+  });
+
+  it("throws E174 on invalid form layout", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        crud Task {
+          entity: Task
+          operations: [create]
+          form: { layout: "wizard" }
+        }
+      `),
+    ).toThrow("E174_INVALID_FORM_LAYOUT");
+  });
+
+  it("throws E175 on unknown form config property", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        crud Task {
+          entity: Task
+          operations: [create]
+          form: { unknown: true }
+        }
+      `),
+    ).toThrow("E175_UNKNOWN_FORM_CONFIG_PROP");
+  });
+
+  it("throws E176 on unknown section property", () => {
+    expect(() =>
+      parse(`
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        crud Task {
+          entity: Task
+          operations: [create]
+          form: {
+            layout: "2-column"
+            sections: { basics { unknown: "x" } }
+          }
+        }
+      `),
+    ).toThrow("E176_UNKNOWN_FORM_SECTION_PROP");
   });
 });
 

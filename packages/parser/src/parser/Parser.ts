@@ -16,11 +16,16 @@ import type {
   CacheRedisConfig,
   CrudNode,
   CrudListConfig,
+  CrudColumnConfig,
+  CrudFormConfig,
+  CrudFormLayout,
+  CrudFormSection,
   CrudOperation,
   CrudPermissions,
   EmailNode,
   EmailProvider,
   EmailTemplateEntry,
+  EntityFieldConfig,
   EntityIndex,
   EntityIndexType,
   EntityNode,
@@ -31,6 +36,7 @@ import type {
   EnvVarValidation,
   FieldModifier,
   FieldNode,
+  FieldValidateConfig,
   FieldValidation,
   ImportExpression,
   JobNode,
@@ -72,6 +78,7 @@ import {
   SUPPORTED_AUTH_METHODS,
   SUPPORTED_AUTOPAGE_TYPES,
   SUPPORTED_CRUD_OPERATIONS,
+  SUPPORTED_FORM_LAYOUTS,
   SUPPORTED_JOB_BACKOFF_STRATEGIES,
   SUPPORTED_OBSERVABILITY_EXPORTERS,
   SUPPORTED_ERROR_TRACKING_PROVIDERS,
@@ -880,6 +887,11 @@ class Parser {
       if (isManyToMany) field.isManyToMany = true;
       if (storageBlock !== undefined) field.storageBlock = storageBlock;
 
+      // v2 field config block: fieldName: Type @modifiers { label: "...", ... }
+      if (this.check(TokenType.LBRACE)) {
+        field.config = this.parseFieldConfigBlock(fieldName.value);
+      }
+
       fields.push(field);
     }
 
@@ -1127,6 +1139,7 @@ class Parser {
     let entity = "";
     let operations: CrudOperation[] = [];
     let listConfig: CrudListConfig | undefined;
+    let formConfig: CrudFormConfig | undefined;
     let permissions: CrudPermissions | undefined;
     let ownership: string | undefined;
 
@@ -1144,6 +1157,9 @@ class Parser {
         case "list":
           listConfig = this.parseCrudListConfig();
           break;
+        case "form":
+          formConfig = this.parseCrudFormConfig();
+          break;
         case "permissions":
           permissions = this.parseCrudPermissionsMap();
           break;
@@ -1154,7 +1170,7 @@ class Parser {
           throw this.error(
             "E021_UNKNOWN_PROP",
             `Unknown crud property '${key.value}'`,
-            "Valid properties: entity, operations, list, permissions, ownership",
+            "Valid properties: entity, operations, list, form, permissions, ownership",
             key.loc,
           );
       }
@@ -1168,6 +1184,7 @@ class Parser {
       entity,
       operations,
       ...(listConfig !== undefined ? { listConfig } : {}),
+      ...(formConfig !== undefined ? { formConfig } : {}),
       ...(permissions !== undefined ? { permissions } : {}),
       ...(ownership !== undefined ? { ownership } : {}),
     };
@@ -1180,6 +1197,7 @@ class Parser {
     let sortable: string[] = [];
     let filterable: string[] = [];
     let search: string[] = [];
+    let columns: Record<string, CrudColumnConfig> | undefined;
 
     while (!this.check(TokenType.RBRACE)) {
       const key = this.consumeIdentifier();
@@ -1198,22 +1216,293 @@ class Parser {
         case "search":
           search = this.parseIdentifierArray();
           break;
+        case "columns":
+          columns = this.parseCrudColumnConfigMap();
+          break;
         default:
           throw this.error(
             "E021_UNKNOWN_PROP",
             `Unknown list property '${key.value}'`,
-            "Valid properties: paginate, sortable, filterable, search",
+            "Valid properties: paginate, sortable, filterable, search, columns",
             key.loc,
           );
       }
     }
 
     this.consume(TokenType.RBRACE);
-    return { paginate, sortable, filterable, search };
+    return {
+      paginate,
+      sortable,
+      filterable,
+      search,
+      ...(columns !== undefined ? { columns } : {}),
+    };
   }
 
   /**
-   * Parses a permission name that may be a simple identifier ("read") or a
+   * Parses the field-level config block declared after `fieldName: Type @modifiers`:
+   *
+   *   title: String {
+   *     label:       "Task Title"
+   *     placeholder: "Enter a name…"
+   *     description: "Shown in the form tooltip"
+   *     default:     "Untitled"
+   *     validate: {
+   *       required:  true
+   *       minLength: 3
+   *       maxLength: 120
+   *       min:       0
+   *       max:       999
+   *       pattern:   "[a-z]+"
+   *       custom:    "@src/validators/title.js"
+   *     }
+   *   }
+   */
+  private parseFieldConfigBlock(fieldName: string): EntityFieldConfig {
+    this.consume(TokenType.LBRACE);
+    const config: EntityFieldConfig = {};
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier();
+      this.consume(TokenType.COLON);
+
+      switch (key.value) {
+        case "label":
+          config.label = this.consumeString();
+          break;
+        case "placeholder":
+          config.placeholder = this.consumeString();
+          break;
+        case "description":
+          config.description = this.consumeString();
+          break;
+        case "default": {
+          const tok = this.peek();
+          if (tok.type === TokenType.STRING) {
+            config.default = this.consumeString();
+          } else if (tok.type === TokenType.NUMBER) {
+            config.default = Number(this.consume(TokenType.NUMBER).value);
+          } else if (tok.type === TokenType.BOOLEAN) {
+            config.default = this.consume(TokenType.BOOLEAN).value === "true";
+          } else {
+            throw this.error(
+              "E170_INVALID_FIELD_CONFIG_DEFAULT",
+              `Invalid default value for field '${fieldName}': expected string, number, or boolean`,
+              'Example: default: "Untitled" or default: 0 or default: false',
+              tok.loc,
+            );
+          }
+          break;
+        }
+        case "validate": {
+          this.consume(TokenType.LBRACE);
+          const validate: FieldValidateConfig = {};
+
+          while (!this.check(TokenType.RBRACE)) {
+            const ruleKey = this.consumeIdentifier();
+            this.consume(TokenType.COLON);
+
+            switch (ruleKey.value) {
+              case "required":
+                validate.required = this.consume(TokenType.BOOLEAN).value === "true";
+                break;
+              case "minLength":
+                validate.minLength = Number(this.consume(TokenType.NUMBER).value);
+                break;
+              case "maxLength":
+                validate.maxLength = Number(this.consume(TokenType.NUMBER).value);
+                break;
+              case "min":
+                validate.min = Number(this.consume(TokenType.NUMBER).value);
+                break;
+              case "max":
+                validate.max = Number(this.consume(TokenType.NUMBER).value);
+                break;
+              case "pattern":
+                validate.pattern = this.consumeString();
+                break;
+              case "custom":
+                validate.custom = this.consumeString();
+                break;
+              default:
+                throw this.error(
+                  "E171_UNKNOWN_VALIDATE_CONFIG_PROP",
+                  `Unknown validate property '${ruleKey.value}' for field '${fieldName}'`,
+                  "Valid properties: required, minLength, maxLength, min, max, pattern, custom",
+                  ruleKey.loc,
+                );
+            }
+            if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA);
+          }
+
+          this.consume(TokenType.RBRACE);
+          config.validate = validate;
+          break;
+        }
+        default:
+          throw this.error(
+            "E172_UNKNOWN_FIELD_CONFIG_PROP",
+            `Unknown field config property '${key.value}' for field '${fieldName}'`,
+            "Valid properties: label, placeholder, description, default, validate",
+            key.loc,
+          );
+      }
+    }
+
+    this.consume(TokenType.RBRACE);
+    return config;
+  }
+
+  /**
+   * Parses the `columns: { fieldName { … } … }` sub-block inside a `list:` config.
+   * Each entry is `fieldName { label: "...", width: "...", sortable: bool, filterable: bool, hidden: bool }`.
+   */
+  private parseCrudColumnConfigMap(): Record<string, CrudColumnConfig> {
+    this.consume(TokenType.LBRACE);
+    const result: Record<string, CrudColumnConfig> = {};
+
+    while (!this.check(TokenType.RBRACE)) {
+      const colName = this.consumeIdentifier().value;
+      this.consume(TokenType.LBRACE);
+      const colCfg: CrudColumnConfig = {};
+
+      while (!this.check(TokenType.RBRACE)) {
+        const propKey = this.consumeIdentifier();
+        this.consume(TokenType.COLON);
+
+        switch (propKey.value) {
+          case "label":
+            colCfg.label = this.consumeString();
+            break;
+          case "width":
+            colCfg.width = this.consumeString();
+            break;
+          case "sortable":
+            colCfg.sortable = this.consume(TokenType.BOOLEAN).value === "true";
+            break;
+          case "filterable":
+            colCfg.filterable = this.consume(TokenType.BOOLEAN).value === "true";
+            break;
+          case "hidden":
+            colCfg.hidden = this.consume(TokenType.BOOLEAN).value === "true";
+            break;
+          default:
+            throw this.error(
+              "E173_UNKNOWN_COLUMN_CONFIG_PROP",
+              `Unknown column config property '${propKey.value}' for column '${colName}'`,
+              "Valid properties: label, width, sortable, filterable, hidden",
+              propKey.loc,
+            );
+        }
+        if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA);
+      }
+
+      this.consume(TokenType.RBRACE);
+      result[colName] = colCfg;
+    }
+
+    this.consume(TokenType.RBRACE);
+    return result;
+  }
+
+  /**
+   * Parses the `form: { layout, sections, steps }` sub-block inside a `crud` block.
+   *
+   * Sections (for non-wizard layouts):
+   *   sections: { sectionName { label: "...", fields: [f1, f2] } ... }
+   *
+   * Steps (for wizard layout):
+   *   steps: { stepName { label: "...", fields: [f1, f2] } ... }
+   */
+  private parseCrudFormConfig(): CrudFormConfig {
+    this.consume(TokenType.LBRACE);
+    const formCfg: CrudFormConfig = {};
+
+    while (!this.check(TokenType.RBRACE)) {
+      const key = this.consumeIdentifier();
+      this.consume(TokenType.COLON);
+
+      switch (key.value) {
+        case "layout": {
+          const layoutTok = this.consumeString();
+          if (!(SUPPORTED_FORM_LAYOUTS as readonly string[]).includes(layoutTok)) {
+            throw this.error(
+              "E174_INVALID_FORM_LAYOUT",
+              `Invalid form layout '${layoutTok}'`,
+              `Valid layouts: ${SUPPORTED_FORM_LAYOUTS.join(", ")}`,
+              key.loc,
+            );
+          }
+          formCfg.layout = layoutTok as CrudFormLayout;
+          break;
+        }
+        case "sections":
+          formCfg.sections = this.parseCrudFormSectionMap("section");
+          break;
+        case "steps":
+          formCfg.steps = this.parseCrudFormSectionMap("step");
+          break;
+        default:
+          throw this.error(
+            "E175_UNKNOWN_FORM_CONFIG_PROP",
+            `Unknown form config property '${key.value}'`,
+            "Valid properties: layout, sections, steps",
+            key.loc,
+          );
+      }
+    }
+
+    this.consume(TokenType.RBRACE);
+    return formCfg;
+  }
+
+  /**
+   * Parses a map of named form sections or steps:
+   *   { sectionName { label: "...", fields: [f1, f2] } ... }
+   *
+   * @param kind - "section" or "step" used in error messages
+   */
+  private parseCrudFormSectionMap(kind: string): Record<string, CrudFormSection> {
+    this.consume(TokenType.LBRACE);
+    const result: Record<string, CrudFormSection> = {};
+
+    while (!this.check(TokenType.RBRACE)) {
+      const sectionName = this.consumeIdentifier().value;
+      this.consume(TokenType.LBRACE);
+      const section: CrudFormSection = { fields: [] };
+
+      while (!this.check(TokenType.RBRACE)) {
+        const propKey = this.consumeIdentifier();
+        this.consume(TokenType.COLON);
+
+        switch (propKey.value) {
+          case "label":
+            section.label = this.consumeString();
+            break;
+          case "fields":
+            section.fields = this.parseIdentifierArray();
+            break;
+          default:
+            throw this.error(
+              "E176_UNKNOWN_FORM_SECTION_PROP",
+              `Unknown ${kind} property '${propKey.value}' for '${sectionName}'`,
+              "Valid properties: label, fields",
+              propKey.loc,
+            );
+        }
+        if (this.check(TokenType.COMMA)) this.consume(TokenType.COMMA);
+      }
+
+      this.consume(TokenType.RBRACE);
+      result[sectionName] = section;
+    }
+
+    this.consume(TokenType.RBRACE);
+    return result;
+  }
+
+  /**
+   * Parses the permission name that may be a simple identifier ("read") or a
    * namespaced identifier ("task:read"). Uses one token of lookahead so that
    * the `COLON` inside `task:read` is not confused with a key-value separator.
    *
