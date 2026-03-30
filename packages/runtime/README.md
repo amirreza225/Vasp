@@ -2,7 +2,7 @@
 
 Runtime composables and client utilities shipped into Vasp-generated apps.
 
-**Version: 1.5.1**
+**Version: 1.5.2**
 
 This package is automatically added as a dependency to every project created with `vasp new`. You don't install it manually — Vasp handles it.
 
