@@ -15,6 +15,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    setupFiles: ['./vitest.setup.ts'],
     include: ['packages/*/src/**/*.test.ts', 'packages/*/tests/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     coverage: {
