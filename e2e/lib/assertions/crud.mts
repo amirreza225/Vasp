@@ -49,6 +49,22 @@ export function crudSuite(opts: CrudSuiteOptions): void {
     opts.assertCreatedField ?? (Object.keys(sampleCreate)[0] ?? 'id')
   const assertValue = opts.assertCreatedValue ?? sampleCreate[assertField]
 
+  // Generate a unique create payload for each POST call so that entities with
+  // unique constraints (e.g. Project.name) don't produce duplicate-key errors
+  // when the test suite runs multiple create operations sequentially.
+  // Only the assertField value is uniquified (it's the human-readable "name"
+  // field in practice), so enum and numeric fields are left untouched.
+  let _postSeq = 0
+  const makeUniqueCreate = (): Record<string, unknown> => {
+    const uid = `_e2e${++_postSeq}`
+    return Object.fromEntries(
+      Object.entries(sampleCreate).map(([k, v]) => [
+        k,
+        k === assertField && typeof v === 'string' ? `${v}${uid}` : v,
+      ]),
+    )
+  }
+
   test.describe(`CRUD — ${entitySlug}`, () => {
     // ── Auth guard check ────────────────────────────────────────────────────
 
@@ -94,7 +110,7 @@ export function crudSuite(opts: CrudSuiteOptions): void {
 
     test('GET /api/crud/{entity}?limit=1 respects limit', async ({ request }) => {
       // First create one item to ensure at least one exists
-      await request.post(base, { data: sampleCreate, headers: authHeader })
+      await request.post(base, { data: makeUniqueCreate(), headers: authHeader })
 
       const res = await request.get(`${base}?limit=1`, { headers: authHeader })
       expect(res.ok()).toBe(true)
@@ -105,8 +121,9 @@ export function crudSuite(opts: CrudSuiteOptions): void {
     // ── Create ──────────────────────────────────────────────────────────────
 
     test('POST /api/crud/{entity} creates an item and returns 201', async ({ request }) => {
+      const createData = makeUniqueCreate()
       const res = await request.post(base, {
-        data: sampleCreate,
+        data: createData,
         headers: authHeader,
       })
       expect(res.status()).toBe(201)
@@ -114,13 +131,14 @@ export function crudSuite(opts: CrudSuiteOptions): void {
       const item = unwrap(body) as Record<string, unknown>
       expect(item).toHaveProperty('id')
       if (assertValue !== undefined) {
-        expect(item[assertField]).toEqual(assertValue)
+        // Assert against the actual value sent (which may carry a unique suffix)
+        expect(item[assertField]).toEqual(createData[assertField])
       }
     })
 
     test('POST /api/crud/{entity} created item appears in list', async ({ request }) => {
       const createRes = await request.post(base, {
-        data: { ...sampleCreate, _marker: `find_me_${Date.now()}` },
+        data: { ...makeUniqueCreate(), _marker: `find_me_${Date.now()}` },
         headers: authHeader,
       })
       // 201 or 200 both acceptable
@@ -137,7 +155,7 @@ export function crudSuite(opts: CrudSuiteOptions): void {
 
     test('GET /api/crud/{entity}/:id returns the item', async ({ request }) => {
       const createRes = await request.post(base, {
-        data: sampleCreate,
+        data: makeUniqueCreate(),
         headers: authHeader,
       })
       const created = unwrap(await createRes.json()) as { id: number }
@@ -157,7 +175,7 @@ export function crudSuite(opts: CrudSuiteOptions): void {
 
     test('PUT /api/crud/{entity}/:id updates the item', async ({ request }) => {
       const createRes = await request.post(base, {
-        data: sampleCreate,
+        data: makeUniqueCreate(),
         headers: authHeader,
       })
       const created = unwrap(await createRes.json()) as { id: number }
@@ -188,7 +206,7 @@ export function crudSuite(opts: CrudSuiteOptions): void {
 
     test('DELETE /api/crud/{entity}/:id removes the item', async ({ request }) => {
       const createRes = await request.post(base, {
-        data: sampleCreate,
+        data: makeUniqueCreate(),
         headers: authHeader,
       })
       const created = unwrap(await createRes.json()) as { id: number }

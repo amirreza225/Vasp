@@ -62,9 +62,27 @@ export class CrudGenerator extends BaseGenerator {
       const isRowLevelTenant = mt?.strategy === "row-level";
       const tenantField = isRowLevelTenant ? (mt?.tenantField ?? "") : "";
       const tenantEntity = isRowLevelTenant ? (mt?.tenantEntity ?? "") : "";
-      // Skip tenant injection for the tenant entity itself
+      // Skip tenant injection for the tenant entity itself.
+      // Also skip when the entity does not directly own the tenant-field column
+      // (e.g. Task has projectId but no workspaceId; applying the filter would
+      // reference an undefined Drizzle column and produce invalid SQL).
+      // An entity "owns" the tenant field when:
+      //   1. It has a scalar field whose name exactly equals tenantField, OR
+      //   2. It has a non-array relation to tenantEntity whose FK column name
+      //      equals tenantField  (e.g. workspace: Workspace → workspaceId FK).
+      const entityHasTenantField = (entity?.fields ?? []).some(
+        (f) =>
+          (!f.isArray && f.name === tenantField) ||
+          (f.isRelation &&
+            !f.isArray &&
+            f.relatedEntity === tenantEntity &&
+            `${toCamelCase(f.name)}Id` === tenantField),
+      );
       const applyTenantFilter =
-        isRowLevelTenant && !!tenantField && crud.entity !== tenantEntity;
+        isRowLevelTenant &&
+        !!tenantField &&
+        crud.entity !== tenantEntity &&
+        entityHasTenantField;
 
       // Determine many-to-one relations for auto-join (with: {})
       const withRelations = (entity?.fields ?? [])
