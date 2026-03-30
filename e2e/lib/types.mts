@@ -210,6 +210,19 @@ export interface FixtureConfig {
     betaValues: string
     alphaTaskValues?: string  // SQL for task creation in workspace alpha
     betaTaskValues?: string   // SQL for task creation in workspace beta
+    /**
+     * Column list for the synthetic E2E magic user (id=0) INSERT.
+     * Must match the fixture's generated users table schema.
+     * Example: `'id, username, email, role, "isActive", "workspaceId", "createdAt", "updatedAt"'`
+     */
+    magicUserColumns?: string
+    /**
+     * A function that returns the SQL VALUES fragment for the magic user row.
+     * Receives the inserted workspaceAlphaId so the user is associated with
+     * workspace alpha — ensuring tenant-filtered CRUD operations pass.
+     * Example: `(wsId) => \`0, 'e2e-admin', 'e2e@vasp.test', 'admin', true, \${wsId}, NOW(), NOW()\``
+     */
+    magicUserValues?: (workspaceAlphaId: number) => string
   }
 
   /** Extra env vars merged into the generated app's .env at setup time. */

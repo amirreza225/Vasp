@@ -521,6 +521,23 @@ export class FixtureHarness {
       // For project-hub we skip task seeding here (tasks are created by tests)
     }
 
+    // ── Seed the E2E magic user (id=0) ───────────────────────────────────
+    // When the fixture has tenant/ownership-filtered CRUD, the magic token
+    // synthetic user (id=0) must exist in the users table so FK constraints
+    // for ownerId pass, and so the DB lookup in the middleware returns a full
+    // user record with workspaceId for proper tenant context.
+    if (ws?.magicUserColumns && ws?.magicUserValues) {
+      try {
+        psqlExec(
+          containerId,
+          dbName,
+          `INSERT INTO users (${ws.magicUserColumns}) VALUES (${ws.magicUserValues(Number(workspaceAlphaId))});`,
+        )
+      } catch (err) {
+        console.warn(`[harness:${this.cfg.name}] Could not seed magic user (non-fatal):`, err)
+      }
+    }
+
     return {
       workspaceAlphaId,
       workspaceBetaId,

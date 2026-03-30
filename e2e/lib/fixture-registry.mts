@@ -241,6 +241,12 @@ export const FIXTURES: Record<string, FixtureConfig> = {
       betaValues: `'workspace-beta', 'Workspace Beta', 'free', true`,
       alphaTaskValues: `'Alpha Task 1', 'todo', 'medium', false`,
       betaTaskValues: `'Beta Task 1', 'todo', 'low', false`,
+      // Seed the E2E magic user (id=0) so that ownership-filtered CRUD endpoints
+      // accept the magic token's synthetic user and FK constraints pass.
+      // role is inserted as a plain string — Postgres casts it to the pgEnum type.
+      magicUserColumns: `id, username, email, role, "isActive", "workspaceId", "createdAt", "updatedAt"`,
+      magicUserValues: (wsId) =>
+        `0, 'e2e-admin', 'e2e@vasp.test', 'admin', true, ${wsId}, NOW(), NOW()`,
     },
     // Full infra: Redis, RabbitMQ, Kafka, MinIO, Mailpit
     redisPort: 26381,

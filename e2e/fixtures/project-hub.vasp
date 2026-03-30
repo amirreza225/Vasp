@@ -40,7 +40,7 @@ app ProjectHub {
   multiTenant: {
     strategy: "row-level"
     tenantEntity: Workspace
-    tenantField: id
+    tenantField: workspaceId
   }
 
   ui: {

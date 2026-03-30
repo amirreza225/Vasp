@@ -42,12 +42,25 @@ export const requireAuth = new Elysia({ name: 'require-auth' })
     // NODE_ENV is not 'production'. Allows test suites to call auth-protected endpoints
     // via  Authorization: Bearer <token>  without a full login flow.
     //
-    // The injected synthetic user (id: 0) is a placeholder — CRUD operations will
-    // succeed because this fixture has no ownership filtering (hasOwnership = false).
-    // For fixtures with ownership or tenant filtering, use a real seeded user instead.
+    // If the fixture seeds a user with id=0 into the users table (required for
+    // fixtures with ownership/tenant filtering), the middleware does a DB lookup to
+    // return the full user record including workspaceId and role. For simple fixtures
+    // that do not seed user id=0, a synthetic stub is returned as a fallback.
     if (process.env.NODE_ENV !== 'production' && process.env.E2E_MAGIC_TOKEN) {
       const authHeader = {{#if isTypeScript}}(headers as Record<string, string | undefined>){{else}}headers{{/if}}?.authorization ?? ''
       if (authHeader === 'Bearer ' + process.env.E2E_MAGIC_TOKEN) {
+        // Try to load the seeded E2E magic user (id=0) from the DB so that
+        // fixtures with tenant/ownership filtering get the full user context
+        // (e.g. workspaceId). Falls back to a synthetic stub if no row exists.
+        try {
+          const [e2eUser] = await db.select().from(users).where(eq(users.id, 0)).limit(1)
+          if (e2eUser) {
+            const { passwordHash: _ph, ...safeUser } = e2eUser
+            return { user: safeUser }
+          }
+        } catch {
+          // Ignore — users table may not exist in minimal fixtures
+        }
         return { user: { id: 0, username: 'e2e-admin', email: 'e2e@vasp.test', role: 'admin' } }
       }
     }
