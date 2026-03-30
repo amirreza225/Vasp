@@ -17,16 +17,17 @@ if (!existsSync(UPLOAD_DIR)) {
 }
 {{/if}}
 {{#if isCloud}}
+const _s3Endpoint = process.env.{{envPrefix}}_ENDPOINT ?? process.env.S3_ENDPOINT
 const s3 = new S3Client({
-  region: process.env.{{envPrefix}}_REGION ?? 'auto',
-  endpoint: process.env.{{envPrefix}}_ENDPOINT ?? process.env.S3_ENDPOINT,
+  region: process.env.{{envPrefix}}_REGION ?? process.env.S3_REGION ?? 'us-east-1',
+  ...(_s3Endpoint ? { endpoint: _s3Endpoint, forcePathStyle: true } : {}),
   credentials: {
-    accessKeyId: process.env.{{envPrefix}}_ACCESS_KEY_ID ?? '',
-    secretAccessKey: process.env.{{envPrefix}}_SECRET_ACCESS_KEY ?? '',
+    accessKeyId: process.env.{{envPrefix}}_ACCESS_KEY_ID ?? process.env.AWS_ACCESS_KEY_ID ?? '',
+    secretAccessKey: process.env.{{envPrefix}}_SECRET_ACCESS_KEY ?? process.env.AWS_SECRET_ACCESS_KEY ?? '',
   },
 })
 
-const BUCKET = process.env.{{envPrefix}}_BUCKET ?? '{{bucket}}'
+const BUCKET = process.env.{{envPrefix}}_BUCKET ?? process.env.S3_BUCKET ?? '{{bucket}}'
 {{/if}}
 
 /** Parse a human-readable size string (e.g. "10mb", "512kb") into bytes */
