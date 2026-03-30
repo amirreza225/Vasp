@@ -39,6 +39,7 @@ export class StorageGenerator extends BaseGenerator {
         this.render("shared/server/routes/storage/_upload.hbs", {
           storageName: storage.name,
           storageConst: toCamelCase(storage.name),
+          storageSlug: storage.name.toLowerCase(),
           provider: storage.provider,
           isLocal: storage.provider === "local",
           isCloud,

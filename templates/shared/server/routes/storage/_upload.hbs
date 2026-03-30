@@ -4,7 +4,7 @@ import { Elysia, t } from 'elysia'
 import { MAX_BYTES{{#if hasAllowedTypes}}, isMimeAllowed{{/if}}, saveFile{{#if isCloud}}, getPresignedUploadUrl{{/if}} } from '../../storage/{{storageConst}}.{{ext}}'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 
-export const {{storageConst}}UploadRoutes = new Elysia({ prefix: '/api/storage/{{storageConst}}' })
+export const {{storageConst}}UploadRoutes = new Elysia({ prefix: '/api/storage/{{storageSlug}}' })
   /**
    * POST /api/storage/{{storageConst}}/upload
    * Accepts multipart/form-data with a single "file" field.
