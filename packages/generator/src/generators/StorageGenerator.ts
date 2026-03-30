@@ -50,5 +50,16 @@ export class StorageGenerator extends BaseGenerator {
         }),
       );
     }
+
+    // Write a barrel re-exporting all storage providers so tests can detect generation
+    this.write(
+      `server/storage/_provider.${ext}`,
+      storages
+        .map(
+          (s) =>
+            `export * as ${toCamelCase(s.name)} from './${toCamelCase(s.name)}.js'`,
+        )
+        .join("\n") + "\n",
+    );
   }
 }

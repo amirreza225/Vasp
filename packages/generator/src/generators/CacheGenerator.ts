@@ -26,5 +26,16 @@ export class CacheGenerator extends BaseGenerator {
         }),
       );
     }
+
+    // Write a barrel re-exporting all cache stores so tests can detect generation
+    this.write(
+      `server/cache/index.${ext}`,
+      caches
+        .map(
+          (c) =>
+            `export * as ${toCamelCase(c.name)} from './${toCamelCase(c.name)}.js'`,
+        )
+        .join("\n") + "\n",
+    );
   }
 }

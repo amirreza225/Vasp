@@ -19,7 +19,7 @@ if (!existsSync(UPLOAD_DIR)) {
 {{#if isCloud}}
 const s3 = new S3Client({
   region: process.env.{{envPrefix}}_REGION ?? 'auto',
-  endpoint: process.env.{{envPrefix}}_ENDPOINT,
+  endpoint: process.env.{{envPrefix}}_ENDPOINT ?? process.env.S3_ENDPOINT,
   credentials: {
     accessKeyId: process.env.{{envPrefix}}_ACCESS_KEY_ID ?? '',
     secretAccessKey: process.env.{{envPrefix}}_SECRET_ACCESS_KEY ?? '',

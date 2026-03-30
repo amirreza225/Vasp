@@ -581,6 +581,17 @@ crud ActivityLog {
   }
 }
 
+crud Workspace {
+  entity: Workspace
+  operations: [list, create, update, delete]
+  list: {
+    paginate: true
+    sortable: [name, createdAt]
+    filterable: [plan]
+    search: [name]
+  }
+}
+
 // ─── Realtime ─────────────────────────────────────────────────────────────────
 
 realtime TaskChannel {
