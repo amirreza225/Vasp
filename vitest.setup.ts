@@ -14,8 +14,9 @@ if (typeof Object.groupBy === "undefined") {
     let index = 0;
     for (const item of iterable) {
       const key = keySelector(item, index++);
-      if (Object.prototype.hasOwnProperty.call(result, key)) {
-        result[key].push(item);
+      const existing = result[key];
+      if (existing !== undefined) {
+        existing.push(item);
       } else {
         result[key] = [item];
       }
