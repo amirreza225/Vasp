@@ -1,0 +1,78 @@
+{
+  "name": "vasp-vscode",
+  "displayName": "Vasp",
+  "description": "Full-stack framework for Vue — syntax highlighting, snippets, diagnostics, completions, and go-to-definition for .vasp files.",
+  "version": "0.1.0",
+  "publisher": "vasp-framework",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/amirreza225/Vasp"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Snippets",
+    "Linters"
+  ],
+  "keywords": [
+    "vasp",
+    "vue",
+    "fullstack",
+    "elysia",
+    "drizzle"
+  ],
+  "icon": "icons/vasp-logo.png",
+  "activationEvents": [
+    "onLanguage:vasp"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "vasp",
+        "aliases": [
+          "Vasp",
+          "vasp"
+        ],
+        "extensions": [
+          ".vasp"
+        ],
+        "configuration": "./language-configuration.json",
+        "icon": {
+          "light": "./icons/vasp-file.png",
+          "dark": "./icons/vasp-file.png"
+        }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "vasp",
+        "scopeName": "source.vasp",
+        "path": "./syntaxes/vasp.tmLanguage.json"
+      }
+    ],
+    "snippets": [
+      {
+        "language": "vasp",
+        "path": "./snippets/vasp.json"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^2.29.0",
+    "typescript": "^5.4.0"
+  }
+}

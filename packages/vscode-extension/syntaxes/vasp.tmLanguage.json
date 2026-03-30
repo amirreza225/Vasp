@@ -1,0 +1,132 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Vasp",
+  "scopeName": "source.vasp",
+  "fileTypes": ["vasp"],
+  "patterns": [
+    { "include": "#comment-line" },
+    { "include": "#comment-block" },
+    { "include": "#block-declaration" },
+    { "include": "#string" },
+    { "include": "#number" },
+    { "include": "#boolean" },
+    { "include": "#import-statement" },
+    { "include": "#at-modifier" },
+    { "include": "#atat-directive" },
+    { "include": "#primitive-type" },
+    { "include": "#executor-type" },
+    { "include": "#provider-type" },
+    { "include": "#nested-keyword" },
+    { "include": "#block-name" }
+  ],
+  "repository": {
+    "comment-line": {
+      "name": "comment.line.vasp",
+      "match": "//.*$"
+    },
+    "comment-block": {
+      "name": "comment.block.vasp",
+      "begin": "/\\*",
+      "end": "\\*/",
+      "beginCaptures": { "0": { "name": "punctuation.definition.comment.vasp" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.comment.vasp" } }
+    },
+    "string": {
+      "name": "string.quoted.double.vasp",
+      "begin": "\"",
+      "end": "\"",
+      "beginCaptures": { "0": { "name": "punctuation.definition.string.begin.vasp" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.string.end.vasp" } },
+      "patterns": [
+        { "name": "constant.character.escape.vasp", "match": "\\\\." }
+      ]
+    },
+    "number": {
+      "name": "constant.numeric.vasp",
+      "match": "\\b\\d+(\\.\\d+)?\\b"
+    },
+    "boolean": {
+      "name": "constant.language.boolean.vasp",
+      "match": "\\b(true|false)\\b"
+    },
+    "import-statement": {
+      "name": "meta.import.vasp",
+      "match": "\\b(import)\\s+\\{([^}]+)\\}\\s+(from)\\s+(\"[^\"]+\")",
+      "captures": {
+        "1": { "name": "keyword.control.import.vasp" },
+        "2": { "name": "entity.name.function.vasp" },
+        "3": { "name": "keyword.control.from.vasp" },
+        "4": { "name": "string.quoted.double.vasp" }
+      }
+    },
+    "at-modifier": {
+      "name": "storage.modifier.vasp",
+      "match": "@(id|unique|nullable|default|manyToMany|storage|validate|onDelete|updatedAt)\\b(?:\\([^)]*\\))?"
+    },
+    "atat-directive": {
+      "name": "storage.modifier.directive.vasp",
+      "match": "@@(index|unique)\\b(?:\\([^)]*\\))?"
+    },
+    "primitive-type": {
+      "name": "storage.type.primitive.vasp",
+      "match": "\\b(String|Int|Boolean|DateTime|Float|Text|Json|Enum|File)\\b"
+    },
+    "executor-type": {
+      "name": "storage.type.executor.vasp",
+      "match": "\\b(PgBoss|BullMQ|RedisStreams|RabbitMQ|Kafka)\\b"
+    },
+    "provider-type": {
+      "name": "storage.type.provider.vasp",
+      "match": "\\b(local|s3|r2|gcs|resend|sendgrid|smtp|memory|redis|valkey)\\b"
+    },
+    "nested-keyword": {
+      "name": "keyword.control.nested.vasp",
+      "match": "\\b(list|form|columns|sections|steps|permissions|validate|env|ui|multiTenant|perform)\\b(?=\\s*[:{])"
+    },
+    "block-declaration": {
+      "name": "meta.block.vasp",
+      "begin": "\\b(app|entity|crud|auth|route|page|query|action|api|middleware|realtime|job|seed|admin|storage|email|cache|webhook|observability|autoPage)\\b(?=\\s+\\w|\\s*\\{)",
+      "beginCaptures": {
+        "1": { "name": "keyword.control.block.vasp" }
+      },
+      "end": "(?<=\\})",
+      "patterns": [
+        { "include": "#block-name-capture" },
+        { "include": "#block-body" }
+      ]
+    },
+    "block-name-capture": {
+      "name": "entity.name.block.vasp",
+      "match": "(?<=\\b(?:app|entity|crud|auth|route|page|query|action|api|middleware|realtime|job|seed|admin|storage|email|cache|webhook|observability|autoPage)\\s+)\\w+"
+    },
+    "block-name": {
+      "name": "entity.name.block.vasp",
+      "match": "(?<=^|\\s)(?:app|entity|crud|auth|route|page|query|action|api|middleware|realtime|job|seed|admin|storage|email|cache|webhook|observability|autoPage)\\s+(\\w+)",
+      "captures": {
+        "1": { "name": "entity.name.block.vasp" }
+      }
+    },
+    "block-body": {
+      "name": "meta.block-body.vasp",
+      "begin": "\\{",
+      "end": "\\}",
+      "beginCaptures": { "0": { "name": "punctuation.definition.block.begin.vasp" } },
+      "endCaptures": { "0": { "name": "punctuation.definition.block.end.vasp" } },
+      "patterns": [
+        { "include": "#comment-line" },
+        { "include": "#comment-block" },
+        { "include": "#nested-keyword" },
+        { "include": "#at-modifier" },
+        { "include": "#atat-directive" },
+        { "include": "#primitive-type" },
+        { "include": "#executor-type" },
+        { "include": "#provider-type" },
+        { "include": "#string" },
+        { "include": "#number" },
+        { "include": "#boolean" },
+        { "include": "#import-statement" },
+        { "include": "#block-body" }
+      ]
+    }
+  }
+}

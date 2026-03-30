@@ -106,6 +106,8 @@ export abstract class BaseGenerator {
       apis: ast.apis ?? [],
       middlewares: ast.middlewares ?? [],
       cruds: ast.cruds,
+      hasCrudListConfig: ast.cruds.some((c) => !!c.listConfig),
+      hasCrudFormConfig: ast.cruds.some((c) => !!c.formConfig),
       realtimes: ast.realtimes,
       jobs: ast.jobs,
       seed: ast.seed,

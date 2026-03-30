@@ -1,0 +1,282 @@
+{
+  "Vasp App Block": {
+    "prefix": "app",
+    "body": [
+      "app ${1:MyApp} {",
+      "  title: \"${2:My Vasp App}\"",
+      "  ssr: ${3|false,true,\"ssg\"|}",
+      "  typescript: ${4|true,false|}",
+      "}"
+    ],
+    "description": "Declare the top-level app config block"
+  },
+  "Vasp Entity Block": {
+    "prefix": "entity",
+    "body": [
+      "entity ${1:Name} {",
+      "  id:        Int      @id",
+      "  ${2:title}: ${3|String,Int,Boolean,DateTime,Float,Text,Json,Enum,File|} {",
+      "    label: \"${4:Label}\"",
+      "  }",
+      "  createdAt: DateTime @default(now)",
+      "}"
+    ],
+    "description": "Declare an entity (database table)"
+  },
+  "Vasp Entity Field (simple)": {
+    "prefix": "field",
+    "body": [
+      "${1:fieldName}: ${2|String,Int,Boolean,DateTime,Float,Text,Json,File|} ${3:@nullable}"
+    ],
+    "description": "Add a simple entity field"
+  },
+  "Vasp Entity Field with Config": {
+    "prefix": "fieldc",
+    "body": [
+      "${1:fieldName}: ${2|String,Int,Boolean,DateTime,Float,Text,Json|} {",
+      "  label:       \"${3:Label}\"",
+      "  placeholder: \"${4:Enter value…}\"",
+      "  validate {",
+      "    required:  ${5|true,false|}",
+      "    minLength: ${6:3}",
+      "    maxLength: ${7:255}",
+      "  }",
+      "}"
+    ],
+    "description": "Add an entity field with nested config and validation"
+  },
+  "Vasp CRUD Block": {
+    "prefix": "crud",
+    "body": [
+      "crud ${1:EntityName} {",
+      "  entity:     ${1:EntityName}",
+      "  operations: [${2:list, create, update, delete}]",
+      "",
+      "  list {",
+      "    paginate:   ${3|true,false|}",
+      "    sortable:   [${4:createdAt}]",
+      "    filterable: [${5:}]",
+      "    search:     [${6:}]",
+      "  }",
+      "",
+      "  form {",
+      "    layout: \"${7|1-column,2-column,tabs,steps|}\"",
+      "  }",
+      "}"
+    ],
+    "description": "Declare CRUD endpoints for an entity"
+  },
+  "Vasp Auth Block": {
+    "prefix": "auth",
+    "body": [
+      "auth {",
+      "  userEntity: ${1:User}",
+      "  methods: [${2|usernameAndPassword,google,github|}]",
+      "}"
+    ],
+    "description": "Configure authentication"
+  },
+  "Vasp Route Block": {
+    "prefix": "route",
+    "body": [
+      "route ${1:routeName} {",
+      "  path: \"${2:/path}\"",
+      "  to:   ${3:PageName}",
+      "}"
+    ],
+    "description": "Declare a client-side route"
+  },
+  "Vasp Page Block": {
+    "prefix": "page",
+    "body": [
+      "page ${1:PageName} {",
+      "  component: import ${1:PageName} from \"@src/pages/${2:PageName}.vue\"",
+      "}"
+    ],
+    "description": "Declare a page component"
+  },
+  "Vasp Query Block": {
+    "prefix": "query",
+    "body": [
+      "query ${1:queryName} {",
+      "  fn:       import { ${1:queryName} } from \"@src/queries/${2:${1:queryName}}.js\"",
+      "  entities: [${3:EntityName}]",
+      "  auth:     ${4|true,false|}",
+      "}"
+    ],
+    "description": "Declare a server query handler"
+  },
+  "Vasp Action Block": {
+    "prefix": "action",
+    "body": [
+      "action ${1:actionName} {",
+      "  fn:       import { ${1:actionName} } from \"@src/actions/${2:${1:actionName}}.js\"",
+      "  entities: [${3:EntityName}]",
+      "  auth:     ${4|true,false|}",
+      "}"
+    ],
+    "description": "Declare a server action handler"
+  },
+  "Vasp API Block": {
+    "prefix": "api",
+    "body": [
+      "api ${1:apiName} {",
+      "  method: ${2|GET,POST,PUT,PATCH,DELETE|}",
+      "  path:   \"${3:/api/path}\"",
+      "  fn:     import { ${1:apiName} } from \"@src/api/${4:${1:apiName}}.js\"",
+      "  auth:   ${5|true,false|}",
+      "}"
+    ],
+    "description": "Declare a custom API endpoint"
+  },
+  "Vasp Middleware Block": {
+    "prefix": "middleware",
+    "body": [
+      "middleware ${1:middlewareName} {",
+      "  fn:    import { ${1:middlewareName} } from \"@src/middleware/${2:${1:middlewareName}}.js\"",
+      "  scope: ${3|global,route|}",
+      "}"
+    ],
+    "description": "Declare a custom middleware"
+  },
+  "Vasp Realtime Block": {
+    "prefix": "realtime",
+    "body": [
+      "realtime ${1:ChannelName} {",
+      "  entity: ${2:EntityName}",
+      "}"
+    ],
+    "description": "Declare a realtime WebSocket channel"
+  },
+  "Vasp Job Block (PgBoss)": {
+    "prefix": "job-pgboss",
+    "body": [
+      "job ${1:jobName} {",
+      "  executor: PgBoss",
+      "  perform {",
+      "    fn: import { ${2:${1:jobName}} } from \"@src/jobs/${3:${1:jobName}}.js\"",
+      "  }",
+      "  schedule: \"${4:0 * * * *}\"",
+      "}"
+    ],
+    "description": "Declare a PgBoss background job"
+  },
+  "Vasp Job Block (BullMQ)": {
+    "prefix": "job-bullmq",
+    "body": [
+      "job ${1:jobName} {",
+      "  executor: BullMQ",
+      "  perform {",
+      "    fn:          import { ${2:${1:jobName}} } from \"@src/jobs/${3:${1:jobName}}.js\"",
+      "    concurrency: ${4:5}",
+      "  }",
+      "  retries:  ${5:3}",
+      "  schedule: \"${6:}\"",
+      "}"
+    ],
+    "description": "Declare a BullMQ background job"
+  },
+  "Vasp Storage Block": {
+    "prefix": "storage",
+    "body": [
+      "storage ${1:uploads} {",
+      "  provider:     ${2|local,s3,r2,gcs|}",
+      "  bucket:       \"${3:my-bucket}\"",
+      "  maxSize:      ${4:10}",
+      "  allowedTypes: [${5:\"image/jpeg\", \"image/png\"}]",
+      "  publicPath:   \"${6:/uploads}\"",
+      "}"
+    ],
+    "description": "Declare a file storage provider"
+  },
+  "Vasp Email Block": {
+    "prefix": "email",
+    "body": [
+      "email ${1:mailer} {",
+      "  provider: ${2|resend,sendgrid,smtp|}",
+      "  from:     \"${3:noreply@example.com}\"",
+      "  templates: [",
+      "    { name: ${4:welcome}, fn: import { ${4:welcome} } from \"@src/emails/${4:welcome}.js\" }",
+      "  ]",
+      "}"
+    ],
+    "description": "Declare an email provider"
+  },
+  "Vasp Cache Block": {
+    "prefix": "cache",
+    "body": [
+      "cache ${1:appCache} {",
+      "  provider: ${2|memory,redis,valkey|}",
+      "  ttl:      ${3:60}",
+      "}"
+    ],
+    "description": "Declare a cache store"
+  },
+  "Vasp Webhook Block (inbound)": {
+    "prefix": "webhook-in",
+    "body": [
+      "webhook ${1:webhookName} {",
+      "  mode:       inbound",
+      "  path:       \"${2:/webhooks/${1:webhookName}}\"",
+      "  fn:         import { ${1:webhookName} } from \"@src/webhooks/${1:webhookName}.js\"",
+      "  verifyWith: ${3|stripe-signature,github-signature,hmac|}",
+      "}"
+    ],
+    "description": "Declare an inbound webhook receiver"
+  },
+  "Vasp Webhook Block (outbound)": {
+    "prefix": "webhook-out",
+    "body": [
+      "webhook ${1:webhookName} {",
+      "  mode:    outbound",
+      "  entity:  ${2:EntityName}",
+      "  events:  [${3:created, updated, deleted}]",
+      "  targets: [\"${4:https://example.com/webhook}\"]",
+      "}"
+    ],
+    "description": "Declare an outbound webhook dispatcher"
+  },
+  "Vasp Observability Block": {
+    "prefix": "observability",
+    "body": [
+      "observability {",
+      "  tracing:       ${1|true,false|}",
+      "  metrics:       ${2|true,false|}",
+      "  logs:          ${3|console,structured|}",
+      "  exporter:      ${4|console,otlp,prometheus|}",
+      "  errorTracking: ${5|none,sentry,datadog|}",
+      "}"
+    ],
+    "description": "Declare observability (tracing, metrics, logs)"
+  },
+  "Vasp Admin Block": {
+    "prefix": "admin",
+    "body": [
+      "admin {",
+      "  entities: [${1:EntityName}]",
+      "}"
+    ],
+    "description": "Generate a Vue admin panel"
+  },
+  "Vasp AutoPage Block": {
+    "prefix": "autoPage",
+    "body": [
+      "autoPage ${1:EntityNameList} {",
+      "  entity:   ${2:EntityName}",
+      "  pageType: ${3|list,form,detail|}",
+      "  title:    \"${4:Page Title}\"",
+      "  auth:     ${5|true,false|}",
+      "}"
+    ],
+    "description": "Auto-generate a PrimeVue page from an entity"
+  },
+  "Vasp Seed Block": {
+    "prefix": "seed",
+    "body": [
+      "seed {",
+      "  fn: import { ${1:seedFn} } from \"@src/${2:seed}.js\"",
+      "}"
+    ],
+    "description": "Declare a database seed function"
+  }
+}

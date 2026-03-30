@@ -3,6 +3,7 @@ import { newCommand } from "./commands/new.js";
 import { generateCommand } from "./commands/generate.js";
 import { validateCommand } from "./commands/validate.js";
 import { migrateToTsCommand } from "./commands/migrate-to-ts.js";
+import { migrateCommand } from "./commands/migrate.js";
 import { enableSsrCommand } from "./commands/enable-ssr.js";
 import { startCommand } from "./commands/start.js";
 import { buildCommand } from "./commands/build.js";
@@ -52,6 +53,10 @@ export async function run(args: string[]): Promise<void> {
       await migrateToTsCommand();
       break;
 
+    case "migrate":
+      await migrateCommand(args.slice(1));
+      break;
+
     case "enable-ssr":
       await enableSsrCommand();
       break;
@@ -90,6 +95,7 @@ function printHelp(): void {
     vasp validate [options]              Validate main.vasp without generating code
     vasp enable-ssr                      Convert existing SPA project to SSR (Nuxt 4)
     vasp migrate-to-ts                   Convert existing JS project to TypeScript
+    vasp migrate [file]                  Upgrade v1 .vasp file to v2 nested syntax
     vasp start                           Start the dev server (opens browser automatically)
     vasp build                           Build for production
     vasp db <push|generate|migrate|studio|seed>  Run database commands

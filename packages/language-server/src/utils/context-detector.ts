@@ -163,10 +163,10 @@ function countBraceDepth(text: string): number {
         while (i < text.length && text[i] !== "\n") i++;
         continue;
       } else if (ch === "/" && text[i + 1] === "*") {
-        // Skip block comment
+        // Skip block comment — advance past `/*` then scan for `*/`
         i += 2;
         while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) i++;
-        i += 2;
+        if (i < text.length) i += 2; // advance past `*/` only if found
         continue;
       } else if (ch === "{") depth++;
       else if (ch === "}") depth--;

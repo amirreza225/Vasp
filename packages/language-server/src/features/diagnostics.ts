@@ -192,7 +192,8 @@ export function registerDiagnosticsHandler(
       debounceTimers.delete(uri);
       // Get the full document text from the document manager (handles both full and incremental updates)
       const doc = documents.get(uri);
-      const text = doc?.getText() ?? "";
+      if (!doc) return; // Document closed between keystroke and debounce firing
+      const text = doc.getText();
       await store.update(uri, text, params.textDocument.version);
       const diagnostics = validateDocument(text);
       connection.sendDiagnostics({ uri, diagnostics });

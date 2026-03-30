@@ -89,15 +89,15 @@ export const Default = createToken({ name: "Default", pattern: /default(?=\s*:)/
 
 // ── Primitive field types ─────────────────────────────────────────────────────
 
-export const StringType = createToken({ name: "StringType", pattern: /String(?=[\s\{\[\@\}])/ });
-export const IntType = createToken({ name: "IntType", pattern: /Int(?=[\s\{\[\@\}])/ });
-export const BooleanType = createToken({ name: "BooleanType", pattern: /Boolean(?=[\s\{\[\@\}])/ });
-export const DateTimeType = createToken({ name: "DateTimeType", pattern: /DateTime(?=[\s\{\[\@\}])/ });
-export const FloatType = createToken({ name: "FloatType", pattern: /Float(?=[\s\{\[\@\}])/ });
-export const TextType = createToken({ name: "TextType", pattern: /Text(?=[\s\{\[\@\}])/ });
-export const JsonType = createToken({ name: "JsonType", pattern: /Json(?=[\s\{\[\@\}])/ });
+export const StringType = createToken({ name: "StringType", pattern: /String(?!\w)/ });
+export const IntType = createToken({ name: "IntType", pattern: /Int(?!\w)/ });
+export const BooleanType = createToken({ name: "BooleanType", pattern: /Boolean(?!\w)/ });
+export const DateTimeType = createToken({ name: "DateTimeType", pattern: /DateTime(?!\w)/ });
+export const FloatType = createToken({ name: "FloatType", pattern: /Float(?!\w)/ });
+export const TextType = createToken({ name: "TextType", pattern: /Text(?!\w)/ });
+export const JsonType = createToken({ name: "JsonType", pattern: /Json(?!\w)/ });
 export const EnumType = createToken({ name: "EnumType", pattern: /Enum(?=\()/ });
-export const FileType = createToken({ name: "FileType", pattern: /File(?=[\s\{\[\@\}])/ });
+export const FileType = createToken({ name: "FileType", pattern: /File(?!\w)/ });
 
 // ── Executors / Providers ─────────────────────────────────────────────────────
 
