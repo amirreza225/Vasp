@@ -244,7 +244,7 @@ export const FIXTURES: Record<string, FixtureConfig> = {
       // Seed the E2E magic user (id=0) so that ownership-filtered CRUD endpoints
       // accept the magic token's synthetic user and FK constraints pass.
       // role is inserted as a plain string — Postgres casts it to the pgEnum type.
-      magicUserColumns: `id, username, email, role, "isActive", "workspaceId", "createdAt", "updatedAt"`,
+      magicUserColumns: `id, username, email, role, "isActive", "workspaceId", created_at, updated_at`,
       magicUserValues: (wsId) =>
         `0, 'e2e-admin', 'e2e@vasp.test', 'admin', true, ${wsId}, NOW(), NOW()`,
     },

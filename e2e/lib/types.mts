@@ -213,7 +213,7 @@ export interface FixtureConfig {
     /**
      * Column list for the synthetic E2E magic user (id=0) INSERT.
      * Must match the fixture's generated users table schema.
-     * Example: `'id, username, email, role, "isActive", "workspaceId", "createdAt", "updatedAt"'`
+     * Example: `'id, username, email, role, "isActive", "workspaceId", created_at, updated_at'`
      */
     magicUserColumns?: string
     /**
