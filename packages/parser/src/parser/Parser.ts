@@ -12,7 +12,8 @@ import type {
   AutoPageRowAction,
   AutoPageTopAction,
   AutoPageLayout,
-  CacheNode,  CacheProvider,
+  CacheNode,
+  CacheProvider,
   CacheRedisConfig,
   CrudNode,
   CrudListConfig,
@@ -941,7 +942,14 @@ class Parser {
 
     this.consume(TokenType.RBRACE);
     const params = extractRouteParams(path);
-    const node: RouteNode = { type: "Route", name: name.value, loc, path, to, params };
+    const node: RouteNode = {
+      type: "Route",
+      name: name.value,
+      loc,
+      path,
+      to,
+      params,
+    };
     if (routeProtected !== undefined) node.protected = routeProtected;
     return node;
   }
@@ -1304,13 +1312,18 @@ class Parser {
 
             switch (ruleKey.value) {
               case "required":
-                validate.required = this.consume(TokenType.BOOLEAN).value === "true";
+                validate.required =
+                  this.consume(TokenType.BOOLEAN).value === "true";
                 break;
               case "minLength":
-                validate.minLength = Number(this.consume(TokenType.NUMBER).value);
+                validate.minLength = Number(
+                  this.consume(TokenType.NUMBER).value,
+                );
                 break;
               case "maxLength":
-                validate.maxLength = Number(this.consume(TokenType.NUMBER).value);
+                validate.maxLength = Number(
+                  this.consume(TokenType.NUMBER).value,
+                );
                 break;
               case "min":
                 validate.min = Number(this.consume(TokenType.NUMBER).value);
@@ -1381,7 +1394,8 @@ class Parser {
             colCfg.sortable = this.consume(TokenType.BOOLEAN).value === "true";
             break;
           case "filterable":
-            colCfg.filterable = this.consume(TokenType.BOOLEAN).value === "true";
+            colCfg.filterable =
+              this.consume(TokenType.BOOLEAN).value === "true";
             break;
           case "hidden":
             colCfg.hidden = this.consume(TokenType.BOOLEAN).value === "true";
@@ -1425,7 +1439,9 @@ class Parser {
       switch (key.value) {
         case "layout": {
           const layoutTok = this.consumeString();
-          if (!(SUPPORTED_FORM_LAYOUTS as readonly string[]).includes(layoutTok)) {
+          if (
+            !(SUPPORTED_FORM_LAYOUTS as readonly string[]).includes(layoutTok)
+          ) {
             throw this.error(
               "E174_INVALID_FORM_LAYOUT",
               `Invalid form layout '${layoutTok}'`,
@@ -1462,7 +1478,9 @@ class Parser {
    *
    * @param kind - "section" or "step" used in error messages
    */
-  private parseCrudFormSectionMap(kind: string): Record<string, CrudFormSection> {
+  private parseCrudFormSectionMap(
+    kind: string,
+  ): Record<string, CrudFormSection> {
     this.consume(TokenType.LBRACE);
     const result: Record<string, CrudFormSection> = {};
 
@@ -2383,9 +2401,9 @@ class Parser {
         case "errorTracking": {
           const tok = this.consumeIdentifier();
           if (
-            !(
-              SUPPORTED_ERROR_TRACKING_PROVIDERS as readonly string[]
-            ).includes(tok.value)
+            !(SUPPORTED_ERROR_TRACKING_PROVIDERS as readonly string[]).includes(
+              tok.value,
+            )
           ) {
             throw this.error(
               "E093_INVALID_ERROR_TRACKING_PROVIDER",
@@ -2409,7 +2427,15 @@ class Parser {
 
     this.consume(TokenType.RBRACE);
 
-    return { type: "Observability", tracing, metrics, logs, exporter, errorTracking, loc };
+    return {
+      type: "Observability",
+      tracing,
+      metrics,
+      logs,
+      exporter,
+      errorTracking,
+      loc,
+    };
   }
 
   private parseAutoPage(): AutoPageNode {

@@ -53,8 +53,9 @@ export class AutoPageGenerator extends BaseGenerator {
     );
 
     // ── columns for list view ─────────────────────────────────────────────
-    const columnKeys =
-      ap.columns?.length ? ap.columns : entity.fields.map((f) => f.name);
+    const columnKeys = ap.columns?.length
+      ? ap.columns
+      : entity.fields.map((f) => f.name);
 
     const resolvedColumns = columnKeys.map((key) => {
       const field = fieldMap.get(key);
@@ -70,19 +71,20 @@ export class AutoPageGenerator extends BaseGenerator {
     });
 
     // ── fields for form / detail view ─────────────────────────────────────
-    const fieldKeys =
-      ap.fields?.length
-        ? ap.fields
-        : entity.fields
-            .filter((f) => !f.modifiers?.includes("id"))
-            .map((f) => f.name);
+    const fieldKeys = ap.fields?.length
+      ? ap.fields
+      : entity.fields
+          .filter((f) => !f.modifiers?.includes("id"))
+          .map((f) => f.name);
 
     const resolvedFields = fieldKeys.map((key) => {
       const field = fieldMap.get(key);
       return {
         key,
         label: this.humanLabel(key),
-        primevueComponent: field ? this.primevueComponentFor(field) : "InputText",
+        primevueComponent: field
+          ? this.primevueComponentFor(field)
+          : "InputText",
         isRequired: !(field?.nullable ?? false),
         isReadOnly: ap.pageType === "detail",
         enumOptions: field?.type === "Enum" ? (field.enumValues ?? []) : [],

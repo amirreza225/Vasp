@@ -67,7 +67,8 @@ export function validateDocument(text: string): Diagnostic[] {
   for (const err of parser.errors) {
     const token = err.token;
     const start = token?.startOffset ?? 0;
-    const end = token?.endOffset !== undefined ? token.endOffset + 1 : start + 1;
+    const end =
+      token?.endOffset !== undefined ? token.endOffset + 1 : start + 1;
     diagnostics.push({
       severity: DiagnosticSeverity.Error,
       range: offsetToRange(text, start, end),
@@ -159,7 +160,11 @@ function semanticCheck(text: string, ast: DocumentAST): Diagnostic[] {
         if (idx !== -1) {
           diags.push({
             severity: DiagnosticSeverity.Warning,
-            range: offsetToRange(text, idx, idx + ("realtime " + block.name).length),
+            range: offsetToRange(
+              text,
+              idx,
+              idx + ("realtime " + block.name).length,
+            ),
             message: `Realtime block '${block.name}' has no matching 'crud' block. Add a 'crud' block with entity referencing the same entity name.`,
             source: "vasp",
           });

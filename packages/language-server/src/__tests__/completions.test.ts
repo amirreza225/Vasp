@@ -7,14 +7,25 @@ import { getCompletions } from "../features/completions.js";
 import type { VaspDocumentStore } from "../utils/document-store.js";
 
 /** Minimal stub of VaspDocumentStore for completion tests */
-function makeStore(entities: string[] = [], pages: string[] = []): VaspDocumentStore {
+function makeStore(
+  entities: string[] = [],
+  pages: string[] = [],
+): VaspDocumentStore {
   return {
-    allEntities: () => entities.map((name) => ({ name, uri: "file:///test.vasp" })),
+    allEntities: () =>
+      entities.map((name) => ({ name, uri: "file:///test.vasp" })),
     allPages: () => pages.map((name) => ({ name, uri: "file:///test.vasp" })),
     all: () => [],
     get: () => null,
     remove: () => undefined,
-    update: () => Promise.resolve({ uri: "", version: 0, ast: { blocks: [] }, errors: [], parsedAt: 0 }),
+    update: () =>
+      Promise.resolve({
+        uri: "",
+        version: 0,
+        ast: { blocks: [] },
+        errors: [],
+        parsedAt: 0,
+      }),
     syncOpenDocuments: () => Promise.resolve(),
     entityFields: () => null,
   } as unknown as VaspDocumentStore;
@@ -128,7 +139,11 @@ describe("getCompletions — after colon", () => {
 
   it("returns entity names for 'entity:' key with workspace entities", () => {
     const source = "crud Todo {\n  entity: ";
-    const items = getCompletions(source, source.length, makeStore(["Todo", "User", "Post"]));
+    const items = getCompletions(
+      source,
+      source.length,
+      makeStore(["Todo", "User", "Post"]),
+    );
     const labels = items.map((i) => i.label);
     expect(labels).toContain("Todo");
     expect(labels).toContain("User");
@@ -137,7 +152,11 @@ describe("getCompletions — after colon", () => {
 
   it("returns page names for 'to:' key with workspace pages", () => {
     const source = "route Home {\n  to: ";
-    const items = getCompletions(source, source.length, makeStore([], ["HomePage", "AboutPage"]));
+    const items = getCompletions(
+      source,
+      source.length,
+      makeStore([], ["HomePage", "AboutPage"]),
+    );
     const labels = items.map((i) => i.label);
     expect(labels).toContain("HomePage");
     expect(labels).toContain("AboutPage");

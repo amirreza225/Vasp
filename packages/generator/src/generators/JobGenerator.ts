@@ -19,7 +19,10 @@ export class JobGenerator extends BaseGenerator {
 
     // Executor setup/client singletons
     if (hasPgBoss) {
-      this.write(`server/jobs/boss.${ext}`, this.render("shared/jobs/boss.hbs"));
+      this.write(
+        `server/jobs/boss.${ext}`,
+        this.render("shared/jobs/boss.hbs"),
+      );
     }
     if (hasBullMQ) {
       this.write(
@@ -69,8 +72,7 @@ export class JobGenerator extends BaseGenerator {
     const namedExport = fn.kind === "named" ? fn.namedExport : fn.defaultExport;
     const fnSource = this.resolveServerImport(fn.source, `server/jobs/`);
 
-    const dlqQueue =
-      job.deadLetter?.queue ?? `${toCamelCase(job.name)}-failed`;
+    const dlqQueue = job.deadLetter?.queue ?? `${toCamelCase(job.name)}-failed`;
     const retryLimit = job.retries?.limit ?? 3;
     const retryDelay = job.retries?.delay ?? 1000;
     const retryMultiplier = job.retries?.multiplier ?? 2;
@@ -146,4 +148,3 @@ export class JobGenerator extends BaseGenerator {
     }
   }
 }
-

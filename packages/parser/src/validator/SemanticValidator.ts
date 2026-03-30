@@ -424,7 +424,9 @@ export class SemanticValidator {
 
   private checkJobExecutors(ast: VaspAST): void {
     for (const job of ast.jobs) {
-      if (!(SUPPORTED_JOB_EXECUTORS as readonly string[]).includes(job.executor)) {
+      if (
+        !(SUPPORTED_JOB_EXECUTORS as readonly string[]).includes(job.executor)
+      ) {
         this.diagnostics.push({
           code: "E110_UNKNOWN_JOB_EXECUTOR",
           message: `Unknown job executor '${job.executor}' in '${job.name}'`,
@@ -1309,7 +1311,7 @@ export class SemanticValidator {
       this.diagnostics.push({
         code: "W095_PROMETHEUS_WITHOUT_METRICS",
         message: "observability uses exporter: prometheus but metrics: false",
-        hint: 'Enable metrics to expose the Prometheus endpoint: metrics: true',
+        hint: "Enable metrics to expose the Prometheus endpoint: metrics: true",
         loc: obs.loc,
       });
     }
@@ -1371,7 +1373,9 @@ export class SemanticValidator {
 
       // rowActions must be valid
       for (const ra of ap.rowActions ?? []) {
-        if (!(SUPPORTED_AUTOPAGE_ROW_ACTIONS as readonly string[]).includes(ra)) {
+        if (
+          !(SUPPORTED_AUTOPAGE_ROW_ACTIONS as readonly string[]).includes(ra)
+        ) {
           this.diagnostics.push({
             code: "E_AUTOPAGE_INVALID_ROW_ACTION",
             message: `autoPage '${ap.name}' has invalid rowAction '${ra}'`,
@@ -1383,7 +1387,9 @@ export class SemanticValidator {
 
       // topActions must be valid
       for (const ta of ap.topActions ?? []) {
-        if (!(SUPPORTED_AUTOPAGE_TOP_ACTIONS as readonly string[]).includes(ta)) {
+        if (
+          !(SUPPORTED_AUTOPAGE_TOP_ACTIONS as readonly string[]).includes(ta)
+        ) {
           this.diagnostics.push({
             code: "E_AUTOPAGE_INVALID_TOP_ACTION",
             message: `autoPage '${ap.name}' has invalid topAction '${ta}'`,
@@ -1534,13 +1540,13 @@ export class SemanticValidator {
     for (const crud of ast.cruds) {
       if (!crud.formConfig) continue;
       const hasFormOp =
-        crud.operations.includes("create") || crud.operations.includes("update");
+        crud.operations.includes("create") ||
+        crud.operations.includes("update");
       if (!hasFormOp) {
         this.diagnostics.push({
           code: "E206_FORM_CONFIG_REQUIRES_WRITE_OP",
           message: `crud '${crud.name}' defines a form config but operations includes neither 'create' nor 'update'`,
-          hint:
-            "Add 'create' or 'update' to operations, or remove the form config block",
+          hint: "Add 'create' or 'update' to operations, or remove the form config block",
           loc: crud.loc,
         });
       }

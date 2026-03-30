@@ -181,9 +181,7 @@ describe("ObservabilityGenerator", () => {
     );
     expect(serverIndex).toContain("'/api/metrics'");
     expect(serverIndex).toContain("getPrometheusMetrics");
-    expect(serverIndex).toContain(
-      "text/plain; version=0.0.4; charset=utf-8",
-    );
+    expect(serverIndex).toContain("text/plain; version=0.0.4; charset=utf-8");
   });
 
   it("includes OTel packages in package.json when observability is enabled", () => {
@@ -209,7 +207,9 @@ describe("ObservabilityGenerator", () => {
     );
     expect(pkg.dependencies["@opentelemetry/api"]).toBeDefined();
     expect(pkg.dependencies["@opentelemetry/sdk-node"]).toBeDefined();
-    expect(pkg.dependencies["@opentelemetry/exporter-trace-otlp-http"]).toBeDefined();
+    expect(
+      pkg.dependencies["@opentelemetry/exporter-trace-otlp-http"],
+    ).toBeDefined();
     expect(pkg.dependencies["@opentelemetry/sdk-metrics"]).toBeDefined();
     expect(pkg.dependencies["@sentry/bun"]).toBeDefined();
   });

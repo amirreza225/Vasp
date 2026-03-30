@@ -80,7 +80,8 @@ export abstract class BaseGenerator {
       needsRedis:
         ast.jobs.some(
           (j) => j.executor === "BullMQ" || j.executor === "RedisStreams",
-        ) || caches.some((c) => c.provider === "redis" || c.provider === "valkey"),
+        ) ||
+        caches.some((c) => c.provider === "redis" || c.provider === "valkey"),
       hasStorage: (ast.storages?.length ?? 0) > 0,
       hasCloudStorage: (ast.storages ?? []).some((s) =>
         ["s3", "r2", "gcs"].includes(s.provider),
@@ -140,7 +141,9 @@ export abstract class BaseGenerator {
     const primaryColor = uiConfig?.primaryColor ?? null;
     const darkModeSelector = uiConfig?.darkModeSelector ?? ".app-dark";
     const ripple = uiConfig?.ripple ?? true;
-    const PRIMARY_SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+    const PRIMARY_SHADES = [
+      50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950,
+    ];
     return {
       theme,
       themeImportName: theme,

@@ -746,7 +746,9 @@ describe("generate()", () => {
     expect(route).toContain("eq(table.ownerId, _ownerId)");
 
     // GET /:id: should add ownership WHERE condition
-    expect(route).toContain("and(eq(orders.id, Number(id)), eq(orders.ownerId, _ownerId))");
+    expect(route).toContain(
+      "and(eq(orders.id, Number(id)), eq(orders.ownerId, _ownerId))",
+    );
 
     // POST / (create): should auto-set ownerId
     expect(route).toContain("ownerId: _ownerId");
@@ -754,7 +756,9 @@ describe("generate()", () => {
     // PUT /:id: should add ownership WHERE condition
     // DELETE /:id: should add ownership WHERE condition
     // (both appear in the same WHERE pattern)
-    const ownershipWhereCount = (route.match(/eq\(orders\.ownerId, _ownerId\)/g) ?? []).length;
+    const ownershipWhereCount = (
+      route.match(/eq\(orders\.ownerId, _ownerId\)/g) ?? []
+    ).length;
     // Appears in GET/:id, PUT/:id, DELETE/:id = at least 3 times
     expect(ownershipWhereCount).toBeGreaterThanOrEqual(3);
 
@@ -1059,7 +1063,9 @@ describe("generate()", () => {
     });
 
     expect(result.success).toBe(true);
-    expect(existsSync(join(outputDir, "server/jobs/redis-streams.js"))).toBe(true);
+    expect(existsSync(join(outputDir, "server/jobs/redis-streams.js"))).toBe(
+      true,
+    );
     const worker = readFileSync(
       join(outputDir, "server/jobs/syncInventory.js"),
       "utf8",
@@ -1184,7 +1190,9 @@ describe("generate()", () => {
     // Executors not used must NOT be generated
     expect(existsSync(join(outputDir, "server/jobs/kafka.js"))).toBe(false);
     expect(existsSync(join(outputDir, "server/jobs/rabbitmq.js"))).toBe(false);
-    expect(existsSync(join(outputDir, "server/jobs/redis-streams.js"))).toBe(false);
+    expect(existsSync(join(outputDir, "server/jobs/redis-streams.js"))).toBe(
+      false,
+    );
   });
 
   it("generates a memory cache store file", () => {
@@ -1426,10 +1434,7 @@ describe("generate()", () => {
     expect(appVue).toContain("<ConfirmDialog />");
     expect(appVue).toContain("<DynamicDialog />");
 
-    const vaspPlugin = readFileSync(
-      join(outputDir, "plugins/vasp.js"),
-      "utf8",
-    );
+    const vaspPlugin = readFileSync(join(outputDir, "plugins/vasp.js"), "utf8");
     expect(vaspPlugin).toContain("defineNuxtPlugin");
     expect(vaspPlugin).toContain("$fetch");
     expect(vaspPlugin).toContain("/queries/");
@@ -1507,10 +1512,7 @@ describe("generate()", () => {
     const nuxtConfig = readFileSync(join(outputDir, "nuxt.config.ts"), "utf8");
     expect(nuxtConfig).toContain("strict: false");
 
-    const vaspPlugin = readFileSync(
-      join(outputDir, "plugins/vasp.ts"),
-      "utf8",
-    );
+    const vaspPlugin = readFileSync(join(outputDir, "plugins/vasp.ts"), "utf8");
     expect(vaspPlugin).toContain("Promise<T>");
     expect(vaspPlugin).toContain("useRequestHeaders");
   });
@@ -2383,9 +2385,9 @@ describe("generate()", () => {
     });
 
     // Outbound handler in server/webhooks — no src/ stub needed
-    expect(
-      existsSync(join(outputDir, "server/webhooks/todoOutbound.js")),
-    ).toBe(true);
+    expect(existsSync(join(outputDir, "server/webhooks/todoOutbound.js"))).toBe(
+      true,
+    );
     // No spurious src/ stubs for outbound webhooks
     expect(existsSync(join(outputDir, "src/webhooks"))).toBe(false);
   });
@@ -2404,8 +2406,13 @@ describe("generate()", () => {
     const ast = parse(source);
     const outputDir = join(TMP_DIR, "webhook-stub-preserve");
     mkdirSync(join(outputDir, "src/webhooks"), { recursive: true });
-    const existingContent = "// existing user implementation\nexport async function handleStripeWebhook() { return 'real' }\n";
-    writeFileSync(join(outputDir, "src/webhooks/stripe.js"), existingContent, "utf8");
+    const existingContent =
+      "// existing user implementation\nexport async function handleStripeWebhook() { return 'real' }\n";
+    writeFileSync(
+      join(outputDir, "src/webhooks/stripe.js"),
+      existingContent,
+      "utf8",
+    );
 
     generate(ast, {
       outputDir,
@@ -2415,12 +2422,15 @@ describe("generate()", () => {
     });
 
     // Existing file must not be overwritten
-    const after = readFileSync(join(outputDir, "src/webhooks/stripe.js"), "utf8");
+    const after = readFileSync(
+      join(outputDir, "src/webhooks/stripe.js"),
+      "utf8",
+    );
     expect(after).toBe(existingContent);
   });
 
-    it("preserves Enum variants in entity fields", () => {
-      const source = `
+  it("preserves Enum variants in entity fields", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2429,22 +2439,22 @@ describe("generate()", () => {
           status: Enum(draft, published, archived) @default("draft")
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-enum");
-      generate(ast, {
-        outputDir,
-        templateDir: TEMPLATES_DIR,
-        logLevel: "silent",
-        engine: sharedEngine,
-      });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("status: Enum(draft, published, archived)");
-      expect(mainVasp).toContain('@default("draft")');
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-enum");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("preserves array relation fields (Todo[])", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("status: Enum(draft, published, archived)");
+    expect(mainVasp).toContain('@default("draft")');
+  });
+
+  it("preserves array relation fields (Todo[])", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2458,21 +2468,21 @@ describe("generate()", () => {
           author: User @onDelete(cascade)
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-array");
-      generate(ast, {
-        outputDir,
-        templateDir: TEMPLATES_DIR,
-        logLevel: "silent",
-        engine: sharedEngine,
-      });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("todos: Todo[]");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-array");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("preserves @onDelete modifier on relation fields", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("todos: Todo[]");
+  });
+
+  it("preserves @onDelete modifier on relation fields", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2484,22 +2494,22 @@ describe("generate()", () => {
           reviewer: User @onDelete(setNull) @nullable
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-ondelete");
-      generate(ast, {
-        outputDir,
-        templateDir: TEMPLATES_DIR,
-        logLevel: "silent",
-        engine: sharedEngine,
-      });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("@onDelete(cascade)");
-      expect(mainVasp).toContain("@onDelete(setNull)");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-ondelete");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("preserves @default(now) with closing parenthesis", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("@onDelete(cascade)");
+    expect(mainVasp).toContain("@onDelete(setNull)");
+  });
+
+  it("preserves @default(now) with closing parenthesis", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2509,23 +2519,23 @@ describe("generate()", () => {
           updatedAt: DateTime @updatedAt
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-defaultnow");
-      generate(ast, {
-        outputDir,
-        templateDir: TEMPLATES_DIR,
-        logLevel: "silent",
-        engine: sharedEngine,
-      });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("@default(now)");
-      expect(mainVasp).not.toContain("@default(now\n");
-      expect(mainVasp).toContain("@updatedAt");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-defaultnow");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits realtime blocks in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("@default(now)");
+    expect(mainVasp).not.toContain("@default(now\n");
+    expect(mainVasp).toContain("@updatedAt");
+  });
+
+  it("emits realtime blocks in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2533,23 +2543,23 @@ describe("generate()", () => {
         crud Todo { entity: Todo operations: [list, create] }
         realtime TodoChannel { entity: Todo events: [created, updated, deleted] }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-realtime");
-      generate(ast, {
-        outputDir,
-        templateDir: TEMPLATES_DIR,
-        logLevel: "silent",
-        engine: sharedEngine,
-      });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("realtime TodoChannel {");
-      expect(mainVasp).toContain("entity: Todo");
-      expect(mainVasp).toContain("events: [created, updated, deleted]");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-realtime");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits job blocks (with and without schedule) in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("realtime TodoChannel {");
+    expect(mainVasp).toContain("entity: Todo");
+    expect(mainVasp).toContain("events: [created, updated, deleted]");
+  });
+
+  it("emits job blocks (with and without schedule) in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2567,27 +2577,27 @@ describe("generate()", () => {
           schedule: "0 2 * * *"
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-jobs");
-      generate(ast, {
-        outputDir,
-        templateDir: TEMPLATES_DIR,
-        logLevel: "silent",
-        engine: sharedEngine,
-      });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("job sendWelcomeEmail {");
-      expect(mainVasp).toContain("executor: PgBoss");
-      expect(mainVasp).toContain(
-        'fn: import { sendWelcomeEmail } from "@src/jobs.js"',
-      );
-      expect(mainVasp).toContain("job cleanup {");
-      expect(mainVasp).toContain('schedule: "0 2 * * *"');
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-jobs");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits admin block in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("job sendWelcomeEmail {");
+    expect(mainVasp).toContain("executor: PgBoss");
+    expect(mainVasp).toContain(
+      'fn: import { sendWelcomeEmail } from "@src/jobs.js"',
+    );
+    expect(mainVasp).toContain("job cleanup {");
+    expect(mainVasp).toContain('schedule: "0 2 * * *"');
+  });
+
+  it("emits admin block in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2595,22 +2605,22 @@ describe("generate()", () => {
         entity User { id: Int @id username: String }
         admin { entities: [Todo, User] }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-admin");
-      generate(ast, {
-        outputDir,
-        templateDir: TEMPLATES_DIR,
-        logLevel: "silent",
-        engine: sharedEngine,
-      });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("admin {");
-      expect(mainVasp).toContain("entities: [Todo, User]");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-admin");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits app.ui sub-block in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("admin {");
+    expect(mainVasp).toContain("entities: [Todo, User]");
+  });
+
+  it("emits app.ui sub-block in main.vasp", () => {
+    const source = `
         app A {
           title: "T" db: Drizzle ssr: false typescript: false
           ui: { theme: Lara primaryColor: blue darkModeSelector: ".dark" ripple: true }
@@ -2618,20 +2628,25 @@ describe("generate()", () => {
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-ui");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("ui: {");
-      expect(mainVasp).toContain("theme: Lara");
-      expect(mainVasp).toContain("primaryColor: blue");
-      expect(mainVasp).toContain('darkModeSelector: ".dark"');
-      expect(mainVasp).toContain("ripple: true");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-ui");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits app.multiTenant sub-block in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("ui: {");
+    expect(mainVasp).toContain("theme: Lara");
+    expect(mainVasp).toContain("primaryColor: blue");
+    expect(mainVasp).toContain('darkModeSelector: ".dark"');
+    expect(mainVasp).toContain("ripple: true");
+  });
+
+  it("emits app.multiTenant sub-block in main.vasp", () => {
+    const source = `
         app A {
           title: "T" db: Drizzle ssr: false typescript: false
           multiTenant: { strategy: "row-level" tenantEntity: Workspace tenantField: id }
@@ -2640,19 +2655,24 @@ describe("generate()", () => {
         page P { component: import P from "@src/pages/P.vue" }
         entity Workspace { id: Int @id name: String }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-multitenant");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("multiTenant: {");
-      expect(mainVasp).toContain('strategy: "row-level"');
-      expect(mainVasp).toContain("tenantEntity: Workspace");
-      expect(mainVasp).toContain("tenantField: id");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-multitenant");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits auth permissions map in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("multiTenant: {");
+    expect(mainVasp).toContain('strategy: "row-level"');
+    expect(mainVasp).toContain("tenantEntity: Workspace");
+    expect(mainVasp).toContain("tenantField: id");
+  });
+
+  it("emits auth permissions map in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2664,18 +2684,23 @@ describe("generate()", () => {
         }
         entity User { id: Int @id email: String @unique }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-auth-permissions");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("permissions: {");
-      expect(mainVasp).toContain("task:create: [ admin ]");
-      expect(mainVasp).toContain("task:read: [ admin, member ]");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-auth-permissions");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits entity @@index and @@unique in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("permissions: {");
+    expect(mainVasp).toContain("task:create: [ admin ]");
+    expect(mainVasp).toContain("task:read: [ admin, member ]");
+  });
+
+  it("emits entity @@index and @@unique in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2689,18 +2714,23 @@ describe("generate()", () => {
           @@unique([title])
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-indexes");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("@@index([title], type: fulltext)");
-      expect(mainVasp).toContain("@@index([status])");
-      expect(mainVasp).toContain("@@unique([title])");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-indexes");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits @manyToMany and @storage field modifiers in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("@@index([title], type: fulltext)");
+    expect(mainVasp).toContain("@@index([status])");
+    expect(mainVasp).toContain("@@unique([title])");
+  });
+
+  it("emits @manyToMany and @storage field modifiers in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2713,17 +2743,22 @@ describe("generate()", () => {
         }
         storage TaskFiles { provider: local }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-manytomany");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("@manyToMany");
-      expect(mainVasp).toContain("@storage(TaskFiles)");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-manytomany");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits query cache config in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("@manyToMany");
+    expect(mainVasp).toContain("@storage(TaskFiles)");
+  });
+
+  it("emits query cache config in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2736,20 +2771,25 @@ describe("generate()", () => {
           cache: { store: AppCache ttl: 120 key: "all-posts" invalidateOn: [Post:create, Post:update] }
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-query-cache");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("cache: {");
-      expect(mainVasp).toContain("store: AppCache");
-      expect(mainVasp).toContain("ttl: 120");
-      expect(mainVasp).toContain('key: "all-posts"');
-      expect(mainVasp).toContain("invalidateOn: [Post:create, Post:update]");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-query-cache");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits crud list config, permissions, and ownership in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("cache: {");
+    expect(mainVasp).toContain("store: AppCache");
+    expect(mainVasp).toContain("ttl: 120");
+    expect(mainVasp).toContain('key: "all-posts"');
+    expect(mainVasp).toContain("invalidateOn: [Post:create, Post:update]");
+  });
+
+  it("emits crud list config, permissions, and ownership in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2768,23 +2808,28 @@ describe("generate()", () => {
           permissions: { list: task:read }
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-crud-full");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("ownership: author");
-      expect(mainVasp).toContain("list: {");
-      expect(mainVasp).toContain("paginate: true");
-      expect(mainVasp).toContain("sortable: [title]");
-      expect(mainVasp).toContain("filterable: [status]");
-      expect(mainVasp).toContain("search: [title]");
-      expect(mainVasp).toContain("permissions: {");
-      expect(mainVasp).toContain("list: task:read");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-crud-full");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits job priority, retries, and deadLetter in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("ownership: author");
+    expect(mainVasp).toContain("list: {");
+    expect(mainVasp).toContain("paginate: true");
+    expect(mainVasp).toContain("sortable: [title]");
+    expect(mainVasp).toContain("filterable: [status]");
+    expect(mainVasp).toContain("search: [title]");
+    expect(mainVasp).toContain("permissions: {");
+    expect(mainVasp).toContain("list: task:read");
+  });
+
+  it("emits job priority, retries, and deadLetter in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2796,23 +2841,28 @@ describe("generate()", () => {
           perform: { fn: import { sendEmail } from "@src/jobs.js" }
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-job-full");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("priority: 5");
-      expect(mainVasp).toContain("retries: {");
-      expect(mainVasp).toContain("limit: 3");
-      expect(mainVasp).toContain("backoff: exponential");
-      expect(mainVasp).toContain("delay: 1000");
-      expect(mainVasp).toContain("multiplier: 2");
-      expect(mainVasp).toContain("deadLetter: {");
-      expect(mainVasp).toContain('queue: "failed-emails"');
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-job-full");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits webhook blocks (inbound and outbound) in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("priority: 5");
+    expect(mainVasp).toContain("retries: {");
+    expect(mainVasp).toContain("limit: 3");
+    expect(mainVasp).toContain("backoff: exponential");
+    expect(mainVasp).toContain("delay: 1000");
+    expect(mainVasp).toContain("multiplier: 2");
+    expect(mainVasp).toContain("deadLetter: {");
+    expect(mainVasp).toContain('queue: "failed-emails"');
+  });
+
+  it("emits webhook blocks (inbound and outbound) in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2832,25 +2882,30 @@ describe("generate()", () => {
           secret: env(WEBHOOK_SECRET)
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-webhooks");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("webhook StripeWebhook {");
-      expect(mainVasp).toContain('path: "/webhooks/stripe"');
-      expect(mainVasp).toContain("secret: env(STRIPE_SECRET)");
-      expect(mainVasp).toContain('verifyWith: "stripe-signature"');
-      expect(mainVasp).toContain("fn: import { handleStripe }");
-      expect(mainVasp).toContain("webhook TodoOutbound {");
-      expect(mainVasp).toContain("entity: Todo");
-      expect(mainVasp).toContain("events: [created, updated]");
-      expect(mainVasp).toContain("targets: env(WEBHOOK_URLS)");
-      expect(mainVasp).toContain("retry: 3");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-webhooks");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits storage and cache blocks in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("webhook StripeWebhook {");
+    expect(mainVasp).toContain('path: "/webhooks/stripe"');
+    expect(mainVasp).toContain("secret: env(STRIPE_SECRET)");
+    expect(mainVasp).toContain('verifyWith: "stripe-signature"');
+    expect(mainVasp).toContain("fn: import { handleStripe }");
+    expect(mainVasp).toContain("webhook TodoOutbound {");
+    expect(mainVasp).toContain("entity: Todo");
+    expect(mainVasp).toContain("events: [created, updated]");
+    expect(mainVasp).toContain("targets: env(WEBHOOK_URLS)");
+    expect(mainVasp).toContain("retry: 3");
+  });
+
+  it("emits storage and cache blocks in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2867,25 +2922,30 @@ describe("generate()", () => {
           redis: { url: env(REDIS_URL) }
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-storage-cache");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("storage AvatarStorage {");
-      expect(mainVasp).toContain("provider: s3");
-      expect(mainVasp).toContain('bucket: "my-avatars"');
-      expect(mainVasp).toContain('maxSize: "5mb"');
-      expect(mainVasp).toContain('"image/jpeg"');
-      expect(mainVasp).toContain('publicPath: "/uploads"');
-      expect(mainVasp).toContain("cache RedisCache {");
-      expect(mainVasp).toContain("provider: redis");
-      expect(mainVasp).toContain("ttl: 300");
-      expect(mainVasp).toContain("url: env(REDIS_URL)");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-storage-cache");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits observability block in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("storage AvatarStorage {");
+    expect(mainVasp).toContain("provider: s3");
+    expect(mainVasp).toContain('bucket: "my-avatars"');
+    expect(mainVasp).toContain('maxSize: "5mb"');
+    expect(mainVasp).toContain('"image/jpeg"');
+    expect(mainVasp).toContain('publicPath: "/uploads"');
+    expect(mainVasp).toContain("cache RedisCache {");
+    expect(mainVasp).toContain("provider: redis");
+    expect(mainVasp).toContain("ttl: 300");
+    expect(mainVasp).toContain("url: env(REDIS_URL)");
+  });
+
+  it("emits observability block in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2897,21 +2957,26 @@ describe("generate()", () => {
           errorTracking: sentry
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-observability");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("observability {");
-      expect(mainVasp).toContain("tracing: true");
-      expect(mainVasp).toContain("metrics: true");
-      expect(mainVasp).toContain("logs: structured");
-      expect(mainVasp).toContain("exporter: otlp");
-      expect(mainVasp).toContain("errorTracking: sentry");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-observability");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("emits autoPage blocks in main.vasp", () => {
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("observability {");
+    expect(mainVasp).toContain("tracing: true");
+    expect(mainVasp).toContain("metrics: true");
+    expect(mainVasp).toContain("logs: structured");
+    expect(mainVasp).toContain("exporter: otlp");
+    expect(mainVasp).toContain("errorTracking: sentry");
+  });
+
+  it("emits autoPage blocks in main.vasp", () => {
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
@@ -2950,49 +3015,59 @@ describe("generate()", () => {
           fields: [id, title, status, done, createdAt, updatedAt]
         }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-autopages");
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(mainVasp).toContain("autoPage TodoList {");
-      expect(mainVasp).toContain("type: list");
-      expect(mainVasp).toContain('title: "Todo List"');
-      expect(mainVasp).toContain("columns: [id, title, status]");
-      expect(mainVasp).toContain("rowActions: [view, edit, delete]");
-      expect(mainVasp).toContain("topActions: [create]");
-      expect(mainVasp).toContain("paginate: true");
-      expect(mainVasp).toContain("pageSize: 20");
-      expect(mainVasp).toContain("autoPage CreateTodo {");
-      expect(mainVasp).toContain("type: form");
-      expect(mainVasp).toContain('layout: "2-column"');
-      expect(mainVasp).toContain("submitAction: createTodo");
-      expect(mainVasp).toContain('successRoute: "/todos"');
-      expect(mainVasp).toContain("auth: true");
-      expect(mainVasp).toContain("autoPage TodoDetail {");
-      expect(mainVasp).toContain("type: detail");
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-autopages");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
 
-    it("does NOT overwrite main.vasp when it already exists (vasp generate protection)", () => {
-      const { writeFileSync } = require("node:fs");
-      const source = `
+    const mainVasp = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(mainVasp).toContain("autoPage TodoList {");
+    expect(mainVasp).toContain("type: list");
+    expect(mainVasp).toContain('title: "Todo List"');
+    expect(mainVasp).toContain("columns: [id, title, status]");
+    expect(mainVasp).toContain("rowActions: [view, edit, delete]");
+    expect(mainVasp).toContain("topActions: [create]");
+    expect(mainVasp).toContain("paginate: true");
+    expect(mainVasp).toContain("pageSize: 20");
+    expect(mainVasp).toContain("autoPage CreateTodo {");
+    expect(mainVasp).toContain("type: form");
+    expect(mainVasp).toContain('layout: "2-column"');
+    expect(mainVasp).toContain("submitAction: createTodo");
+    expect(mainVasp).toContain('successRoute: "/todos"');
+    expect(mainVasp).toContain("auth: true");
+    expect(mainVasp).toContain("autoPage TodoDetail {");
+    expect(mainVasp).toContain("type: detail");
+  });
+
+  it("does NOT overwrite main.vasp when it already exists (vasp generate protection)", () => {
+    const { writeFileSync } = require("node:fs");
+    const source = `
         app A { title: "T" db: Drizzle ssr: false typescript: false }
         route R { path: "/" to: P }
         page P { component: import P from "@src/pages/P.vue" }
       `;
-      const ast = parse(source);
-      const outputDir = join(TMP_DIR, "main-vasp-protected");
-      mkdirSync(outputDir, { recursive: true });
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "main-vasp-protected");
+    mkdirSync(outputDir, { recursive: true });
 
-      // Pre-write a sentinel main.vasp simulating an existing user project
-      const sentinel = "// sentinel — must not be overwritten";
-      writeFileSync(join(outputDir, "main.vasp"), sentinel, "utf8");
+    // Pre-write a sentinel main.vasp simulating an existing user project
+    const sentinel = "// sentinel — must not be overwritten";
+    writeFileSync(join(outputDir, "main.vasp"), sentinel, "utf8");
 
-      generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
-
-      const afterGenerate = readFileSync(join(outputDir, "main.vasp"), "utf8");
-      expect(afterGenerate).toBe(sentinel);
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
     });
+
+    const afterGenerate = readFileSync(join(outputDir, "main.vasp"), "utf8");
+    expect(afterGenerate).toBe(sentinel);
+  });
 
   // ── Stale mode-switching file cleanup ────────────────────────────────────────
 
@@ -3012,12 +3087,22 @@ describe("generate()", () => {
     mkdirSync(outputDir, { recursive: true });
 
     // First generate as SPA — produces vite.config.js + index.html
-    generate(parse(spaSource), { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    generate(parse(spaSource), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
     expect(existsSync(join(outputDir, "vite.config.js"))).toBe(true);
     expect(existsSync(join(outputDir, "index.html"))).toBe(true);
 
     // Re-generate as SSR — stale SPA files must be removed
-    generate(parse(ssrSource), { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    generate(parse(ssrSource), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
     expect(existsSync(join(outputDir, "vite.config.js"))).toBe(false);
     expect(existsSync(join(outputDir, "index.html"))).toBe(false);
     expect(existsSync(join(outputDir, "nuxt.config.js"))).toBe(true);
@@ -3039,11 +3124,21 @@ describe("generate()", () => {
     mkdirSync(outputDir, { recursive: true });
 
     // First generate as SSR — produces nuxt.config.ts
-    generate(parse(ssrSource), { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    generate(parse(ssrSource), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
     expect(existsSync(join(outputDir, "nuxt.config.ts"))).toBe(true);
 
     // Re-generate as SPA — stale nuxt.config.ts must be removed
-    generate(parse(spaSource), { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    generate(parse(spaSource), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
     expect(existsSync(join(outputDir, "nuxt.config.ts"))).toBe(false);
     expect(existsSync(join(outputDir, "vite.config.ts"))).toBe(true);
   });

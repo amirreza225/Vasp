@@ -30,9 +30,19 @@ export class VaspDocumentStore {
   }
 
   /** Parse (or re-parse) a document and cache the result */
-  async update(uri: string, text: string, version: number): Promise<ParsedDocument> {
+  async update(
+    uri: string,
+    text: string,
+    version: number,
+  ): Promise<ParsedDocument> {
     const { ast, errors } = parseDocument(text);
-    const doc: ParsedDocument = { uri, version, ast, errors, parsedAt: Date.now() };
+    const doc: ParsedDocument = {
+      uri,
+      version,
+      ast,
+      errors,
+      parsedAt: Date.now(),
+    };
     this.cache.set(uri, doc);
     return doc;
   }
@@ -61,7 +71,10 @@ export class VaspDocumentStore {
     for (const doc of this.all()) {
       for (const block of doc.ast.blocks) {
         if (block.kind === "entity") {
-          const entry: { name: string; uri: string; offset?: number } = { name: block.name, uri: doc.uri };
+          const entry: { name: string; uri: string; offset?: number } = {
+            name: block.name,
+            uri: doc.uri,
+          };
           if (block.nameOffset !== undefined) entry.offset = block.nameOffset;
           results.push(entry);
         }
@@ -78,7 +91,10 @@ export class VaspDocumentStore {
     for (const doc of this.all()) {
       for (const block of doc.ast.blocks) {
         if (block.kind === "page") {
-          const entry: { name: string; uri: string; offset?: number } = { name: block.name, uri: doc.uri };
+          const entry: { name: string; uri: string; offset?: number } = {
+            name: block.name,
+            uri: doc.uri,
+          };
           if (block.nameOffset !== undefined) entry.offset = block.nameOffset;
           results.push(entry);
         }
@@ -94,7 +110,11 @@ export class VaspDocumentStore {
   entityFields(entityName: string): Record<string, string> | null {
     for (const doc of this.all()) {
       for (const block of doc.ast.blocks) {
-        if (block.kind === "entity" && block.name === entityName && block.fields) {
+        if (
+          block.kind === "entity" &&
+          block.name === entityName &&
+          block.fields
+        ) {
           return block.fields;
         }
       }

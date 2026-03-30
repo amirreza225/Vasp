@@ -8,11 +8,7 @@
  * at the actual error site rather than failing the entire file.
  */
 
-import {
-  CstParser,
-  type IToken,
-  ParserMethod,
-} from "chevrotain";
+import { CstParser, type IToken, ParserMethod } from "chevrotain";
 import {
   Action,
   Admin,
@@ -212,10 +208,34 @@ export class VaspParser extends CstParser {
 
   readonly fieldConfigProp = this.RULE("fieldConfigProp", () => {
     this.OR([
-      { ALT: () => { this.CONSUME(Label); this.CONSUME(Colon); this.CONSUME(StringLiteral, { LABEL: "value" }); } },
-      { ALT: () => { this.CONSUME(Placeholder); this.CONSUME2(Colon); this.CONSUME2(StringLiteral, { LABEL: "value" }); } },
-      { ALT: () => { this.CONSUME(Description); this.CONSUME3(Colon); this.CONSUME3(StringLiteral, { LABEL: "value" }); } },
-      { ALT: () => { this.CONSUME(Default); this.CONSUME4(Colon); this.SUBRULE(this.anyValue); } },
+      {
+        ALT: () => {
+          this.CONSUME(Label);
+          this.CONSUME(Colon);
+          this.CONSUME(StringLiteral, { LABEL: "value" });
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME(Placeholder);
+          this.CONSUME2(Colon);
+          this.CONSUME2(StringLiteral, { LABEL: "value" });
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME(Description);
+          this.CONSUME3(Colon);
+          this.CONSUME3(StringLiteral, { LABEL: "value" });
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME(Default);
+          this.CONSUME4(Colon);
+          this.SUBRULE(this.anyValue);
+        },
+      },
       { ALT: () => this.SUBRULE(this.validateBlock) },
     ]);
   });
@@ -229,13 +249,55 @@ export class VaspParser extends CstParser {
 
   readonly validateProp = this.RULE("validateProp", () => {
     this.OR([
-      { ALT: () => { this.CONSUME(Required); this.CONSUME(Colon); this.SUBRULE(this.boolValue); } },
-      { ALT: () => { this.CONSUME(MinLength); this.CONSUME2(Colon); this.CONSUME(NumberLiteral, { LABEL: "value" }); } },
-      { ALT: () => { this.CONSUME(MaxLength); this.CONSUME3(Colon); this.CONSUME2(NumberLiteral, { LABEL: "value" }); } },
-      { ALT: () => { this.CONSUME(Min); this.CONSUME4(Colon); this.CONSUME3(NumberLiteral, { LABEL: "value" }); } },
-      { ALT: () => { this.CONSUME(Max); this.CONSUME5(Colon); this.CONSUME4(NumberLiteral, { LABEL: "value" }); } },
-      { ALT: () => { this.CONSUME(Pattern); this.CONSUME6(Colon); this.CONSUME(StringLiteral, { LABEL: "value" }); } },
-      { ALT: () => { this.CONSUME(Custom); this.CONSUME7(Colon); this.CONSUME2(StringLiteral, { LABEL: "value" }); } },
+      {
+        ALT: () => {
+          this.CONSUME(Required);
+          this.CONSUME(Colon);
+          this.SUBRULE(this.boolValue);
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME(MinLength);
+          this.CONSUME2(Colon);
+          this.CONSUME(NumberLiteral, { LABEL: "value" });
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME(MaxLength);
+          this.CONSUME3(Colon);
+          this.CONSUME2(NumberLiteral, { LABEL: "value" });
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME(Min);
+          this.CONSUME4(Colon);
+          this.CONSUME3(NumberLiteral, { LABEL: "value" });
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME(Max);
+          this.CONSUME5(Colon);
+          this.CONSUME4(NumberLiteral, { LABEL: "value" });
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME(Pattern);
+          this.CONSUME6(Colon);
+          this.CONSUME(StringLiteral, { LABEL: "value" });
+        },
+      },
+      {
+        ALT: () => {
+          this.CONSUME(Custom);
+          this.CONSUME7(Colon);
+          this.CONSUME2(StringLiteral, { LABEL: "value" });
+        },
+      },
     ]);
   });
 

@@ -88,17 +88,20 @@ export function registerDefinitionHandler(
             if (match && match.index !== undefined) {
               const nameStart = match.index + match[0].indexOf(word);
               const nameEnd = nameStart + word.length;
-              return Location.create(docInfo.uri, Range.create(
-                offsetToPosition(targetText, nameStart),
-                offsetToPosition(targetText, nameEnd),
-              ));
+              return Location.create(
+                docInfo.uri,
+                Range.create(
+                  offsetToPosition(targetText, nameStart),
+                  offsetToPosition(targetText, nameEnd),
+                ),
+              );
             }
           }
           // Fallback: start of file
-          return Location.create(docInfo.uri, Range.create(
-            Position.create(0, 0),
-            Position.create(0, 0),
-          ));
+          return Location.create(
+            docInfo.uri,
+            Range.create(Position.create(0, 0), Position.create(0, 0)),
+          );
         }
       }
     }

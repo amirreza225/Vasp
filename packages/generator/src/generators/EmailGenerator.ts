@@ -44,8 +44,7 @@ export class EmailGenerator extends BaseGenerator {
       for (const tpl of email.templates) {
         const { fn } = tpl;
         if (!fn.source.startsWith("@src/")) continue;
-        const fnName =
-          fn.kind === "named" ? fn.namedExport : fn.defaultExport;
+        const fnName = fn.kind === "named" ? fn.namedExport : fn.defaultExport;
         if (!bySource.has(fn.source)) bySource.set(fn.source, []);
         bySource.get(fn.source)!.push(fnName);
       }

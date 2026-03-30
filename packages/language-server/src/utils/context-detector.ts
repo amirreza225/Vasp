@@ -33,7 +33,8 @@ export type CursorContext =
   | { type: "unknown" };
 
 /** Regex that matches a block opener like `entity Foo {` or `crud Bar {` */
-const BLOCK_OPENER_RE = /\b(app|auth|entity|route|page|query|action|api|middleware|crud|realtime|job|seed|admin|storage|email|cache|webhook|observability|autoPage)\s+(\w+)\s*\{/g;
+const BLOCK_OPENER_RE =
+  /\b(app|auth|entity|route|page|query|action|api|middleware|crud|realtime|job|seed|admin|storage|email|cache|webhook|observability|autoPage)\s+(\w+)\s*\{/g;
 
 /**
  * Detect the cursor context by scanning backward from the cursor offset.
@@ -98,15 +99,19 @@ export function detectCursorContext(
   // Detect sub-block context within crud
   if (kind === "crud") {
     if (isInsideSubBlock(insideBlock, "list")) {
-      if (isInsideSubBlock(getSubBlockContent(insideBlock, "list"), "columns")) {
+      if (
+        isInsideSubBlock(getSubBlockContent(insideBlock, "list"), "columns")
+      ) {
         return { type: "crud-columns", blockName };
       }
       return { type: "crud-list", blockName };
     }
     if (isInsideSubBlock(insideBlock, "form")) {
       const formContent = getSubBlockContent(insideBlock, "form");
-      if (isInsideSubBlock(formContent, "sections")) return { type: "crud-sections", blockName };
-      if (isInsideSubBlock(formContent, "steps")) return { type: "crud-steps", blockName };
+      if (isInsideSubBlock(formContent, "sections"))
+        return { type: "crud-sections", blockName };
+      if (isInsideSubBlock(formContent, "steps"))
+        return { type: "crud-steps", blockName };
       return { type: "crud-form", blockName };
     }
     if (isInsideSubBlock(insideBlock, "permissions")) {
@@ -118,7 +123,10 @@ export function detectCursorContext(
   // Detect entity sub-contexts
   if (kind === "entity") {
     // Check if inside a field config block (field { ... })
-    const fieldConfigMatch = /\b(\w+)\s*:\s*\w[\w(,\s)]*(?:\s+@\w+(?:\([^)]*\))?)* *\{([^}]*)$/.exec(insideBlock);
+    const fieldConfigMatch =
+      /\b(\w+)\s*:\s*\w[\w(,\s)]*(?:\s+@\w+(?:\([^)]*\))?)* *\{([^}]*)$/.exec(
+        insideBlock,
+      );
     if (fieldConfigMatch) {
       const fieldName = fieldConfigMatch[1] ?? "";
       const configContent = fieldConfigMatch[2] ?? "";
@@ -154,18 +162,23 @@ function countBraceDepth(text: string): number {
   while (i < text.length) {
     const ch = text[i] ?? "";
     if (inString) {
-      if (ch === "\\" && i + 1 < text.length) { i += 2; continue; }
+      if (ch === "\\" && i + 1 < text.length) {
+        i += 2;
+        continue;
+      }
       if (ch === '"') inString = false;
     } else {
-      if (ch === '"') { inString = true; }
-      else if (ch === "/" && text[i + 1] === "/") {
+      if (ch === '"') {
+        inString = true;
+      } else if (ch === "/" && text[i + 1] === "/") {
         // Skip line comment
         while (i < text.length && text[i] !== "\n") i++;
         continue;
       } else if (ch === "/" && text[i + 1] === "*") {
         // Skip block comment — advance past `/*` then scan for `*/`
         i += 2;
-        while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) i++;
+        while (i < text.length && !(text[i] === "*" && text[i + 1] === "/"))
+          i++;
         if (i < text.length) i += 2; // advance past `*/` only if found
         continue;
       } else if (ch === "{") depth++;

@@ -1084,7 +1084,11 @@ describe("Parser — job", () => {
       deadLetter: { queue: "failed-payments" },
       schedule: "0 * * * *",
       perform: {
-        fn: { kind: "named", namedExport: "processPayment", source: "@src/jobs.js" },
+        fn: {
+          kind: "named",
+          namedExport: "processPayment",
+          source: "@src/jobs.js",
+        },
       },
     });
   });

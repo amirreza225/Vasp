@@ -449,9 +449,8 @@ export class FixtureHarness {
     if (svc.minio) stopContainer(svc.minio.containerId)
     if (svc.mailpit) stopContainer(svc.mailpit.containerId)
 
-    // ── 4. Remove app + log directories ─────────────────────────────────
+    // ── 4. Remove app directory (keep logs for inspection) ──────────────────
     if (existsSync(appDir)) rmSync(appDir, { recursive: true, force: true })
-    if (existsSync(logDir)) rmSync(logDir, { recursive: true, force: true })
     if (existsSync(stateFile)) rmSync(stateFile)
 
     console.log(`[harness:${this.cfg.name}] Teardown complete.`)

@@ -16,7 +16,8 @@ import { VaspLexer } from "./VaspLexer.js";
 import { getVaspParser } from "./VaspParser.js";
 
 const parser = getVaspParser();
-const BaseCstVisitorConstructor = parser.getBaseCstVisitorConstructorWithDefaults();
+const BaseCstVisitorConstructor =
+  parser.getBaseCstVisitorConstructorWithDefaults();
 
 /** Lightweight block summary used by LSP features */
 export interface BlockSummary {
@@ -94,7 +95,10 @@ class VaspCstVisitorClass extends BaseCstVisitorConstructor {
     const nameToken = (ctx["name"] as IToken[])?.[0];
     const fields: Record<string, string> = {};
     for (const field of (ctx["fieldDecl"] as CstNode[] | undefined) ?? []) {
-      const { name: fName, type: fType } = this.visit(field) as { name: string; type: string };
+      const { name: fName, type: fType } = this.visit(field) as {
+        name: string;
+        type: string;
+      };
       if (fName) fields[fName] = fType;
     }
     const base: BlockSummary = {
@@ -102,12 +106,17 @@ class VaspCstVisitorClass extends BaseCstVisitorConstructor {
       name: nameToken?.image ?? "",
       fields,
     };
-    if (nameToken?.startOffset !== undefined) base.nameOffset = nameToken.startOffset;
-    if (nameToken?.image !== undefined) base.nameLength = nameToken.image.length;
+    if (nameToken?.startOffset !== undefined)
+      base.nameOffset = nameToken.startOffset;
+    if (nameToken?.image !== undefined)
+      base.nameLength = nameToken.image.length;
     return base;
   }
 
-  fieldDecl(ctx: Record<string, CstNode[] | IToken[]>): { name: string; type: string } {
+  fieldDecl(ctx: Record<string, CstNode[] | IToken[]>): {
+    name: string;
+    type: string;
+  } {
     const nameToken = (ctx["fieldName"] as IToken[])?.[0];
     const typeCst = (ctx["fieldType"] as CstNode[])?.[0];
     const typeName = typeCst ? (this.visit(typeCst) as string) : "unknown";
@@ -168,8 +177,10 @@ class VaspCstVisitorClass extends BaseCstVisitorConstructor {
   pageBlock(ctx: Record<string, IToken[]>): BlockSummary {
     const nameToken = ctx["name"]?.[0];
     const base: BlockSummary = { kind: "page", name: nameToken?.image ?? "" };
-    if (nameToken?.startOffset !== undefined) base.nameOffset = nameToken.startOffset;
-    if (nameToken?.image !== undefined) base.nameLength = nameToken.image.length;
+    if (nameToken?.startOffset !== undefined)
+      base.nameOffset = nameToken.startOffset;
+    if (nameToken?.image !== undefined)
+      base.nameLength = nameToken.image.length;
     return base;
   }
 
@@ -299,7 +310,9 @@ class VaspCstVisitorClass extends BaseCstVisitorConstructor {
     return { kind: "autoPage", name: nameToken?.image ?? "" };
   }
 
-  property(ctx: Record<string, CstNode[] | IToken[]>): { key: string; value: string } | null {
+  property(
+    ctx: Record<string, CstNode[] | IToken[]>,
+  ): { key: string; value: string } | null {
     const keyCst = (ctx["propertyKey"] as CstNode[])?.[0];
     const valueCst = (ctx["anyValue"] as CstNode[])?.[0];
     if (!keyCst || !valueCst) return null;
@@ -366,7 +379,10 @@ export function getVaspVisitor(): VaspCstVisitorClass {
 }
 
 /** Parse a .vasp source text and return a lightweight DocumentAST */
-export function parseDocument(source: string): { ast: DocumentAST; errors: string[] } {
+export function parseDocument(source: string): {
+  ast: DocumentAST;
+  errors: string[];
+} {
   const lexResult = VaspLexer.tokenize(source);
   const parser = getVaspParser();
   parser.input = lexResult.tokens;

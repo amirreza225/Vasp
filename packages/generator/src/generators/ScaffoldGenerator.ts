@@ -224,7 +224,10 @@ export class ScaffoldGenerator extends BaseGenerator {
       if (ast.auth.roles && ast.auth.roles.length > 0) {
         lines.push(`  roles: [ ${ast.auth.roles.join(", ")} ]`);
       }
-      if (ast.auth.permissions && Object.keys(ast.auth.permissions).length > 0) {
+      if (
+        ast.auth.permissions &&
+        Object.keys(ast.auth.permissions).length > 0
+      ) {
         lines.push(`  permissions: {`);
         for (const [perm, roles] of Object.entries(ast.auth.permissions)) {
           lines.push(`    ${perm}: [ ${roles.join(", ")} ]`);
@@ -294,7 +297,8 @@ export class ScaffoldGenerator extends BaseGenerator {
         if (field.nullable) modParts.push("@nullable");
         if (field.isUpdatedAt) modParts.push("@updatedAt");
         if (field.isManyToMany) modParts.push("@manyToMany");
-        if (field.storageBlock) modParts.push(`@storage(${field.storageBlock})`);
+        if (field.storageBlock)
+          modParts.push(`@storage(${field.storageBlock})`);
         if (field.validation) {
           const vld = field.validation;
           const parts: string[] = [];
@@ -373,7 +377,11 @@ export class ScaffoldGenerator extends BaseGenerator {
         lines.push(`  roles: [${action.roles.join(", ")}]`);
       }
       if (action.onSuccess?.sendEmail) {
-        lines.push(`  onSuccess: {`, `    sendEmail: ${action.onSuccess.sendEmail}`, `  }`);
+        lines.push(
+          `  onSuccess: {`,
+          `    sendEmail: ${action.onSuccess.sendEmail}`,
+          `  }`,
+        );
       }
       lines.push(`}`, "");
     }
@@ -474,7 +482,11 @@ export class ScaffoldGenerator extends BaseGenerator {
         lines.push(`  }`);
       }
       if (job.deadLetter?.queue) {
-        lines.push(`  deadLetter: {`, `    queue: "${job.deadLetter.queue}"`, `  }`);
+        lines.push(
+          `  deadLetter: {`,
+          `    queue: "${job.deadLetter.queue}"`,
+          `  }`,
+        );
       }
       lines.push(`  perform: {`, `    fn: ${performFnStr}`, `  }`);
       if (job.schedule) lines.push(`  schedule: "${job.schedule}"`);
@@ -503,16 +515,18 @@ export class ScaffoldGenerator extends BaseGenerator {
 
     // storage blocks
     for (const storage of ast.storages ?? []) {
-      lines.push(`storage ${storage.name} {`, `  provider: ${storage.provider}`);
+      lines.push(
+        `storage ${storage.name} {`,
+        `  provider: ${storage.provider}`,
+      );
       if (storage.bucket) lines.push(`  bucket: "${storage.bucket}"`);
       if (storage.maxSize) lines.push(`  maxSize: "${storage.maxSize}"`);
       if (storage.allowedTypes && storage.allowedTypes.length > 0) {
-        const types = storage.allowedTypes
-          .map((t) => `"${t}"`)
-          .join(", ");
+        const types = storage.allowedTypes.map((t) => `"${t}"`).join(", ");
         lines.push(`  allowedTypes: [${types}]`);
       }
-      if (storage.publicPath) lines.push(`  publicPath: "${storage.publicPath}"`);
+      if (storage.publicPath)
+        lines.push(`  publicPath: "${storage.publicPath}"`);
       lines.push(`}`, "");
     }
 
@@ -569,7 +583,8 @@ export class ScaffoldGenerator extends BaseGenerator {
           lines.push(`  events: [${webhook.events.join(", ")}]`);
         }
         if (webhook.targets) lines.push(`  targets: env(${webhook.targets})`);
-        if (webhook.retry !== undefined) lines.push(`  retry: ${webhook.retry}`);
+        if (webhook.retry !== undefined)
+          lines.push(`  retry: ${webhook.retry}`);
         if (webhook.secret) lines.push(`  secret: env(${webhook.secret})`);
       }
       lines.push(`}`, "");
