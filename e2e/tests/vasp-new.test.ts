@@ -144,6 +144,34 @@ describe('vasp new', () => {
   })
 
   // ---------------------------------------------------------------------------
+  // SSG mode
+  // ---------------------------------------------------------------------------
+  describe('--ssg flag', () => {
+    it('generates Nuxt config instead of Vite config', () => {
+      vasp(['new', 'ssg-app', '--ssg', '--no-install'])
+      const out = join(TMP_DIR, 'ssg-app')
+
+      expect(existsSync(join(out, 'nuxt.config.js'))).toBe(true)
+      expect(existsSync(join(out, 'vite.config.js'))).toBe(false)
+      expect(existsSync(join(out, 'index.html'))).toBe(false)
+    })
+
+    it('SSG + TypeScript generates nuxt.config.ts', () => {
+      vasp(['new', 'ssg-ts-app', '--ssg', '--typescript', '--no-install'])
+      const out = join(TMP_DIR, 'ssg-ts-app')
+
+      expect(existsSync(join(out, 'nuxt.config.ts'))).toBe(true)
+      expect(existsSync(join(out, 'tsconfig.json'))).toBe(true)
+    })
+
+    it('main.vasp reflects ssr: "ssg" for SSG mode', () => {
+      vasp(['new', 'ssg-check', '--ssg', '--no-install'])
+      const vasp_file = readFileSync(join(TMP_DIR, 'ssg-check', 'main.vasp'), 'utf8')
+      expect(vasp_file).toContain('ssr: "ssg"')
+    })
+  })
+
+  // ---------------------------------------------------------------------------
   // Starter templates
   // ---------------------------------------------------------------------------
   describe('--starter flag', () => {
@@ -158,6 +186,24 @@ describe('vasp new', () => {
     it('scaffolds from the todo starter', () => {
       vasp(['new', 'from-todo', '--starter=todo', '--no-install'])
       const out = join(TMP_DIR, 'from-todo')
+
+      expect(existsSync(join(out, 'package.json'))).toBe(true)
+      expect(existsSync(join(out, 'main.vasp'))).toBe(true)
+    })
+
+    it('scaffolds from the todo-auth-ssr starter', () => {
+      vasp(['new', 'from-todo-auth-ssr', '--starter=todo-auth-ssr', '--no-install'])
+      const out = join(TMP_DIR, 'from-todo-auth-ssr')
+
+      expect(existsSync(join(out, 'package.json'))).toBe(true)
+      expect(existsSync(join(out, 'main.vasp'))).toBe(true)
+      // todo-auth-ssr starter uses SSR mode — nuxt.config.js should be present
+      expect(existsSync(join(out, 'nuxt.config.js'))).toBe(true)
+    })
+
+    it('scaffolds from the recipe starter', () => {
+      vasp(['new', 'from-recipe', '--starter=recipe', '--no-install'])
+      const out = join(TMP_DIR, 'from-recipe')
 
       expect(existsSync(join(out, 'package.json'))).toBe(true)
       expect(existsSync(join(out, 'main.vasp'))).toBe(true)
