@@ -441,13 +441,6 @@ action updateUserProfile {
 
 // ─── Custom API Endpoints ─────────────────────────────────────────────────────
 
-api healthCheck {
-  method: GET
-  path: "/api/health"
-  fn: import { healthCheck } from "@src/api/health.js"
-  auth: false
-}
-
 api getMetrics {
   method: GET
   path: "/api/metrics"
