@@ -79,8 +79,10 @@ export function useQuery<T = unknown>(
     // Auto-fetch after mount so SSR hydration is not disrupted
     refresh();
   } else {
-    // Outside a component — register globally (never auto-unregistered)
-    registerQuery(queryName, refresh);
+    // Outside a component (e.g. Pinia store, top-level composable) — do NOT
+    // register in the global registry because there is no lifecycle hook to
+    // remove the entry.  The returned `refresh` function gives the caller full
+    // control over re-fetching without leaking into queryRegistry.
     refresh();
   }
 
