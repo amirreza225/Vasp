@@ -202,6 +202,7 @@ const FIELD_MODIFIER_COMPLETIONS: CompletionItem[] = [
   "@nullable",
   "@updatedAt",
   "@manyToMany",
+  "@hidden",
 ].map((m): CompletionItem => {
   const item: CompletionItem = {
     label: m,

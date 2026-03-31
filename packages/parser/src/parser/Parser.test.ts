@@ -1508,6 +1508,28 @@ describe("Parser — new field types and modifiers (Phase 2)", () => {
     const field = ast.entities[0]?.fields[1];
     expect(field?.defaultValue).toBe("draft");
   });
+
+  it("parses @hidden modifier", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User { id: Int @id secretToken: String @hidden }
+    `);
+    const field = ast.entities[0]?.fields[1];
+    expect(field?.isHidden).toBe(true);
+    expect(field?.modifiers).toContain("hidden");
+  });
+
+  it("parses @hidden combined with other modifiers", () => {
+    const ast = parse(`
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity User { id: Int @id internalScore: Int @nullable @hidden }
+    `);
+    const field = ast.entities[0]?.fields[1];
+    expect(field?.isHidden).toBe(true);
+    expect(field?.nullable).toBe(true);
+    expect(field?.modifiers).toContain("hidden");
+    expect(field?.modifiers).toContain("nullable");
+  });
 });
 
 describe("Parser — snapshot: full-featured fixture", () => {

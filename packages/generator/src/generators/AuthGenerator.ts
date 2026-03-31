@@ -24,16 +24,24 @@ export class AuthGenerator extends BaseGenerator {
     const userEntity = ast.entities.find(
       (e) => e.name === ast.auth!.userEntity,
     );
-    const userFkFields = (userEntity?.fields ?? [])
-      .filter((f) => f.isRelation && !f.isArray)
-      .map((f) => ({ fieldName: `${toCamelCase(f.name)}Id` }));
-    const hasUserFkFields = userFkFields.length > 0;
-
     // Detect password field name (either 'password' or 'passwordHash')
     const passwordField = userEntity?.fields.find(
       (f) => f.name === "password" || f.name === "passwordHash",
     );
     const passwordFieldName = passwordField?.name || "passwordHash";
+
+    const userFkFields = (userEntity?.fields ?? [])
+      .filter((f) => f.isRelation && !f.isArray)
+      .map((f) => ({ fieldName: `${toCamelCase(f.name)}Id` }));
+    const hasUserFkFields = userFkFields.length > 0;
+
+    // Collect fields marked @hidden on the user entity (excluding the password field).
+    // These will be stripped from register/login/me API responses so sensitive data
+    // (e.g. stripeCustomerId, internalScore) is never returned to the client.
+    const hiddenFields = (userEntity?.fields ?? [])
+      .filter((f) => f.isHidden && f.name !== passwordFieldName)
+      .map((f) => ({ name: f.name }));
+    const hasHiddenFields = hiddenFields.length > 0;
 
     // Derive the Drizzle table const name from the user entity name.
     // Matches the convention used in DrizzleSchemaGenerator: toPlural(camelCase(name)).
@@ -47,6 +55,8 @@ export class AuthGenerator extends BaseGenerator {
       permissionEntries,
       userFkFields,
       hasUserFkFields,
+      hiddenFields,
+      hasHiddenFields,
       passwordFieldName,
       userTableName,
     };

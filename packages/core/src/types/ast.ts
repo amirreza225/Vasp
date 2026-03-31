@@ -128,7 +128,8 @@ export type FieldModifier =
   | "unique"
   | "default_now"
   | "nullable"
-  | "updatedAt";
+  | "updatedAt"
+  | "hidden";
 
 /**
  * DSL-declared validation constraints for a field, expressed via @validate(...).
@@ -224,6 +225,8 @@ export interface FieldNode {
   isManyToMany?: boolean;
   /** Storage block name from @storage(StorageName) modifier — only for File fields */
   storageBlock?: string;
+  /** True when @hidden modifier is present — field is excluded from all API responses */
+  isHidden?: boolean;
   /**
    * Field-level display hints declared inside the field's `{ … }` config block.
    * Present only when the field has an explicit config block in the v2 DSL.
