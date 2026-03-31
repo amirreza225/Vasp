@@ -10,9 +10,9 @@
 
 ---
 
-## Tier 1 — Critical (correctness / security / architectural)
+## Tier 1 — Critical (correctness / security / architectural) 
 
-### 1. Two completely separate parsers that must be kept in sync manually
+### 1. Two completely separate parsers that must be kept in sync manually Done ✅
 
 `packages/parser/` contains a hand-written recursive-descent parser (≈2,840
 lines). `packages/language-server/src/grammar/` contains an entirely
@@ -41,7 +41,7 @@ symbol index while the full validator runs separately.
 
 ---
 
-### 2. `commitStagedFiles` never deletes orphaned generated files
+### 2. `commitStagedFiles` never deletes orphaned generated files Done ✅
 
 When a user removes a `crud`, `query`, `action`, or `entity` block and
 re-runs `vasp generate`, the previously generated files **are never deleted**.
@@ -64,7 +64,7 @@ old set that is not in the new set and has not been modified by the user
 
 ---
 
-### 3. Auth middleware hardcodes `users` and `passwordHash` — ignores `userEntity`
+### 3. Auth middleware hardcodes `users` and `passwordHash` — ignores `userEntity` Done ✅
 
 `templates/shared/auth/server/middleware.hbs` unconditionally imports:
 
@@ -91,7 +91,7 @@ instead of `users`), and the password field exclusion must use the resolved
 
 ---
 
-### 4. `schema-level` and `database-level` multi-tenancy silently do nothing
+### 4. `schema-level` and `database-level` multi-tenancy silently do nothing Done ✅
 
 The DSL, parser, and semantic validator all accept:
 
@@ -152,7 +152,7 @@ than disabling the checker for the entire file.
 
 ---
 
-### 7. Auth register/login responses bypass the standard error envelope
+### 7. Auth register/login responses bypass the standard error envelope Done ✅
 
 `providers/usernameAndPassword.hbs` returns raw objects on error:
 
@@ -169,7 +169,7 @@ plain `{ error: "…" }` is passed through as success data.
 
 ---
 
-### 8. Single generator failure silently aborts all subsequent generators
+### 8. Single generator failure silently aborts all subsequent generators Done ✅
 
 `generate.ts` wraps the entire generator sequence in one `try/catch`. If
 `BackendGenerator` (step 3 of 19) throws, generators 4–19 never run. The
@@ -187,7 +187,7 @@ errors together at the end. Only abort if a dependency is structurally missing
 
 ---
 
-### 9. `language-server` and `vscode-extension` are excluded from `bun run build`
+### 9. `language-server` and `vscode-extension` are excluded from `bun run build` Done ✅
 
 Root `package.json`:
 
