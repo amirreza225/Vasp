@@ -281,7 +281,7 @@ component, causing memory growth and spurious network requests.
 
 ---
 
-### 15. Template engine helpers embed complex business logic untested
+### 15. Template engine helpers embed complex business logic untested Done ✅
 
 `TemplateEngine.ts` contains the `valibotSchema` and `drizzleColumn` helpers
 — complex mapping logic covering 9 field types, nullability, enum variants,
