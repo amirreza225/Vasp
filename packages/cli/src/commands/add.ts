@@ -382,13 +382,28 @@ export async function addCommand(args: string[]): Promise<void> {
 
 // ---------- helpers ----------
 
-/** Append a DSL block to main.vasp, ensuring the file ends with a newline. */
-function appendToVasp(
+/**
+ * Validate + append a DSL block to main.vasp.
+ *
+ * The combined source (existing content + new block) is parsed through the
+ * full AST pipeline *before* writing to disk.  If the generated block is
+ * malformed the process exits with a clear diagnostic and main.vasp is left
+ * untouched.
+ *
+ * Exported for unit testing.
+ */
+export function appendToVasp(
   vaspFile: string,
   currentSource: string,
   block: string,
 ): void {
-  writeFileSync(vaspFile, currentSource.trimEnd() + "\n" + block, "utf8");
+  const newSource = currentSource.trimEnd() + "\n" + block;
+  try {
+    parse(newSource, "main.vasp");
+  } catch (err) {
+    handleParseError(err, newSource, "main.vasp");
+  }
+  writeFileSync(vaspFile, newSource, "utf8");
 }
 
 type FunctionKind = "query" | "action" | "job" | "api";
