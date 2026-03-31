@@ -11,9 +11,9 @@
  *   - Go-to-definition for entity and page cross-references
  */
 
+import type { InitializeResult } from "vscode-languageserver/node.js";
 import {
   createConnection,
-  InitializeResult,
   ProposedFeatures,
   TextDocumentSyncKind,
   TextDocuments,

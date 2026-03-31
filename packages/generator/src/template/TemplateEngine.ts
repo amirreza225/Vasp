@@ -2,7 +2,7 @@ import type { FieldValidation } from "@vasp-framework/core";
 import { GeneratorError } from "@vasp-framework/core";
 import Handlebars from "handlebars";
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { basename, extname, join, relative } from "node:path";
+import { extname, join, relative } from "node:path";
 
 type TemplateDelegate = HandlebarsTemplateDelegate<unknown>;
 

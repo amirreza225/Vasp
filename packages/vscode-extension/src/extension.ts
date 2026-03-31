@@ -5,8 +5,8 @@
  * Starts the Vasp language server and registers it with VS Code.
  */
 
-import * as vscode from "vscode";
-import { LanguageClient } from "vscode-languageclient/node";
+import type * as vscode from "vscode";
+import type { LanguageClient } from "vscode-languageclient/node";
 import { createLanguageClient, stopLanguageClient } from "./client.js";
 
 let languageClient: LanguageClient | undefined;

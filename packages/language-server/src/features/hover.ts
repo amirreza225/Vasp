@@ -6,14 +6,14 @@
  * return it as a MarkupContent (Markdown) hover response.
  */
 
-import {
+import type {
   Connection,
   Hover,
   MarkupContent,
-  MarkupKind,
   TextDocuments,
 } from "vscode-languageserver";
-import { TextDocument } from "vscode-languageserver-textdocument";
+import { MarkupKind } from "vscode-languageserver";
+import type { TextDocument } from "vscode-languageserver-textdocument";
 import { getDoc } from "../utils/vasp-docs.js";
 
 /** Regex to extract the word under cursor (including leading @) */

@@ -115,8 +115,8 @@ export const app = new Elysia()
   .use(errorHandler())
   .use(cors({
     origin: process.env.CORS_ORIGIN
-      ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
-      : ['http://localhost:{{frontendPort}}'{{#if hasAdmin}}, 'http://localhost:5174'{{/if}}],
+      ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+      : ['http://localhost:{{frontendPort}}'{{#if hasAdmin}}, 'http://localhost:{{adminPort}}'{{/if}}],
     credentials: true,
   }))
   .use(rateLimit())

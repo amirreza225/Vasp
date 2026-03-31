@@ -6,8 +6,8 @@
  * entity and page references.
  */
 
-import { TextDocuments } from "vscode-languageserver";
-import { TextDocument } from "vscode-languageserver-textdocument";
+import type { TextDocuments } from "vscode-languageserver";
+import type { TextDocument } from "vscode-languageserver-textdocument";
 import { parseDocument, type DocumentAST } from "../grammar/VaspCstVisitor.js";
 
 export interface ParsedDocument {

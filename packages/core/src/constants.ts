@@ -168,3 +168,4 @@ export const SUPPORTED_UI_PRIMARY_COLORS = [
 export const DEFAULT_BACKEND_PORT = 3001;
 export const DEFAULT_SPA_PORT = 5173;
 export const DEFAULT_SSR_PORT = 3000;
+export const DEFAULT_ADMIN_PORT = 5174;

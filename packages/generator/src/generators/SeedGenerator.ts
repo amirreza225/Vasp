@@ -4,7 +4,7 @@ import { BaseGenerator } from "./BaseGenerator.js";
 
 export class SeedGenerator extends BaseGenerator {
   run(): void {
-    const { seed, app } = this.ctx.ast;
+    const { seed } = this.ctx.ast;
     if (!seed) return;
 
     this.ctx.logger.info("Generating seed runner...");

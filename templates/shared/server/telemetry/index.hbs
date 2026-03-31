@@ -49,7 +49,9 @@ const _traceExporter = new OTLPTraceExporter({
   url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
   headers: process.env.OTEL_EXPORTER_OTLP_HEADERS
     ? Object.fromEntries(
-        process.env.OTEL_EXPORTER_OTLP_HEADERS.split(',').map((h) => h.trim().split('=', 2) as [string, string]),
+        process.env.OTEL_EXPORTER_OTLP_HEADERS.split(',')
+          .map((h) => h.trim().split('=', 2))
+          .filter((pair): pair is [string, string] => pair.length === 2 && pair[0].length > 0),
       )
     : {},
 })
@@ -76,7 +78,7 @@ process.on('SIGTERM', () => _sdk.shutdown().catch(console.error))
 
 {{#if metrics}}
 {{#if hasPrometheusExporter}}
-const _prometheusExporter = new PrometheusExporter({ port: 9464, startServer: false })
+const _prometheusExporter = new PrometheusExporter({ port: parseInt(process.env.PROMETHEUS_PORT ?? '', 10) || 9464, startServer: false })
 export const meterProvider = new MeterProvider({
   readers: [_prometheusExporter],
   resource: new Resource({

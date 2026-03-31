@@ -252,7 +252,7 @@ primary_region = "iad"
 `;
 }
 
-function generateRailwayJson(info: ProjectInfo): string {
+function generateRailwayJson(_info: ProjectInfo): string {
   return (
     JSON.stringify(
       {

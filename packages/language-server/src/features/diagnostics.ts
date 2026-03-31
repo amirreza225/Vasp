@@ -6,15 +6,13 @@
  * a lightweight semantic check (undefined entity/page references).
  */
 
-import {
+import type {
   Connection,
   Diagnostic,
-  DiagnosticSeverity,
-  Range,
-  Position,
   TextDocuments,
 } from "vscode-languageserver";
-import { TextDocument } from "vscode-languageserver-textdocument";
+import { DiagnosticSeverity, Range, Position } from "vscode-languageserver";
+import type { TextDocument } from "vscode-languageserver-textdocument";
 import { VaspLexer } from "../grammar/VaspLexer.js";
 import { getVaspParser } from "../grammar/VaspParser.js";
 import { getVaspVisitor, type DocumentAST } from "../grammar/VaspCstVisitor.js";
