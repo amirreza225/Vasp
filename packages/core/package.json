@@ -22,8 +22,8 @@
     "test": "vitest run"
   },
   "devDependencies": {
-    "typescript": "*",
-    "vitest": "^3.0.0"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
   },
   "repository": {
     "type": "git",
