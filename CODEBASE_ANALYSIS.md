@@ -339,7 +339,7 @@ regressions.
 
 ---
 
-### 19. `outbound` webhook dispatcher is fire-and-forget in-process
+### 19. `outbound` webhook dispatcher is fire-and-forget in-process Done ✅
 
 The generated `_outbound.hbs` webhook dispatcher runs inline in the route
 handler. A slow or unreachable target URL will block the HTTP response. The
@@ -352,7 +352,7 @@ request handler.
 
 ---
 
-### 20. The `env:` sub-block does not auto-include auth/db vars
+### 20. The `env:` sub-block does not auto-include auth/db vars Done ✅
 
 The `app.env` sub-block is excellent for startup validation, but the
 generators do not **automatically inject** variables they know are required
