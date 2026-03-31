@@ -739,6 +739,46 @@ describe("generate()", () => {
     expect(schema).toContain("passwordHash");
   });
 
+  it("strips @hidden fields from auth register/login/me responses", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      auth User { userEntity: User methods: [usernameAndPassword] }
+      entity User {
+        id: Int @id
+        username: String @unique
+        passwordHash: String
+        stripeCustomerId: String @hidden
+        internalScore: Int @nullable @hidden
+      }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "auth-hidden-fields");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const provider = readFileSync(
+      join(outputDir, "server/auth/providers/usernameAndPassword.js"),
+      "utf8",
+    );
+    // Both register and login should strip hidden fields via destructuring
+    expect(provider).toContain("stripeCustomerId: _stripeCustomerId");
+    expect(provider).toContain("internalScore: _internalScore");
+
+    const authIndex = readFileSync(
+      join(outputDir, "server/auth/index.js"),
+      "utf8",
+    );
+    // /me endpoint should also strip hidden fields
+    expect(authIndex).toContain("stripeCustomerId: _stripeCustomerId");
+    expect(authIndex).toContain("internalScore: _internalScore");
+  });
+
   it("drizzle schema has correct entity tables", () => {
     const ast = parse(WITH_QUERY_VASP);
     const outputDir = join(TMP_DIR, "schema-test");

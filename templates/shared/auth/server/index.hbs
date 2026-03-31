@@ -37,7 +37,7 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
     if (!user) {
       throw new VaspError('USER_NOT_FOUND', 'User not found', 401)
     }
-    const { passwordHash: _ph, ...safeUser } = user
+    const { passwordHash: _ph{{#each hiddenFields}}, {{name}}: _{{name}}{{/each}}, ...safeUser } = user
     return safeUser
   })
   .post('/logout', ({ cookie: { token } }) => {

@@ -565,6 +565,23 @@ Automatically updates this field to the current timestamp whenever the row is up
 Creates an implicit junction table between two entities.`,
   },
 
+  "@hidden": {
+    detail: "Exclude this field from all API responses",
+    documentation: `## \`@hidden\`
+Marks a field as sensitive so it is never included in API responses (register, login, /me, etc.).
+
+Useful for server-only fields like \`stripeCustomerId\`, \`internalScore\`, or \`secretToken\`:
+
+\`\`\`vasp
+entity User {
+  id:               Int    @id
+  username:         String @unique
+  stripeCustomerId: String @hidden
+  internalScore:    Int    @hidden
+}
+\`\`\``,
+  },
+
   "@storage": {
     detail: "@storage(StorageName) — link a File field to a storage block",
     documentation: `## \`@storage(StorageName)\`

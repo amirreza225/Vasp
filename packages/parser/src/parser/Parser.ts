@@ -835,6 +835,7 @@ class Parser {
       let fieldValidation: FieldValidation | undefined;
       let isManyToMany = false;
       let storageBlock: string | undefined;
+      let isHidden = false;
 
       while (this.check(TokenType.AT_MODIFIER)) {
         const mod = this.consume(TokenType.AT_MODIFIER);
@@ -855,6 +856,9 @@ class Parser {
           modifiers.push("updatedAt");
         } else if (modVal === "manyToMany") {
           isManyToMany = true;
+        } else if (modVal === "hidden") {
+          isHidden = true;
+          modifiers.push("hidden");
         } else if (modVal.startsWith("default_")) {
           defaultValue = modVal.slice("default_".length);
         } else if (modVal.startsWith("onDelete_")) {
@@ -884,6 +888,7 @@ class Parser {
       if (fieldValidation !== undefined) field.validation = fieldValidation;
       if (isManyToMany) field.isManyToMany = true;
       if (storageBlock !== undefined) field.storageBlock = storageBlock;
+      if (isHidden) field.isHidden = true;
 
       // v2 field config block: fieldName: Type @modifiers { label: "...", ... }
       if (this.check(TokenType.LBRACE)) {
