@@ -2,8 +2,14 @@
  * diagnostics.ts — Parse and validate .vasp documents, publish Diagnostic[]
  *
  * Triggered by onDidChangeTextDocument (debounced 300 ms).
- * Runs Chevrotain lexer + parser to collect syntax errors, then runs
- * a lightweight semantic check (undefined entity/page references).
+ *
+ * Uses @vasp-framework/parser directly (parseAll) so that the FULL
+ * SemanticValidator runs — surfacing all E100–E126+ error codes in the
+ * editor rather than the small subset the old Chevrotain-only checker covered.
+ *
+ * The Chevrotain grammar/parser is retained in grammar/ exclusively for the
+ * document store (completions, hover, go-to-definition) where its fault-
+ * tolerant CST is needed.
  */
 
 import type {
@@ -13,12 +19,10 @@ import type {
 } from "vscode-languageserver";
 import { DiagnosticSeverity, Range, Position } from "vscode-languageserver";
 import type { TextDocument } from "vscode-languageserver-textdocument";
-import { VaspLexer } from "../grammar/VaspLexer.js";
-import { getVaspParser } from "../grammar/VaspParser.js";
-import { getVaspVisitor, type DocumentAST } from "../grammar/VaspCstVisitor.js";
+import { parseAll } from "@vasp-framework/parser";
 import type { VaspDocumentStore } from "../utils/document-store.js";
 
-/** Convert a character offset to a LSP Position */
+/** Convert a 0-based character offset in `text` to a LSP Position. */
 function offsetToPosition(text: string, offset: number): Position {
   const clamped = Math.min(offset, text.length);
   let line = 0;
@@ -41,137 +45,48 @@ function offsetToRange(text: string, start: number, end: number): Range {
   );
 }
 
-/** Run lexer + parser on `text` and return Diagnostic[] */
-export function validateDocument(text: string): Diagnostic[] {
-  const diagnostics: Diagnostic[] = [];
-
-  // ── Lex ──────────────────────────────────────────────────────────────────
-  const lexResult = VaspLexer.tokenize(text);
-  for (const err of lexResult.errors) {
-    const start = err.offset ?? 0;
-    diagnostics.push({
-      severity: DiagnosticSeverity.Error,
-      range: offsetToRange(text, start, start + (err.length ?? 1)),
-      message: err.message,
-      source: "vasp",
-    });
-  }
-
-  // ── Parse ─────────────────────────────────────────────────────────────────
-  const parser = getVaspParser();
-  parser.input = lexResult.tokens;
-  const cst = parser.vaspFile();
-
-  for (const err of parser.errors) {
-    const token = err.token;
-    const start = token?.startOffset ?? 0;
-    const end =
-      token?.endOffset !== undefined ? token.endOffset + 1 : start + 1;
-    diagnostics.push({
-      severity: DiagnosticSeverity.Error,
-      range: offsetToRange(text, start, end),
-      message: err.message,
-      source: "vasp",
-    });
-  }
-
-  // ── Semantic ──────────────────────────────────────────────────────────────
-  try {
-    const visitor = getVaspVisitor();
-    const ast = visitor.visit(cst) as DocumentAST;
-    const semanticDiags = semanticCheck(text, ast);
-    diagnostics.push(...semanticDiags);
-  } catch {
-    // If visitor fails due to severe parse errors, skip semantic checks
-  }
-
-  return diagnostics;
+/**
+ * Find the end offset of the identifier/word that starts at `start` in `text`.
+ * Falls back to `start + 1` for non-word characters so the range is at least
+ * one character wide (avoids zero-width squiggles).
+ */
+function wordEnd(text: string, start: number): number {
+  let end = start;
+  while (end < text.length && /\w/.test(text[end]!)) end++;
+  return end > start ? end : start + 1;
 }
 
-/** Lightweight semantic checks on the simplified DocumentAST */
-function semanticCheck(text: string, ast: DocumentAST): Diagnostic[] {
-  const diags: Diagnostic[] = [];
+/**
+ * Run the full Vasp parser + SemanticValidator on `text` and return
+ * LSP Diagnostic[].
+ *
+ * By delegating to @vasp-framework/parser's parseAll() all semantic error
+ * codes (E100–E126+) are surfaced in the editor. Previously only a small
+ * subset (missing app, route/page refs, crud/entity refs, realtime/crud refs)
+ * was checked here.
+ */
+export function validateDocument(text: string): Diagnostic[] {
+  const { diagnostics: parseDiags } = parseAll(text, "main.vasp");
 
-  const entityNames = new Set(
-    ast.blocks.filter((b) => b.kind === "entity").map((b) => b.name),
-  );
-  const pageNames = new Set(
-    ast.blocks.filter((b) => b.kind === "page").map((b) => b.name),
-  );
-
-  let hasApp = false;
-
-  for (const block of ast.blocks) {
-    if (block.kind === "app") {
-      if (hasApp) {
-        // Duplicate app block
-        const idx = text.indexOf("app " + block.name);
-        if (idx !== -1) {
-          diags.push({
-            severity: DiagnosticSeverity.Error,
-            range: offsetToRange(text, idx, idx + 3),
-            message: "Only one 'app' block is allowed per file.",
-            source: "vasp",
-          });
-        }
-      }
-      hasApp = true;
-    }
-
-    // Route "to:" page reference must exist
-    if (block.kind === "route" && block.toPage) {
-      if (!pageNames.has(block.toPage)) {
-        const idx = text.indexOf(block.toPage, text.indexOf(block.name));
-        if (idx !== -1) {
-          diags.push({
-            severity: DiagnosticSeverity.Error,
-            range: offsetToRange(text, idx, idx + block.toPage.length),
-            message: `Page '${block.toPage}' is not declared. Add a 'page ${block.toPage} { ... }' block.`,
-            source: "vasp",
-          });
-        }
-      }
-    }
-
-    // CRUD entity reference must exist
-    if (block.kind === "crud" && block.entityRef) {
-      if (!entityNames.has(block.entityRef)) {
-        const idx = text.indexOf(block.entityRef, text.indexOf(block.name));
-        if (idx !== -1) {
-          diags.push({
-            severity: DiagnosticSeverity.Error,
-            range: offsetToRange(text, idx, idx + block.entityRef.length),
-            message: `Entity '${block.entityRef}' is not declared. Add an 'entity ${block.entityRef} { ... }' block.`,
-            source: "vasp",
-          });
-        }
-      }
-    }
-
-    // Realtime entity reference must have a matching crud block
-    if (block.kind === "realtime") {
-      const hasCrud = ast.blocks.some(
-        (b) => b.kind === "crud" && b.entityRef === block.name,
-      );
-      if (!hasCrud) {
-        const idx = text.indexOf("realtime " + block.name);
-        if (idx !== -1) {
-          diags.push({
-            severity: DiagnosticSeverity.Warning,
-            range: offsetToRange(
-              text,
-              idx,
-              idx + ("realtime " + block.name).length,
-            ),
-            message: `Realtime block '${block.name}' has no matching 'crud' block. Add a 'crud' block with entity referencing the same entity name.`,
-            source: "vasp",
-          });
-        }
-      }
-    }
-  }
-
-  return diags;
+  return parseDiags.map((diag) => {
+    const offset = diag.loc?.offset ?? 0;
+    const end = wordEnd(text, offset);
+    // Error codes starting with "E" are errors; others (warnings, info) are warnings.
+    const severity = diag.code.startsWith("E")
+      ? DiagnosticSeverity.Error
+      : DiagnosticSeverity.Warning;
+    // Include the hint in the message so it surfaces in the editor tooltip.
+    const message = diag.hint
+      ? `${diag.message}\n\nHint: ${diag.hint}`
+      : diag.message;
+    return {
+      severity,
+      range: offsetToRange(text, offset, end),
+      message,
+      code: diag.code,
+      source: "vasp",
+    };
+  });
 }
 
 const debounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
