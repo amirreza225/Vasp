@@ -15,16 +15,30 @@ export class BackendGenerator extends BaseGenerator {
       fnSource: this.resolveServerImport(middleware.fn.source, "server/"),
       importAlias: `${this.camel(middleware.name)}Middleware`,
     }));
-    const envVars = Object.entries(this.ctx.ast.app.env ?? {}).map(
-      ([name, def]) => ({
-        name,
-        requirement: def.requirement,
-        type: def.type,
-        enumValues: def.enumValues ?? null,
-        defaultValue: def.defaultValue ?? null,
-        validation: def.validation ?? null,
-      }),
-    );
+    const userEnv = this.ctx.ast.app.env ?? {};
+    const envVars = Object.entries(userEnv).map(([name, def]) => ({
+      name,
+      requirement: def.requirement,
+      type: def.type,
+      enumValues: def.enumValues ?? null,
+      defaultValue: def.defaultValue ?? null,
+      validation: def.validation ?? null,
+    }));
+
+    // When an auth block is present, JWT_SECRET must be validated at startup.
+    // Automatically inject it as a required String with a minimum length of 32
+    // so the server refuses to start with a missing or trivially short secret —
+    // even if the user forgot to declare it in their app.env block.
+    if (this.ctx.ast.auth && !userEnv["JWT_SECRET"]) {
+      envVars.push({
+        name: "JWT_SECRET",
+        requirement: "required",
+        type: "String",
+        enumValues: null,
+        defaultValue: null,
+        validation: { minLength: 64 },
+      });
+    }
 
     const data = {
       backendPort: DEFAULT_BACKEND_PORT,

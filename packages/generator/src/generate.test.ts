@@ -644,6 +644,79 @@ describe("generate()", () => {
     expect(existsSync(join(outputDir, "src/pages/Register.vue"))).toBe(true);
   });
 
+  it("auto-injects JWT_SECRET startup validation when auth block is present without app.env", () => {
+    const source = `
+      app AuthEnvApp {
+        title: "Auth Env App"
+        db: Drizzle
+        ssr: false
+        typescript: false
+      }
+      auth User {
+        userEntity: User
+        methods: [ usernameAndPassword ]
+      }
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "auth-env-auto");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
+    expect(serverIndex).toContain("JWT_SECRET is required");
+    expect(serverIndex).toContain("must be at least 64 characters long");
+    expect(serverIndex).toContain("process.exit(1)");
+  });
+
+  it("does not duplicate JWT_SECRET validation when user already declared it in app.env", () => {
+    const source = `
+      app AuthEnvUserApp {
+        title: "Auth Env User App"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          JWT_SECRET: required String @minLength(128)
+        }
+      }
+      auth User {
+        userEntity: User
+        methods: [ usernameAndPassword ]
+      }
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "auth-env-user");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
+    // User's @minLength(128) should be respected, not the auto-injected 64
+    expect(serverIndex).toContain("must be at least 128 characters long");
+    expect(serverIndex).not.toContain("must be at least 64 characters long");
+    // JWT_SECRET must appear exactly once in the required-check error messages
+    const occurrences = (serverIndex.match(/JWT_SECRET is required/g) ?? [])
+      .length;
+    expect(occurrences).toBe(1);
+  });
+
   it("users table is generated in schema when auth is present", () => {
     const source = `
       app A { title: "T" db: Drizzle ssr: false typescript: false }
