@@ -42,7 +42,7 @@ export type NewUser = InferInsertModel<typeof users>
 {{/if}}
 {{#each entitiesWithSchema}}
 // {{name}} table — generated from entity block
-export const {{camelCase name}}s = pgTable('{{camelCase name}}s', {
+export const {{plural (camelCase name)}} = pgTable('{{plural (camelCase name)}}', {
 {{#each scalarFields}}
 {{#if isForeignKey}}
   {{camelCase name}}: integer('{{camelCase name}}'){{#unless nullable}}.notNull(){{/unless}}.references(() => {{referencedTable}}.id, { onDelete: '{{onDelete}}' }),
@@ -69,8 +69,8 @@ export const {{camelCase name}}s = pgTable('{{camelCase name}}s', {
 {{/each}}
 ]{{/if}})
 {{#if ../isTypeScript}}
-export type {{pascalCase name}} = InferSelectModel<typeof {{camelCase name}}s>
-export type New{{pascalCase name}} = InferInsertModel<typeof {{camelCase name}}s>
+export type {{pascalCase name}} = InferSelectModel<typeof {{plural (camelCase name)}}>
+export type New{{pascalCase name}} = InferInsertModel<typeof {{plural (camelCase name)}}>
 {{/if}}
 
 {{/each}}
@@ -82,8 +82,8 @@ export const usersRelations = relations(users, ({ one, many }) => ({
 }))
 {{/if}}{{/if}}
 {{#each entitiesWithSchema}}{{#if hasRelations}}
-export const {{camelCase name}}sRelations = relations({{camelCase name}}s, ({ one, many }) => ({
-{{#each manyToOne}}  {{camelCase name}}: one({{relatedTable}}, { fields: [{{camelCase ../name}}s.{{camelCase localField}}], references: [{{relatedTable}}.id] }),
+export const {{plural (camelCase name)}}Relations = relations({{plural (camelCase name)}}, ({ one, many }) => ({
+{{#each manyToOne}}  {{camelCase name}}: one({{relatedTable}}, { fields: [{{plural (camelCase ../name)}}.{{camelCase localField}}], references: [{{relatedTable}}.id] }),
 {{/each}}{{#each oneToMany}}  {{camelCase fieldName}}: many({{relatedTable}}),
 {{/each}}
 }))

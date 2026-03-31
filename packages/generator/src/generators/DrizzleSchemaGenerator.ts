@@ -1,4 +1,4 @@
-import { toCamelCase, toPascalCase } from "../template/TemplateEngine.js";
+import { toCamelCase, toPascalCase, toPlural } from "../template/TemplateEngine.js";
 import { BaseGenerator } from "./BaseGenerator.js";
 
 /** Junction table descriptor for an implicit M:N relation */
@@ -66,16 +66,16 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         const key = `${nameA}:${nameB}`;
         if (seenJunctions.has(key)) continue;
         seenJunctions.add(key);
-        const tableConst = `${toCamelCase(nameA)}sTo${toPascalCase(nameB)}s`;
-        const tableName = `${toCamelCase(nameA)}s_to_${toCamelCase(nameB)}s`;
+        const tableConst = `${toPlural(toCamelCase(nameA))}To${toPascalCase(toPlural(nameB))}`;
+        const tableName = `${toPlural(toCamelCase(nameA))}_to_${toPlural(toCamelCase(nameB))}`;
         junctionTables.push({
           tableConst,
           tableName,
           entityA: nameA,
-          entityATable: `${toCamelCase(nameA)}s`,
+          entityATable: toPlural(toCamelCase(nameA)),
           entityAIdField: `${toCamelCase(nameA)}Id`,
           entityB: nameB,
-          entityBTable: `${toCamelCase(nameB)}s`,
+          entityBTable: toPlural(toCamelCase(nameB)),
           entityBIdField: `${toCamelCase(nameB)}Id`,
         });
       }
@@ -84,7 +84,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
     // Helper: find the junction table const for a given pair of entities
     const junctionFor = (a: string, b: string): string => {
       const [nameA, nameB] = [a, b].sort() as [string, string];
-      return `${toCamelCase(nameA)}sTo${toPascalCase(nameB)}s`;
+      return `${toPlural(toCamelCase(nameA))}To${toPascalCase(toPlural(nameB))}`;
     };
 
     // Build per-entity schema data: scalar columns + FK stubs + relation metadata
@@ -122,7 +122,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
             defaultValue: undefined,
             isUpdatedAt: false,
             isForeignKey: true,
-            referencedTable: `${toCamelCase(f.relatedEntity!)}s`,
+            referencedTable: toPlural(toCamelCase(f.relatedEntity!)),
             onDelete: f.onDelete ?? "cascade",
           };
         });
@@ -153,7 +153,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
           return {
             name: f.name,
             relatedEntity: f.relatedEntity!,
-            relatedTable: `${toCamelCase(f.relatedEntity!)}s`,
+            relatedTable: toPlural(toCamelCase(f.relatedEntity!)),
             localField: `${toCamelCase(f.name)}Id`,
             onDelete: f.onDelete ?? "cascade",
             isSelfRef,
@@ -186,7 +186,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
           return {
             fieldName: f.name,
             relatedEntity: f.relatedEntity!,
-            relatedTable: `${toCamelCase(f.relatedEntity!)}s`,
+            relatedTable: toPlural(toCamelCase(f.relatedEntity!)),
             isSelfRef,
             relationName,
           };
@@ -212,7 +212,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         const fieldSlug = camelFields.join("_");
         const isFulltext = idx.type === "fulltext";
         const suffix = isFulltext ? "ft" : "idx";
-        const name = `${toCamelCase(entity.name)}s_${fieldSlug}_${suffix}`;
+        const name = `${toPlural(toCamelCase(entity.name))}_${fieldSlug}_${suffix}`;
         // For fulltext: pre-build the to_tsvector SQL expression
         const fulltextSqlExpr = isFulltext
           ? camelFields.length === 1
@@ -227,7 +227,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         (uc) => {
           const fieldSlug = uc.fields.map(toCamelCase).join("_");
           return {
-            name: `${toCamelCase(entity.name)}s_${fieldSlug}_unique`,
+            name: `${toPlural(toCamelCase(entity.name))}_${fieldSlug}_unique`,
             fields: uc.fields.map(toCamelCase),
           };
         },

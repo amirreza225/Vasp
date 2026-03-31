@@ -2,7 +2,7 @@ import { Elysia, t } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
 import { safeParse } from 'valibot'
 import { eq, sql, asc, desc, and, ilike, or } from 'drizzle-orm'
-import { {{camelCase entity}}s } from '../../../drizzle/schema.{{ext}}'
+import { {{plural (camelCase entity)}} } from '../../../drizzle/schema.{{ext}}'
 import { Create{{pascalCase entity}}Schema, Update{{pascalCase entity}}Schema } from '../../../shared/validation.{{ext}}'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 {{#if needsAuth}}
@@ -45,7 +45,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{/if}}
 
 {{#if hasRelations}}
-    const items = await db.query.{{camelCase entity}}s.findMany({
+    const items = await db.query.{{plural (camelCase entity)}}.findMany({
       with: {
 {{#each withRelations}}
         {{camelCase name}}: true,
@@ -57,14 +57,14 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
       limit,
       offset,
     })
-    const [countResult] = await db.select({ count: sql`count(*)::int` }).from({{camelCase entity}}s){{#if hasAnyRecordFilter}}.where({{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{camelCase entity}}s.{{tenantField}}, _tenantId), eq({{camelCase entity}}s.{{ownershipField}}, _ownerId)){{else}}eq({{camelCase entity}}s.{{tenantField}}, _tenantId){{/if}}{{else}}eq({{camelCase entity}}s.{{ownershipField}}, _ownerId){{/if}}){{/if}}
+    const [countResult] = await db.select({ count: sql`count(*)::int` }).from({{plural (camelCase entity)}}){{#if hasAnyRecordFilter}}.where({{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId), eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId)){{else}}eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId){{/if}}{{else}}eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId){{/if}}){{/if}}
 {{#if paginate}}
     return { items, total: countResult?.count ?? 0, page, limit, offset }
 {{else}}
     return { items, total: countResult?.count ?? 0, limit, offset }
 {{/if}}
 {{else}}
-    const table = {{camelCase entity}}s
+    const table = {{plural (camelCase entity)}}
 
 {{#if hasSortable}}
     // Allowlisted sort fields
@@ -164,15 +164,15 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{/if}}
 {{#if applyTenantFilter}}
 {{#if hasOwnership}}
-    const [created] = await db.insert({{camelCase entity}}s).values({ ...parsed.output, {{tenantField}}: _tenantId, {{ownershipField}}: _ownerId }).returning()
+    const [created] = await db.insert({{plural (camelCase entity)}}).values({ ...parsed.output, {{tenantField}}: _tenantId, {{ownershipField}}: _ownerId }).returning()
 {{else}}
-    const [created] = await db.insert({{camelCase entity}}s).values({ ...parsed.output, {{tenantField}}: _tenantId }).returning()
+    const [created] = await db.insert({{plural (camelCase entity)}}).values({ ...parsed.output, {{tenantField}}: _tenantId }).returning()
 {{/if}}
 {{else}}
 {{#if hasOwnership}}
-    const [created] = await db.insert({{camelCase entity}}s).values({ ...parsed.output, {{ownershipField}}: _ownerId }).returning()
+    const [created] = await db.insert({{plural (camelCase entity)}}).values({ ...parsed.output, {{ownershipField}}: _ownerId }).returning()
 {{else}}
-    const [created] = await db.insert({{camelCase entity}}s).values(parsed.output).returning()
+    const [created] = await db.insert({{plural (camelCase entity)}}).values(parsed.output).returning()
 {{/if}}
 {{/if}}
 {{#if hasRealtime}}
@@ -213,7 +213,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     if (_ownerId == null) throw new VaspError('AUTH_REQUIRED', 'Authentication required', 401)
 {{/if}}
 {{#if hasRelations}}
-    const item = await db.query.{{camelCase entity}}s.findFirst({
+    const item = await db.query.{{plural (camelCase entity)}}.findFirst({
       where: (t, { eq, and }) => {{#if hasAnyRecordFilter}}{{#if applyTenantFilter}}{{#if hasOwnership}}and(eq(t.id, Number(id)), eq(t.{{tenantField}}, _tenantId), eq(t.{{ownershipField}}, _ownerId)){{else}}and(eq(t.id, Number(id)), eq(t.{{tenantField}}, _tenantId)){{/if}}{{else}}and(eq(t.id, Number(id)), eq(t.{{ownershipField}}, _ownerId)){{/if}}{{else}}eq(t.id, Number(id)){{/if}},
       with: {
 {{#each withRelations}}
@@ -222,7 +222,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
       },
     })
 {{else}}
-    const [item] = await db.select().from({{camelCase entity}}s).where({{#if hasAnyRecordFilter}}{{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{camelCase entity}}s.id, Number(id)), eq({{camelCase entity}}s.{{tenantField}}, _tenantId), eq({{camelCase entity}}s.{{ownershipField}}, _ownerId)){{else}}and(eq({{camelCase entity}}s.id, Number(id)), eq({{camelCase entity}}s.{{tenantField}}, _tenantId)){{/if}}{{else}}and(eq({{camelCase entity}}s.id, Number(id)), eq({{camelCase entity}}s.{{ownershipField}}, _ownerId)){{/if}}{{else}}eq({{camelCase entity}}s.id, Number(id)){{/if}}).limit(1)
+    const [item] = await db.select().from({{plural (camelCase entity)}}).where({{#if hasAnyRecordFilter}}{{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{plural (camelCase entity)}}.id, Number(id)), eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId), eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId)){{else}}and(eq({{plural (camelCase entity)}}.id, Number(id)), eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId)){{/if}}{{else}}and(eq({{plural (camelCase entity)}}.id, Number(id)), eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId)){{/if}}{{else}}eq({{plural (camelCase entity)}}.id, Number(id)){{/if}}).limit(1)
 {{/if}}
     if (!item) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
     return item
@@ -249,7 +249,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     const _ownerId = user?.id
     if (_ownerId == null) throw new VaspError('AUTH_REQUIRED', 'Authentication required', 401)
 {{/if}}
-    const [updated] = await db.update({{camelCase entity}}s).set(parsed.output).where({{#if hasAnyRecordFilter}}{{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{camelCase entity}}s.id, Number(id)), eq({{camelCase entity}}s.{{tenantField}}, _tenantId), eq({{camelCase entity}}s.{{ownershipField}}, _ownerId)){{else}}and(eq({{camelCase entity}}s.id, Number(id)), eq({{camelCase entity}}s.{{tenantField}}, _tenantId)){{/if}}{{else}}and(eq({{camelCase entity}}s.id, Number(id)), eq({{camelCase entity}}s.{{ownershipField}}, _ownerId)){{/if}}{{else}}eq({{camelCase entity}}s.id, Number(id)){{/if}}).returning()
+    const [updated] = await db.update({{plural (camelCase entity)}}).set(parsed.output).where({{#if hasAnyRecordFilter}}{{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{plural (camelCase entity)}}.id, Number(id)), eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId), eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId)){{else}}and(eq({{plural (camelCase entity)}}.id, Number(id)), eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId)){{/if}}{{else}}and(eq({{plural (camelCase entity)}}.id, Number(id)), eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId)){{/if}}{{else}}eq({{plural (camelCase entity)}}.id, Number(id)){{/if}}).returning()
     if (!updated) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
 {{#if hasRealtime}}
     publish{{pascalCase realtimeName}}('updated', updated)
@@ -288,7 +288,7 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
     const _ownerId = user?.id
     if (_ownerId == null) throw new VaspError('AUTH_REQUIRED', 'Authentication required', 401)
 {{/if}}
-    const [deleted] = await db.delete({{camelCase entity}}s).where({{#if hasAnyRecordFilter}}{{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{camelCase entity}}s.id, Number(id)), eq({{camelCase entity}}s.{{tenantField}}, _tenantId), eq({{camelCase entity}}s.{{ownershipField}}, _ownerId)){{else}}and(eq({{camelCase entity}}s.id, Number(id)), eq({{camelCase entity}}s.{{tenantField}}, _tenantId)){{/if}}{{else}}and(eq({{camelCase entity}}s.id, Number(id)), eq({{camelCase entity}}s.{{ownershipField}}, _ownerId)){{/if}}{{else}}eq({{camelCase entity}}s.id, Number(id)){{/if}}).returning()
+    const [deleted] = await db.delete({{plural (camelCase entity)}}).where({{#if hasAnyRecordFilter}}{{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{plural (camelCase entity)}}.id, Number(id)), eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId), eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId)){{else}}and(eq({{plural (camelCase entity)}}.id, Number(id)), eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId)){{/if}}{{else}}and(eq({{plural (camelCase entity)}}.id, Number(id)), eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId)){{/if}}{{else}}eq({{plural (camelCase entity)}}.id, Number(id)){{/if}}).returning()
     if (!deleted) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
 {{#if hasRealtime}}
     publish{{pascalCase realtimeName}}('deleted', deleted)
