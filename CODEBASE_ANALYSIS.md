@@ -262,7 +262,7 @@ fixed-window implementation.
 
 ---
 
-### 14. `useQuery` leaks registrations outside a component context
+### 14. `useQuery` leaks registrations outside a component context Done ✅
 
 `useQuery.ts`:
 
