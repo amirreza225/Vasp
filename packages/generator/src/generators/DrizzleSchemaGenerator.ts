@@ -1,3 +1,5 @@
+import type { VaspAST } from "@vasp-framework/core";
+import type { SchemaSnapshot } from "../manifest/Manifest.js";
 import { toCamelCase, toPascalCase, toPlural } from "../template/TemplateEngine.js";
 import { BaseGenerator } from "./BaseGenerator.js";
 
@@ -356,5 +358,45 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
       `drizzle.config.${this.ctx.ext}`,
       this.render("shared/drizzle/drizzle.config.hbs"),
     );
+
+    // Persist a schema snapshot into the manifest so that the next `vasp generate`
+    // can detect potentially-destructive changes (column drops, type changes, table drops).
+    this.manifest.setSchemaSnapshot(buildSchemaSnapshot(ast));
   }
+}
+
+/**
+ * Build a lightweight snapshot of the DB columns that Drizzle will manage.
+ * Only tracks columns that map directly to a DB column:
+ *   - Primitive fields (non-relation)
+ *   - Many-to-one FK columns (named `${fieldName}Id`, typed Int)
+ * Excludes:
+ *   - `createdAt` / `updatedAt` (auto-managed, never destructively changed)
+ *   - One-to-many virtual array fields (no DB column)
+ *   - Many-to-many array fields (junction table, no column on the owning entity)
+ */
+function buildSchemaSnapshot(ast: VaspAST): SchemaSnapshot {
+  const RESERVED = new Set(["createdAt", "updatedAt"]);
+  const entities: SchemaSnapshot["entities"] = {};
+
+  for (const entity of ast.entities) {
+    const fields: Record<string, { type: string; nullable: boolean }> = {};
+
+    for (const f of entity.fields) {
+      if (RESERVED.has(f.name)) continue;
+      // Virtual one-to-many array fields and M:N array fields produce no column
+      if (f.isRelation && f.isArray) continue;
+
+      if (f.isRelation) {
+        // Many-to-one → FK column `${name}Id : Int`
+        fields[`${f.name}Id`] = { type: "Int", nullable: f.nullable };
+      } else {
+        fields[f.name] = { type: f.type, nullable: f.nullable };
+      }
+    }
+
+    entities[entity.name] = { fields };
+  }
+
+  return { entities };
 }

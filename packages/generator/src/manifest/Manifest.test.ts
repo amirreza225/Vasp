@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { mkdirSync, rmSync, existsSync, readFileSync } from "node:fs";
+import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Manifest, computeHash } from "./Manifest.js";
 
@@ -105,5 +105,62 @@ describe("Manifest", () => {
     m.record("server/index.ts", "v1", "BackendGenerator");
     m.record("server/index.ts", "v2", "BackendGenerator");
     expect(m.getEntry("server/index.ts")?.hash).toBe(computeHash("v2"));
+  });
+});
+
+describe("Manifest — schemaSnapshot", () => {
+  it("getSchemaSnapshot returns undefined when no snapshot has been set", () => {
+    const m = new Manifest("0.5.0");
+    expect(m.getSchemaSnapshot()).toBeUndefined();
+  });
+
+  it("setSchemaSnapshot / getSchemaSnapshot round-trips in memory", () => {
+    const m = new Manifest("0.5.0");
+    const snapshot = {
+      entities: {
+        Todo: {
+          fields: {
+            title: { type: "String", nullable: false },
+            done: { type: "Boolean", nullable: false },
+          },
+        },
+      },
+    };
+    m.setSchemaSnapshot(snapshot);
+    expect(m.getSchemaSnapshot()).toEqual(snapshot);
+  });
+
+  it("schema snapshot persists through save/load", () => {
+    const m = new Manifest("0.5.0");
+    const snapshot = {
+      entities: {
+        Post: {
+          fields: {
+            title: { type: "String", nullable: false },
+            authorId: { type: "Int", nullable: false },
+          },
+        },
+      },
+    };
+    m.setSchemaSnapshot(snapshot);
+    m.save(TMP_DIR);
+
+    const loaded = Manifest.load(TMP_DIR);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.getSchemaSnapshot()).toEqual(snapshot);
+  });
+
+  it("load returns undefined schemaSnapshot for manifests that pre-date snapshot support", () => {
+    // Write a manifest JSON without a schemaSnapshot field (old format)
+    const dir = join(TMP_DIR, "legacy");
+    mkdirSync(join(dir, ".vasp"), { recursive: true });
+    writeFileSync(
+      join(dir, ".vasp", "manifest.json"),
+      JSON.stringify({ version: "0.1.0", generatedAt: "2024-01-01T00:00:00.000Z", files: {} }),
+      "utf8",
+    );
+    const loaded = Manifest.load(dir);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.getSchemaSnapshot()).toBeUndefined();
   });
 });

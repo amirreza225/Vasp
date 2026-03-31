@@ -25,6 +25,7 @@ import { SeedGenerator } from "./generators/SeedGenerator.js";
 import { StorageGenerator } from "./generators/StorageGenerator.js";
 import { WebhookGenerator } from "./generators/WebhookGenerator.js";
 import { Manifest } from "./manifest/Manifest.js";
+import type { SchemaSnapshot } from "./manifest/Manifest.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
 import { cleanupDir, commitStagedFiles, deleteOrphanedFiles } from "./utils/fs.js";
 import { dirname, join } from "node:path";
@@ -67,6 +68,17 @@ export function generate(
   const warnings: string[] = [];
   const errors: string[] = [];
   const manifest = new Manifest(VASP_VERSION);
+
+  // Check for potentially-destructive schema changes before committing any files.
+  // We compare the previous manifest's schema snapshot (what was generated last time)
+  // against the current AST (what we are about to generate).
+  if (previousManifest) {
+    const previousSnapshot = previousManifest.getSchemaSnapshot();
+    if (previousSnapshot) {
+      const destructiveWarnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+      warnings.push(...destructiveWarnings);
+    }
+  }
 
   // Helper: run a generator and collect its error without aborting the pipeline.
   function runGenerator(name: string, run: () => void): void {
@@ -183,4 +195,78 @@ export function generate(
     errors.push(message);
     return { success: false, filesWritten, errors, warnings };
   }
+}
+
+/**
+ * Compare the Drizzle schema snapshot from the previous generation against the
+ * current AST and return human-readable warning messages for any changes that
+ * would cause `vasp db push` / Drizzle to **drop** or **alter** existing data:
+ *
+ *   - Table dropped (entity removed from the DSL)
+ *   - Column dropped or renamed (field removed — rename = drop + add in Drizzle)
+ *   - Column type changed (may require lossy casting or fail entirely)
+ *
+ * Exported so it can be unit-tested directly without running a full generation.
+ */
+export function detectDestructiveSchemaChanges(
+  previousSnapshot: SchemaSnapshot,
+  ast: VaspAST,
+): string[] {
+  const warnings: string[] = [];
+
+  // Build a lookup of current entity → field name → field for O(1) checks
+  const currentEntityMap = new Map(
+    ast.entities.map((e) => [e.name, e]),
+  );
+
+  const RESERVED = new Set(["createdAt", "updatedAt"]);
+
+  for (const [entityName, entitySnap] of Object.entries(previousSnapshot.entities)) {
+    const currentEntity = currentEntityMap.get(entityName);
+
+    if (!currentEntity) {
+      warnings.push(
+        `Destructive schema change: entity '${entityName}' was removed.` +
+        ` Running 'vasp db push' will DROP the '${entityName}' table and destroy all its data.`,
+      );
+      continue;
+    }
+
+    // Build a map of current DB columns for this entity.
+    // Mirror the logic in buildSchemaSnapshot / DrizzleSchemaGenerator:
+    //   - primitive (non-relation) fields → column name = f.name, type = f.type
+    //   - many-to-one relation fields    → column name = `${f.name}Id`, type = 'Int'
+    //   - virtual array / M:N fields     → no DB column, skip
+    const currentColumns = new Map<string, { type: string; nullable: boolean }>();
+    for (const f of currentEntity.fields) {
+      if (RESERVED.has(f.name)) continue;
+      if (f.isRelation && f.isArray) continue; // virtual / M:N — no column
+
+      if (f.isRelation) {
+        currentColumns.set(`${f.name}Id`, { type: "Int", nullable: f.nullable });
+      } else {
+        currentColumns.set(f.name, { type: f.type, nullable: f.nullable });
+      }
+    }
+
+    for (const [colName, colSnap] of Object.entries(entitySnap.fields)) {
+      const current = currentColumns.get(colName);
+
+      if (!current) {
+        warnings.push(
+          `Destructive schema change: column '${colName}' was removed from entity '${entityName}'.` +
+          ` Running 'vasp db push' will DROP the column and destroy its data.` +
+          ` If you renamed the field, migrate the data manually before pushing.`,
+        );
+      } else if (current.type !== colSnap.type) {
+        warnings.push(
+          `Destructive schema change: column '${entityName}.${colName}' type changed` +
+          ` from '${colSnap.type}' to '${current.type}'.` +
+          ` Running 'vasp db push' may ALTER the column type and cause data loss or errors.`,
+        );
+      }
+    }
+  }
+
+  return warnings;
 }
