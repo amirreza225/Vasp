@@ -116,7 +116,7 @@ implemented.
 
 ---
 
-### 5. JWT_SECRET insecure fallback can silently reach production
+### 5. JWT_SECRET insecure fallback can silently reach production Done ✅
 
 `middleware.hbs`:
 
@@ -230,7 +230,7 @@ executed).
 
 ---
 
-### 12. Plural table naming is naive English-only
+### 12. Plural table naming is naive English-only Done ✅
 
 `DrizzleSchemaGenerator` generates `${toCamelCase(entity.name)}s` for every
 table. This produces `persons` instead of `people`, `categorys` instead of
