@@ -320,7 +320,7 @@ error.
 
 ---
 
-### 18. Test coverage validates file existence, not correctness
+### 18. Test coverage validates file existence, not correctness Done ✅
 
 Generator tests (`generate.test.ts`, `crud-list-config.test.ts`, etc.) almost
 exclusively call `existsSync()` and `readFileSync().contains()`. They verify:
