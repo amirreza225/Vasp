@@ -219,7 +219,7 @@ output data and template expectations.
 
 ---
 
-### 11. No destructive schema migration warning
+### 11. No destructive schema migration warning Done ✅
 
 When a field is renamed or its type changes and `vasp generate` is re-run,
 `DrizzleSchemaGenerator` produces a new schema. Drizzle's `push` will
