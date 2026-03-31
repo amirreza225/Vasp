@@ -202,7 +202,7 @@ They can fall arbitrarily behind the rest of the codebase with no CI signal.
 
 ---
 
-### 10. Template data is completely untyped — silent rendering failures
+### 10. Template data is completely untyped — silent rendering failures Done ✅
 
 Every generator calls `this.render(key, data)` where `data` is
 `Record<string, unknown>`. Handlebars silently treats missing keys as empty
