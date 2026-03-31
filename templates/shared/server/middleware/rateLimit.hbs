@@ -4,40 +4,58 @@ import { VaspError } from './errorHandler.{{ext}}'
 const MAX_REQUESTS = Number(process.env.RATE_LIMIT_MAX) || 100
 const WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 60_000
 
+// NOTE: In-memory rate limiter — not shared across replicas.
+// In multi-replica deployments (Docker, Kubernetes, serverless) each instance
+// maintains its own counter; the effective limit per IP is MAX_REQUESTS × replicas.
+// For distributed rate limiting, swap this store for a Redis-backed solution.
+//
+// NOTE: IP detection relies on X-Forwarded-For / X-Real-IP headers set by a
+// trusted reverse proxy (nginx, Caddy, etc.). If no proxy is in front of this
+// server these headers can be spoofed. Make sure to strip or validate them at
+// your proxy before reaching the app.
 const hits = new Map()
+let lastCleanup = Date.now()
 
-// Clean up expired entries every 60 seconds
-setInterval(() => {
-  const now = Date.now()
-  for (const [key, entry] of hits) {
-    if (now - entry.start > WINDOW_MS) hits.delete(key)
-  }
-}, 60_000)
+// Cap how many entries are swept per cleanup pass to avoid latency spikes
+// under heavy load with many unique IPs.
+const CLEANUP_BATCH = 500
 
 /**
- * Simple in-memory sliding-window rate limiter.
- * Limits each IP to MAX_REQUESTS per WINDOW_MS.
+ * True sliding-window rate limiter (in-memory, single-process).
+ * Limits each IP to MAX_REQUESTS per WINDOW_MS milliseconds.
  */
 export function rateLimit() {
   return new Elysia({ name: 'rate-limit' })
     .onBeforeHandle(({ request, set }) => {
-      const ip = request.headers.get('x-forwarded-for')
-        || request.headers.get('x-real-ip')
-        || 'unknown'
+      const ip =
+        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+        request.headers.get('x-real-ip') ||
+        'unknown'
       const now = Date.now()
-      let entry = hits.get(ip)
+      const windowStart = now - WINDOW_MS
 
-      if (!entry || now - entry.start > WINDOW_MS) {
-        entry = { start: now, count: 0 }
-        hits.set(ip, entry)
+      // Lazy cleanup: sweep up to CLEANUP_BATCH stale entries once per window
+      if (now - lastCleanup > WINDOW_MS) {
+        let swept = 0
+        for (const [key, timestamps] of hits) {
+          if (swept >= CLEANUP_BATCH) break
+          const recent = timestamps.filter((t) => t > windowStart)
+          if (recent.length === 0) hits.delete(key)
+          else hits.set(key, recent)
+          swept++
+        }
+        lastCleanup = now
       }
 
-      entry.count++
+      const timestamps = (hits.get(ip) || []).filter((t) => t > windowStart)
+      timestamps.push(now)
+      hits.set(ip, timestamps)
+      const count = timestamps.length
 
       set.headers['x-ratelimit-limit'] = String(MAX_REQUESTS)
-      set.headers['x-ratelimit-remaining'] = String(Math.max(0, MAX_REQUESTS - entry.count))
+      set.headers['x-ratelimit-remaining'] = String(Math.max(0, MAX_REQUESTS - count))
 
-      if (entry.count > MAX_REQUESTS) {
+      if (count > MAX_REQUESTS) {
         throw new VaspError('RATE_LIMITED', 'Too many requests. Please try again later.', 429)
       }
     })
