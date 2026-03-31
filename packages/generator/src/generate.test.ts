@@ -2508,6 +2508,171 @@ describe("generate()", () => {
     expect(existsSync(join(outputDir, "src/webhooks"))).toBe(false);
   });
 
+  it("outbound webhook with PgBoss: dispatcher enqueues via PgBoss, worker file is emitted, server registers worker", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [create, update, delete] }
+      job sendEmail {
+        executor: PgBoss
+        perform: {
+          fn: import { sendEmail } from "@src/jobs.js"
+        }
+      }
+      webhook TodoOutbound {
+        entity: Todo
+        events: [created, updated, deleted]
+        targets: env(WEBHOOK_URLS)
+        retry: 3
+        secret: env(WEBHOOK_SECRET)
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "webhook-outbound-pgboss");
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+    // Dispatcher enqueues via PgBoss
+    const dispatcher = readFileSync(join(outputDir, "server/webhooks/todoOutbound.js"), "utf8");
+    expect(dispatcher).toContain("import { getBoss } from '../jobs/boss.");
+    expect(dispatcher).toContain("boss.send(");
+    expect(dispatcher).toContain("VASP_WEBHOOK_QUEUE");
+    expect(dispatcher).toContain("retryLimit: 3");
+    // Should NOT contain inline fetch or in-process retry loop
+    expect(dispatcher).not.toContain("_sendWithRetry");
+    expect(dispatcher).not.toContain("setTimeout");
+
+    // Shared worker file is emitted
+    expect(existsSync(join(outputDir, "server/webhooks/webhookDispatch.js"))).toBe(true);
+    const worker = readFileSync(join(outputDir, "server/webhooks/webhookDispatch.js"), "utf8");
+    expect(worker).toContain("registerWebhookDispatchWorker");
+    expect(worker).toContain("import { getBoss }");
+    expect(worker).toContain("boss.work(");
+    expect(worker).toContain("_deliverWebhook");
+
+    // Server index imports and starts the worker
+    const serverIndex = readFileSync(join(outputDir, "server/index.js"), "utf8");
+    expect(serverIndex).toContain("import { registerWebhookDispatchWorker }");
+    expect(serverIndex).toContain("registerWebhookDispatchWorker().catch(");
+  });
+
+  it("outbound webhook with BullMQ: dispatcher enqueues via BullMQ, worker uses BullMQ", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [create] }
+      job processPayment {
+        executor: BullMQ
+        perform: {
+          fn: import { processPayment } from "@src/jobs.js"
+        }
+      }
+      webhook TodoOutbound {
+        entity: Todo
+        events: [created]
+        targets: env(WEBHOOK_URLS)
+        retry: 2
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "webhook-outbound-bullmq");
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+    // Dispatcher uses BullMQ queue
+    const dispatcher = readFileSync(join(outputDir, "server/webhooks/todoOutbound.js"), "utf8");
+    expect(dispatcher).toContain("import { createQueue }");
+    expect(dispatcher).toContain("_queue.add(");
+    // attempts = retry + 1
+    expect(dispatcher).toContain("attempts: 3");
+    expect(dispatcher).not.toContain("_sendWithRetry");
+
+    // Worker file uses BullMQ worker
+    const worker = readFileSync(join(outputDir, "server/webhooks/webhookDispatch.js"), "utf8");
+    expect(worker).toContain("import { createQueue, createWorker }");
+    expect(worker).toContain("createWorker(");
+    expect(worker).not.toContain("getBoss");
+
+    // Server registers worker at startup
+    const serverIndex = readFileSync(join(outputDir, "server/index.js"), "utf8");
+    expect(serverIndex).toContain("registerWebhookDispatchWorker");
+  });
+
+  it("outbound webhook without job system: falls back to fire-and-forget, no worker file", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [create] }
+      webhook TodoOutbound {
+        entity: Todo
+        events: [created]
+        targets: env(WEBHOOK_URLS)
+        retry: 3
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "webhook-outbound-fallback");
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+    // Dispatcher uses simple fire-and-forget (no PgBoss/BullMQ import)
+    const dispatcher = readFileSync(join(outputDir, "server/webhooks/todoOutbound.js"), "utf8");
+    expect(dispatcher).toContain("void Promise.allSettled(");
+    expect(dispatcher).not.toContain("getBoss");
+    expect(dispatcher).not.toContain("createQueue");
+    expect(dispatcher).not.toContain("_sendWithRetry");
+    expect(dispatcher).not.toContain("setTimeout");
+
+    // No shared worker file emitted
+    expect(existsSync(join(outputDir, "server/webhooks/webhookDispatch.js"))).toBe(false);
+
+    // Server does NOT import the worker
+    const serverIndex = readFileSync(join(outputDir, "server/index.js"), "utf8");
+    expect(serverIndex).not.toContain("registerWebhookDispatchWorker");
+  });
+
+  it("outbound webhook PgBoss takes priority over BullMQ when both are present", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+      entity Todo { id: Int @id title: String }
+      crud Todo { entity: Todo operations: [create] }
+      job sendEmail {
+        executor: PgBoss
+        perform: {
+          fn: import { sendEmail } from "@src/jobs.js"
+        }
+      }
+      job processPayment {
+        executor: BullMQ
+        perform: {
+          fn: import { processPayment } from "@src/jobs.js"
+        }
+      }
+      webhook TodoOutbound {
+        entity: Todo
+        events: [created]
+        targets: env(WEBHOOK_URLS)
+      }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "webhook-outbound-pgboss-priority");
+    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+
+    // PgBoss should win over BullMQ
+    const dispatcher = readFileSync(join(outputDir, "server/webhooks/todoOutbound.js"), "utf8");
+    expect(dispatcher).toContain("getBoss");
+    expect(dispatcher).not.toContain("createQueue");
+
+    const worker = readFileSync(join(outputDir, "server/webhooks/webhookDispatch.js"), "utf8");
+    expect(worker).toContain("getBoss");
+    expect(worker).not.toContain("createWorker");
+  });
+
   it("webhook stub: existing src/ file is not overwritten", () => {
     const { writeFileSync } = require("node:fs");
     const source = `

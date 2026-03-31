@@ -11,6 +11,28 @@ export class WebhookGenerator extends BaseGenerator {
 
     this.ctx.logger.info("Generating webhook handlers...");
 
+    // Determine which job executor to use for outbound webhook dispatch.
+    // PgBoss is preferred (uses the existing DB, no extra infra); BullMQ is the fallback.
+    const hasPgBossJobs = ast.jobs.some((j) => j.executor === "PgBoss");
+    const hasBullMQJobs = ast.jobs.some((j) => j.executor === "BullMQ");
+    const outboundWebhooks = webhooks.filter((w) => w.mode === "outbound");
+
+    // Emit the shared webhook dispatch worker once when any outbound webhook
+    // can route through a job queue.
+    const usesPgBoss = hasPgBossJobs;
+    const usesBullMQ = !hasPgBossJobs && hasBullMQJobs;
+    const hasJobQueue = outboundWebhooks.length > 0 && (usesPgBoss || usesBullMQ);
+
+    if (hasJobQueue) {
+      this.write(
+        `server/webhooks/webhookDispatch.${ext}`,
+        this.render("shared/server/webhooks/_outbound-worker.hbs", {
+          usesPgBoss,
+          usesBullMQ,
+        }),
+      );
+    }
+
     for (const webhook of webhooks) {
       if (webhook.mode === "inbound") {
         const fnSource =
@@ -49,6 +71,7 @@ export class WebhookGenerator extends BaseGenerator {
         );
       } else {
         // outbound
+        const retry = webhook.retry ?? 0;
         this.write(
           `server/webhooks/${toCamelCase(webhook.name)}.${ext}`,
           this.render("shared/server/webhooks/_outbound.hbs", {
@@ -60,8 +83,11 @@ export class WebhookGenerator extends BaseGenerator {
             targetsEnvVar: webhook.targets ?? "",
             hasSecret: !!webhook.secret,
             secretEnvVar: webhook.secret ?? "",
-            retry: webhook.retry ?? 0,
-            hasRetry: (webhook.retry ?? 0) > 0,
+            retry,
+            // BullMQ counts total attempts (initial + retries), so add 1
+            retryAttempts: retry + 1,
+            usesPgBoss,
+            usesBullMQ,
           }),
         );
       }
