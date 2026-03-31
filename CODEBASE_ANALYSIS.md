@@ -244,7 +244,7 @@ the most common cases.
 
 ## Tier 3 — Medium severity (maintainability / developer experience)
 
-### 13. Rate limiter has several practical problems
+### 13. Rate limiter has several practical problems Done ✅
 
 `rateLimit.hbs` uses an in-memory `Map` with a `setInterval` cleanup:
 
