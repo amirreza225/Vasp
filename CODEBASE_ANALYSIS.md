@@ -294,7 +294,7 @@ These helpers should be extracted to dedicated, directly unit-tested modules.
 
 ---
 
-### 16. Auth register endpoint exposes all non-password user fields
+### 16. Auth register endpoint exposes all non-password user fields Done ✅
 
 `usernameAndPassword.hbs` strips only `passwordHash`:
 
@@ -310,7 +310,7 @@ of safe-to-return fields.
 
 ---
 
-### 17. `vasp add` command does not trigger exhaustiveness checks
+### 17. `vasp add` command does not trigger exhaustiveness checks Done ✅
 
 `packages/cli/src/commands/add.ts` appends DSL blocks to `main.vasp` and
 then calls `runRegenerate()`. However, it generates block text by string
