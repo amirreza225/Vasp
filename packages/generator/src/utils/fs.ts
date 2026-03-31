@@ -8,6 +8,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
+import type { Manifest } from "../manifest/Manifest.js";
+import { computeHash } from "../manifest/Manifest.js";
 
 /** Write a file, creating parent directories as needed. */
 export function writeFile(filePath: string, content: string): void {
@@ -109,4 +111,74 @@ export function cleanupDir(dir: string): void {
   if (existsSync(dir)) {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+/**
+ * Delete generated files that were tracked in `oldManifest` but are absent
+ * from `newManifest`, provided the on-disk content has not been modified by
+ * the user (verified by comparing the file's current SHA-256 hash against the
+ * hash stored in `oldManifest`).
+ *
+ * After deleting files, any directory that has become empty as a result is
+ * also removed (bottom-up, so intermediate empty parents are pruned too).
+ *
+ * Returns the list of relative paths that were deleted.
+ */
+export function deleteOrphanedFiles(
+  oldManifest: Manifest,
+  newManifest: Manifest,
+  realOutputDir: string,
+): string[] {
+  const deleted: string[] = [];
+
+  for (const [relPath, entry] of Object.entries(oldManifest.files)) {
+    // Skip files that are still generated in the new run.
+    if (newManifest.hasFile(relPath)) continue;
+
+    const absPath = join(realOutputDir, relPath);
+    if (!existsSync(absPath)) continue;
+
+    // Only delete if the on-disk content matches the previously generated
+    // content — i.e. the user has not hand-edited the file.
+    let diskContent: string;
+    try {
+      diskContent = readFileSync(absPath, "utf8");
+    } catch {
+      continue;
+    }
+    if (computeHash(diskContent) !== entry.hash) continue;
+
+    try {
+      rmSync(absPath);
+      deleted.push(relPath);
+    } catch {
+      // Best-effort — skip files we cannot remove (e.g. permission errors).
+      continue;
+    }
+  }
+
+  // Prune directories that are now empty (bottom-up).
+  const dirsToCheck = new Set<string>();
+  for (const relPath of deleted) {
+    let dir = dirname(join(realOutputDir, relPath));
+    while (dir.length > realOutputDir.length) {
+      dirsToCheck.add(dir);
+      dir = dirname(dir);
+    }
+  }
+
+  // Sort deepest paths first so we prune children before parents.
+  const sortedDirs = [...dirsToCheck].sort((a, b) => b.length - a.length);
+  for (const dir of sortedDirs) {
+    try {
+      const entries = readdirSync(dir);
+      if (entries.length === 0) {
+        rmSync(dir, { recursive: true });
+      }
+    } catch {
+      // Ignore — directory may have already been removed.
+    }
+  }
+
+  return deleted;
 }
