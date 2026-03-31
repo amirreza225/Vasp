@@ -23,6 +23,7 @@
 
 import { readdir, readFile } from "node:fs/promises"
 import { join, relative } from "node:path"
+import { fileURLToPath } from "node:url"
 
 // ---------------------------------------------------------------------------
 // Source of truth — mirror packages/core/src/types/ast.ts
@@ -147,7 +148,8 @@ function hasDefaultThrow(content: string): boolean {
 // Main
 // ---------------------------------------------------------------------------
 
-const ROOT = join(import.meta.dir, "..")
+const SCRIPT_DIR = fileURLToPath(new URL(".", import.meta.url))
+const ROOT = join(SCRIPT_DIR, "..")
 const PACKAGES_DIR = join(ROOT, "packages")
 
 const files = await walkTs(PACKAGES_DIR)
