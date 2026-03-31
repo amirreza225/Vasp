@@ -20,7 +20,7 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
       include: ['packages/*/src/**/*.ts'],
       exclude: ['**/*.test.ts', '**/index.ts'],
     },

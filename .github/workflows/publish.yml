@@ -20,8 +20,9 @@ jobs:
   publish:
     name: Bump, Build & Publish
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     permissions:
-      contents: write  # push version bump commit + tag
+      contents: write  # push version bump commit + tag + create release
       id-token: write  # OIDC token for npm Trusted Publishers
 
     steps:
@@ -32,13 +33,20 @@ jobs:
 
       - uses: oven-sh/setup-bun@v1
         with:
-          bun-version: latest
+          bun-version: "1.x"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Update npm
         run: sudo npm install -g npm@latest
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Typecheck
         run: bun run typecheck
@@ -60,6 +68,7 @@ jobs:
             NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
           fi
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          # Bump published packages
           for PKG in packages/core packages/parser packages/generator packages/runtime packages/cli; do
             node -e "
               const fs = require('fs');
@@ -70,7 +79,48 @@ jobs:
             "
             sed -i "s/\*\*Version: .*\*\*/**Version: $NEW_VERSION**/" "$PKG/README.md"
           done
+          # Bump private packages (language-server and vscode-extension) to keep versions
+          # in sync across the monorepo. These are not published to npm.
+          for PKG in packages/language-server packages/vscode-extension; do
+            if [ -f "$PKG/package.json" ]; then
+              node -e "
+                const fs = require('fs');
+                const path = '$PKG/package.json';
+                const obj = JSON.parse(fs.readFileSync(path, 'utf8'));
+                obj.version = '$NEW_VERSION';
+                fs.writeFileSync(path, JSON.stringify(obj, null, 2) + '\n');
+              "
+            fi
+          done
           echo "Bumped $CURRENT → $NEW_VERSION"
+
+      - name: Generate CHANGELOG entry
+        id: changelog
+        run: |
+          VERSION="v${{ steps.bump.outputs.new_version }}"
+          DATE=$(date -u +%Y-%m-%d)
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            LOG=$(git log "${PREV_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges)
+          else
+            LOG=$(git log --pretty=format:"- %s (%h)" --no-merges | head -30)
+          fi
+          # Build the new entry
+          ENTRY="## $VERSION ($DATE)"$'\n'"$LOG"$'\n'
+          # Initialise CHANGELOG.md if it doesn't exist or is empty
+          if [ ! -s CHANGELOG.md ]; then
+            printf '# Changelog\n\nAll notable changes to this project will be documented in this file.\n\n' > CHANGELOG.md
+          fi
+          # Prepend the new entry after the first header line
+          TMP=$(mktemp)
+          head -n 1 CHANGELOG.md > "$TMP"
+          printf '\n%s\n' "$ENTRY" >> "$TMP"
+          tail -n +2 CHANGELOG.md >> "$TMP"
+          mv "$TMP" CHANGELOG.md
+          # Store the entry for the GitHub Release body
+          echo "entry<<EOF" >> $GITHUB_OUTPUT
+          echo "$ENTRY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Build all packages
         run: bun run build
@@ -98,7 +148,25 @@ jobs:
       - name: Commit and tag version bump
         run: |
           VERSION="v${{ steps.bump.outputs.new_version }}"
-          git add packages/*/package.json packages/*/README.md
+          git add packages/*/package.json packages/*/README.md CHANGELOG.md
           git commit -m "chore: bump version to $VERSION"
           git tag "$VERSION"
           git push origin main --tags
+
+      - name: Create GitHub Release
+        uses: actions/github-script@v7
+        env:
+          RELEASE_BODY: ${{ steps.changelog.outputs.entry }}
+        with:
+          script: |
+            const version = 'v${{ steps.bump.outputs.new_version }}';
+            const body = process.env.RELEASE_BODY || `Release ${version}`;
+            await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: version,
+              name: version,
+              body: body,
+              draft: false,
+              prerelease: false,
+            });

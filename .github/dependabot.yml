@@ -1,0 +1,43 @@
+version: 2
+updates:
+  # Keep GitHub Actions up to date
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "UTC"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+
+  # Keep npm dependencies up to date
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+      timezone: "UTC"
+    ignore:
+      # workspace:* packages are managed internally — do not auto-update
+      - dependency-name: "@vasp-framework/*"
+    groups:
+      eslint:
+        patterns:
+          - "eslint*"
+          - "typescript-eslint*"
+          - "@eslint/*"
+      playwright:
+        patterns:
+          - "@playwright/*"
+      vitest:
+        patterns:
+          - "vitest*"
+          - "@vitest/*"
+      typescript:
+        patterns:
+          - "typescript*"
+          - "@types/*"

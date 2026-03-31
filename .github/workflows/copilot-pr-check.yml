@@ -15,10 +15,15 @@ on:
     paths-ignore:
       - "**.md"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   health-check:
     name: Project Health Check
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write  # needed to post a PR comment on failure
@@ -28,10 +33,17 @@ jobs:
 
       - uses: oven-sh/setup-bun@v1
         with:
-          bun-version: latest
+          bun-version: "1.x"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Build all packages
         run: bun run build
