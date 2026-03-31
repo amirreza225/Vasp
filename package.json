@@ -3,7 +3,7 @@
   "private": true,
   "workspaces": ["packages/*"],
   "scripts": {
-    "build": "bun run --filter '@vasp-framework/core' build && bun run --filter '@vasp-framework/parser' build && bun run --filter '@vasp-framework/generator' build && bun run --filter '@vasp-framework/runtime' build && bun run --filter 'vasp-cli' build",
+    "build": "bun run --filter '@vasp-framework/core' build && bun run --filter '@vasp-framework/parser' build && bun run --filter '@vasp-framework/generator' build && bun run --filter '@vasp-framework/runtime' build && bun run --filter 'vasp-cli' build && bun run --filter '@vasp-framework/language-server' build && bun run --filter 'vasp-vscode' build",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
