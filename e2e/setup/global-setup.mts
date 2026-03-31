@@ -76,6 +76,16 @@ export default async function globalSetup() {
   console.log('[playwright] Installing dependencies with bun install…')
   runSync('bun', ['install'], APP_DIR, 'bun install', 120_000)
 
+  // @vasp-framework/runtime is installed via a file: symlink into the monorepo.
+  // Vite requires dist/index.js to exist at that path; build it if missing
+  // (e.g. when running locally before `bun run build`, or if the CI artifact
+  // download did not restore the dist/ directory).
+  const runtimeDist = join(MONOREPO_ROOT, 'packages', 'runtime', 'dist', 'index.js')
+  if (!existsSync(runtimeDist)) {
+    console.log('[playwright] Building @vasp-framework/runtime (dist/ missing)…')
+    runSync('bun', ['run', 'build'], join(MONOREPO_ROOT, 'packages', 'runtime'), 'runtime build', 60_000)
+  }
+
   console.log('[playwright] Building frontend with vite build…')
   runSync('bun', ['x', 'vite', 'build'], APP_DIR, 'vite build', 60_000)
 
