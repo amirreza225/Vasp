@@ -69,7 +69,16 @@ export class FrontendGenerator extends BaseGenerator {
     // Client SDK
     this.write(
       `src/vasp/client/index.${ext}`,
-      this.render(`spa/${ext}/src/vasp/client/index.${ext}.hbs`),
+      this.render(`spa/${ext}/src/vasp/client/index.${ext}.hbs`, {
+        // hasClientTypes controls whether 'export type * from ./types.js' is emitted.
+        // types.ts is only generated when there are entities, queries, actions, or cruds.
+        hasClientTypes:
+          this.ctx.isTypeScript &&
+          (ast.queries.length > 0 ||
+            ast.actions.length > 0 ||
+            ast.cruds.length > 0 ||
+            ast.entities.length > 0),
+      }),
     );
     if (ast.queries.length > 0) {
       this.write(

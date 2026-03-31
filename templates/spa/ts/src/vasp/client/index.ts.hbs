@@ -14,4 +14,6 @@ export { use{{pascalCase entity}}Crud } from './crud.js'
 {{#if hasRealtime}}
 export { useRealtime } from './realtime.js'
 {{/if}}
+{{#if hasClientTypes}}
 export type * from './types.js'
+{{/if}}

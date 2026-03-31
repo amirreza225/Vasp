@@ -6,7 +6,7 @@
  */
 
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, rmSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, rmSync, readFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
@@ -258,5 +258,66 @@ describe('vasp new', () => {
       const vasp_file = readFileSync(join(TMP_DIR, 'ts-check', 'main.vasp'), 'utf8')
       expect(vasp_file).toContain('typescript: true')
     })
+  })
+
+  // ---------------------------------------------------------------------------
+  // TypeScript compilation (tsc --noEmit)
+  //
+  // These tests run `bun install` so they are slower than the other tests, but
+  // they verify that the generated TypeScript is actually valid — not just that
+  // the files exist.  They are focused on the server-side code (Drizzle schema,
+  // Elysia routes, auth middleware, CRUD handlers, rate limiter, etc.) because:
+  //   • The server tsconfig doesn't require Nuxt or Vite type generation.
+  //   • Server-side code is where generator regressions most often manifest.
+  // ---------------------------------------------------------------------------
+  describe('TypeScript compilation (tsc --noEmit)', () => {
+    it(
+      'generated TypeScript SPA server-side code compiles without errors',
+      () => {
+        // 1. Scaffold a TypeScript SPA without installing deps
+        const result = vasp(['new', 'ts-compile-check', '--typescript', '--no-install'])
+        expect(result.status, `vasp new failed:\n${result.stderr}`).toBe(0)
+
+        const appDir = join(TMP_DIR, 'ts-compile-check')
+
+        // 2. Patch @vasp-framework/runtime to use the local monorepo build so
+        //    `bun install` doesn't try to fetch a version that doesn't exist on npm.
+        const pkgPath = join(appDir, 'package.json')
+        const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
+          dependencies?: Record<string, string>
+        }
+        if (pkg.dependencies?.['@vasp-framework/runtime']) {
+          pkg.dependencies['@vasp-framework/runtime'] =
+            `file:${join(MONOREPO_ROOT, 'packages', 'runtime')}`
+        }
+        writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
+
+        // 3. Install dependencies (required for tsc to resolve third-party imports)
+        const installResult = spawnSync('bun', ['install'], {
+          cwd: appDir,
+          encoding: 'utf8',
+          timeout: 120_000,
+        })
+        expect(
+          installResult.status,
+          `bun install failed:\n${installResult.stderr}`,
+        ).toBe(0)
+
+        // 4. Run vue-tsc --noEmit on the generated TypeScript.
+        //    For SPA apps, the root tsconfig.json includes both server/**/*.ts
+        //    and src/**/*.{ts,vue}, so this catches errors across the whole project.
+        //    vue-tsc is used instead of plain tsc because it understands .vue SFCs.
+        const tscResult = spawnSync(
+          'bunx',
+          ['vue-tsc', '--noEmit'],
+          { cwd: appDir, encoding: 'utf8', timeout: 60_000 },
+        )
+        expect(
+          tscResult.status,
+          `Server-side TypeScript compilation failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
+        ).toBe(0)
+      },
+      180_000, // 3 minutes: generation + bun install + tsc
+    )
   })
 })

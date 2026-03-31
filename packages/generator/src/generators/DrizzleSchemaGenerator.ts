@@ -333,6 +333,9 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
     const hasAnyFulltextIndexes = entitiesWithSchema.some((e) =>
       e.tableIndexes.some((idx) => idx.isFulltext),
     );
+    // hasAnyTables is true when there is at least one table to define in the schema:
+    // either a user-defined entity or the built-in auth users table.
+    const hasAnyTables = entitiesWithSchema.length > 0 || !!ast.auth;
 
     this.write(
       `drizzle/schema.${this.ctx.ext}`,
@@ -350,6 +353,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         junctionTables,
         hasAnyIndexes,
         hasAnyFulltextIndexes,
+        hasAnyTables,
       }),
     );
 

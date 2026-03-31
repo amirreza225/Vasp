@@ -12,6 +12,7 @@
 import { test, expect } from '../test.mts'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
 import type { FixtureState } from '../types.mts'
 
 export function generationSuite(state: FixtureState): void {
@@ -387,6 +388,40 @@ export function generationSuite(state: FixtureState): void {
             existsSync(join(appDir, `server/routes/webhook`)),
         ).toBe(true)
       })
+    }
+
+    // ── TypeScript compilation (tsc --noEmit) ──────────────────────────────
+    //
+    // Validates that the generated TypeScript compiles without errors.
+    // Only runs for TypeScript fixtures; the deps are already installed by
+    // FixtureHarness so no extra install step is needed.
+    //
+    // • SPA TypeScript: vue-tsc --noEmit uses the root tsconfig.json which
+    //   includes both server/**/*.ts and src/**/*.{ts,vue}.
+    // • SSR/SSG TypeScript: the root tsconfig extends .nuxt/tsconfig.json which
+    //   only exists after `nuxt prepare`. We fall back to the server-only tsconfig
+    //   (server/tsconfig.json) which avoids the Nuxt dependency.
+
+    if (capabilities.isTypeScript) {
+      const isSrr = capabilities.isSsr || capabilities.isSsg
+      test(
+        'generated TypeScript compiles without errors (tsc --noEmit)',
+        { timeout: 60_000 },
+        () => {
+          const tscArgs = isSrr
+            ? ['tsc', '--noEmit', '--project', 'server/tsconfig.json']
+            : ['vue-tsc', '--noEmit']
+          const tscResult = spawnSync('bunx', tscArgs, {
+            cwd: appDir,
+            encoding: 'utf8',
+            timeout: 60_000,
+          })
+          expect(
+            tscResult.status,
+            `TypeScript compilation failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
+          ).toBe(0)
+        },
+      )
     }
   })
 }
