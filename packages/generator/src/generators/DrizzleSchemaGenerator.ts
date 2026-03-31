@@ -277,6 +277,12 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
       (f) => f.name === "password" || f.name === "passwordHash",
     );
     const passwordFieldName = passwordField?.name ?? "passwordHash";
+    // Convert camelCase field name to SQL snake_case column name.
+    // e.g. "passwordHash" → "password_hash", "password" → "password"
+    const passwordSqlColumnName = passwordFieldName.replace(
+      /([A-Z])/g,
+      "_$1",
+    ).toLowerCase();
 
     let authUserExtraFields: (typeof entitiesWithSchema)[0]["scalarFields"] =
       [];
@@ -374,6 +380,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         authUserEntityName,
         userTableName,
         passwordFieldName,
+        passwordSqlColumnName,
         enumDeclarations,
         hasEnums,
         junctionTables,

@@ -942,6 +942,34 @@ describe("generate()", () => {
     expect(schema).toContain("passwordHash");
   });
 
+  it("schema uses passwordFieldName from userEntity definition, not hardcoded 'passwordHash'", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      auth User { userEntity: User methods: [usernameAndPassword] }
+      entity User {
+        id: Int @id
+        username: String @unique
+        password: String
+      }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "auth-schema-password-field");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const schema = readFileSync(join(outputDir, "drizzle/schema.js"), "utf8");
+    // When the entity defines 'password' (not 'passwordHash'), the column must match
+    expect(schema).toContain("password: text('password')");
+    // The old hardcoded form must NOT appear
+    expect(schema).not.toContain("passwordHash: text('password_hash')");
+  });
+
   it("schema uses userEntity name for auth table, not hardcoded 'users'", () => {
     const source = `
       app A { title: "T" db: Drizzle ssr: false typescript: false }

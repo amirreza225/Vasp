@@ -26,7 +26,7 @@ export const {{userTableName}} = pgTable('{{userTableName}}', {
   id: integer('id').primaryKey().generatedByDefaultAsIdentity(),
   username: text('username').notNull().unique(),
   email: text('email').unique(),
-  passwordHash: text('password_hash'),
+  {{passwordFieldName}}: text('{{passwordSqlColumnName}}'),
   googleId: text('google_id').unique(),
   githubId: text('github_id').unique(),
 {{#each authUserExtraFields}}
