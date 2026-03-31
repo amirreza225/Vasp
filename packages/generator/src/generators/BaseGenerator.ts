@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import type { EntityNode, FieldNode } from "@vasp-framework/core";
+import { DEFAULT_ADMIN_PORT, DEFAULT_BACKEND_PORT, DEFAULT_SPA_PORT, DEFAULT_SSR_PORT } from "@vasp-framework/core";
 import type { GeneratorContext } from "../GeneratorContext.js";
 import type { Manifest } from "../manifest/Manifest.js";
 import type { TemplateEngine } from "../template/TemplateEngine.js";
@@ -131,6 +132,9 @@ export abstract class BaseGenerator {
       autoPages: ast.autoPages ?? [],
       hasAutoPages: (ast.autoPages?.length ?? 0) > 0,
       ui: this.resolveUIConfig(ast.app?.ui),
+      backendPort: DEFAULT_BACKEND_PORT,
+      frontendPort: this.ctx.isSpa ? DEFAULT_SPA_PORT : DEFAULT_SSR_PORT,
+      adminPort: DEFAULT_ADMIN_PORT,
     };
   }
 

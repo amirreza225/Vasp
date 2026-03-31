@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { ensureDir } from "../utils/fs.js";
 import { BaseGenerator } from "./BaseGenerator.js";
-import { DEFAULT_BACKEND_PORT } from "@vasp-framework/core";
+import { DEFAULT_ADMIN_PORT, DEFAULT_BACKEND_PORT } from "@vasp-framework/core";
 import { toCamelCase } from "../template/TemplateEngine.js";
 
 export class AdminGenerator extends BaseGenerator {
@@ -50,6 +50,7 @@ export class AdminGenerator extends BaseGenerator {
     const commonData = {
       adminEntities,
       backendPort: DEFAULT_BACKEND_PORT,
+      adminPort: DEFAULT_ADMIN_PORT,
     };
 
     // ── Frontend files ────────────────────────────────────────────────
