@@ -942,6 +942,101 @@ describe("generate()", () => {
     expect(schema).toContain("passwordHash");
   });
 
+  it("schema uses userEntity name for auth table, not hardcoded 'users'", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      auth Account { userEntity: Account methods: [usernameAndPassword] }
+      entity Account {
+        id: Int @id
+        username: String @unique
+      }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "auth-schema-account");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const schema = readFileSync(join(outputDir, "drizzle/schema.js"), "utf8");
+    // Auth table should use the entity name, not hardcoded 'users'
+    expect(schema).toContain("export const accounts = pgTable('accounts'");
+    expect(schema).toContain("passwordHash");
+    // No separate hardcoded 'users' table should exist
+    expect(schema).not.toContain("export const users = pgTable('users'");
+  });
+
+  it("schema TypeScript types use userEntity name for auth table", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: true typescript: true }
+      auth Account { userEntity: Account methods: [usernameAndPassword] }
+      entity Account {
+        id: Int @id
+        username: String @unique
+      }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "auth-schema-account-ts");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const schema = readFileSync(join(outputDir, "drizzle/schema.ts"), "utf8");
+    // TypeScript types should reflect the entity name
+    expect(schema).toContain("export type Account = InferSelectModel<typeof accounts>");
+    expect(schema).toContain("export type NewAccount = InferInsertModel<typeof accounts>");
+    // No User/NewUser types from old hardcoded template
+    expect(schema).not.toContain("export type User = InferSelectModel");
+    expect(schema).not.toContain("export type NewUser = InferInsertModel");
+  });
+
+  it("schema relations block uses userEntity table name, not hardcoded 'users'", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      auth Account { userEntity: Account methods: [usernameAndPassword] }
+      entity Account {
+        id: Int @id
+        username: String @unique
+        todos: Todo[]
+      }
+      entity Todo {
+        id: Int @id
+        title: String
+        owner: Account @onDelete(cascade)
+      }
+      crud Todo { entity: Todo operations: [list, create, update, delete] }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "auth-schema-account-relations");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const schema = readFileSync(join(outputDir, "drizzle/schema.js"), "utf8");
+    // Auth user relations block should use the entity table name
+    expect(schema).toContain("accountsRelations = relations(accounts");
+    expect(schema).toContain("many(todos)");
+    // FK references should use 'accounts' not 'users'
+    expect(schema).toContain("references(() => accounts.id");
+    // No hardcoded 'usersRelations' or 'users' table
+    expect(schema).not.toContain("usersRelations = relations(users");
+    expect(schema).not.toContain("export const users = pgTable");
+  });
+
   it("strips @hidden fields from auth register/login/me responses", () => {
     const source = `
       app A { title: "T" db: Drizzle ssr: false typescript: false }

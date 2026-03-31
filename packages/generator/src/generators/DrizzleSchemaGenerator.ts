@@ -255,12 +255,29 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
     });
 
     // When auth is present, filter out the auth user entity from the entity loop
-    // to avoid duplicate table definitions (the template already emits a hardcoded
-    // users table for auth). Any extra fields the user defined on the User entity
-    // are forwarded as `authUserExtraFields` so the template can merge them.
+    // to avoid duplicate table definitions (the template emits the auth user table
+    // using the dynamic userTableName). Any extra fields the user defined on the
+    // user entity are forwarded as `authUserExtraFields` so the template can merge them.
     // Relation metadata is forwarded separately so the template can emit a
-    // usersRelations block with the correct one/many sides.
-    const authUserEntityName = ast.auth?.userEntity;
+    // <userTableName>Relations block with the correct one/many sides.
+    const authUserEntityName = ast.auth?.userEntity ?? null;
+
+    // Derive the Drizzle table const name and SQL table name from the user entity name.
+    // Matches the convention used in AuthGenerator: toPlural(toCamelCase(userEntity)).
+    // e.g. "User" → "users", "Account" → "accounts", "Person" → "people"
+    const userTableName = authUserEntityName
+      ? toPlural(toCamelCase(authUserEntityName))
+      : "users";
+
+    // Detect password field name on the user entity (either 'password' or 'passwordHash').
+    const authUserEntity = authUserEntityName
+      ? ast.entities.find((e) => e.name === authUserEntityName)
+      : undefined;
+    const passwordField = authUserEntity?.fields.find(
+      (f) => f.name === "password" || f.name === "passwordHash",
+    );
+    const passwordFieldName = passwordField?.name ?? "passwordHash";
+
     let authUserExtraFields: (typeof entitiesWithSchema)[0]["scalarFields"] =
       [];
     let authUserOneToMany: (typeof entitiesWithSchema)[0]["oneToMany"] = [];
@@ -269,10 +286,16 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
       [];
 
     if (authUserEntityName) {
+      // Fields hardcoded in the schema template's auth user table block —
+      // exclude them from authUserExtraFields to prevent duplicate columns.
       const authBuiltinFields = new Set([
         "id",
         "username",
         "email",
+        "passwordHash",
+        "password",
+        "googleId",
+        "githubId",
         "createdAt",
         "updatedAt",
       ]);
@@ -348,6 +371,9 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         authUserManyToOne,
         authUserManyToManyRefs,
         authUserHasRelations,
+        authUserEntityName,
+        userTableName,
+        passwordFieldName,
         enumDeclarations,
         hasEnums,
         junctionTables,
