@@ -1,5 +1,27 @@
 import { join } from "node:path";
-import type { AppUIConfig, EntityNode, FieldNode } from "@vasp-framework/core";
+import type {
+  AppUIConfig,
+  AuthNode,
+  AutoPageNode,
+  CacheNode,
+  CrudNode,
+  EmailNode,
+  EntityNode,
+  FieldNode,
+  JobNode,
+  MiddlewareNode,
+  MultiTenantConfig,
+  ObservabilityNode,
+  PageNode,
+  QueryNode,
+  ActionNode,
+  ApiNode,
+  RealtimeNode,
+  RouteNode,
+  SeedNode,
+  StorageNode,
+  WebhookNode,
+} from "@vasp-framework/core";
 import {
   DEFAULT_ADMIN_PORT,
   DEFAULT_BACKEND_PORT,
@@ -10,6 +32,110 @@ import type { GeneratorContext } from "../GeneratorContext.js";
 import type { Manifest } from "../manifest/Manifest.js";
 import type { TemplateEngine } from "../template/TemplateEngine.js";
 import { writeFile } from "../utils/fs.js";
+
+/** Resolved PrimeVue UI configuration exposed to every template via baseData(). */
+export interface ResolvedUIConfig {
+  theme: string;
+  themeImportName: string;
+  themeImportPath: string;
+  primaryColor: string | null;
+  hasPrimaryColor: boolean;
+  primaryShades: Array<{ shade: number; token: string }>;
+  darkModeSelector: string;
+  ripple: boolean;
+}
+
+/**
+ * Typed shape of the data object merged into every template render call.
+ * All fields returned by BaseGenerator.baseData() are captured here so that
+ * TypeScript can catch incorrect / missing values at compile time instead of
+ * letting them surface as silent Handlebars rendering failures.
+ */
+export interface BaseTemplateData {
+  // ── App identity ────────────────────────────────────────────────────────
+  appName: string;
+  appTitle: string;
+  // ── Output mode ─────────────────────────────────────────────────────────
+  isTypeScript: boolean;
+  isSsr: boolean;
+  isSsg: boolean;
+  isSpa: boolean;
+  /** File extension for generated source files: "ts" | "js" */
+  ext: string;
+  /** "ts" | "js" — alias for ext, used by some templates */
+  mode: string;
+  // ── Feature flags ───────────────────────────────────────────────────────
+  hasAuth: boolean;
+  hasAdmin: boolean;
+  adminEntities: EntityNode[];
+  hasAnyRelations: boolean;
+  hasRealtime: boolean;
+  hasJobs: boolean;
+  hasPgBossJobs: boolean;
+  hasBullMQJobs: boolean;
+  hasRedisStreamsJobs: boolean;
+  hasRabbitMQJobs: boolean;
+  hasKafkaJobs: boolean;
+  hasRedisJobs: boolean;
+  hasCacheRedis: boolean;
+  needsRedis: boolean;
+  hasStorage: boolean;
+  hasCloudStorage: boolean;
+  storages: StorageNode[];
+  hasEmail: boolean;
+  hasEmailResend: boolean;
+  hasEmailSendgrid: boolean;
+  hasEmailSmtp: boolean;
+  emails: EmailNode[];
+  hasCache: boolean;
+  caches: CacheNode[];
+  hasWebhook: boolean;
+  hasInboundWebhook: boolean;
+  hasOutboundWebhook: boolean;
+  webhooks: WebhookNode[];
+  inboundWebhooks: WebhookNode[];
+  outboundWebhooks: WebhookNode[];
+  // ── Collections ─────────────────────────────────────────────────────────
+  routes: RouteNode[];
+  pages: PageNode[];
+  queries: QueryNode[];
+  actions: ActionNode[];
+  apis: ApiNode[];
+  middlewares: MiddlewareNode[];
+  cruds: CrudNode[];
+  hasCrudListConfig: boolean;
+  hasCrudFormConfig: boolean;
+  realtimes: RealtimeNode[];
+  jobs: JobNode[];
+  seed: SeedNode | undefined;
+  auth: AuthNode | undefined;
+  // ── Multi-tenancy ────────────────────────────────────────────────────────
+  multiTenant: MultiTenantConfig | null;
+  hasMultiTenant: boolean;
+  isRowLevelTenant: boolean;
+  // ── Observability ────────────────────────────────────────────────────────
+  observability: ObservabilityNode | null;
+  hasObservability: boolean;
+  hasObservabilityTracing: boolean;
+  hasObservabilityMetrics: boolean;
+  observabilityLogs: string;
+  observabilityExporter: string;
+  observabilityErrorTracking: string;
+  hasObservabilityOtlp: boolean;
+  hasObservabilityPrometheus: boolean;
+  hasObservabilitySentry: boolean;
+  hasObservabilityDatadog: boolean;
+  hasStructuredLogs: boolean;
+  // ── AutoPages ────────────────────────────────────────────────────────────
+  autoPages: AutoPageNode[];
+  hasAutoPages: boolean;
+  // ── UI theming ───────────────────────────────────────────────────────────
+  ui: ResolvedUIConfig;
+  // ── Server ports ─────────────────────────────────────────────────────────
+  backendPort: number;
+  frontendPort: number;
+  adminPort: number;
+}
 
 export abstract class BaseGenerator {
   constructor(
@@ -31,12 +157,12 @@ export abstract class BaseGenerator {
 
   protected render(
     templateKey: string,
-    data: Record<string, unknown> = {},
+    data: Partial<BaseTemplateData> & Record<string, unknown> = {},
   ): string {
     return this.engine.render(templateKey, { ...this.baseData(), ...data });
   }
 
-  protected baseData(): Record<string, unknown> {
+  protected baseData(): BaseTemplateData {
     const { ast, isTypeScript, isSsr, isSsg, isSpa, ext, mode } = this.ctx;
     const emails = ast.emails ?? [];
     const caches = ast.caches ?? [];
@@ -145,7 +271,7 @@ export abstract class BaseGenerator {
 
   private resolveUIConfig(
     uiConfig: AppUIConfig | undefined,
-  ): Record<string, unknown> {
+  ): ResolvedUIConfig {
     const theme = uiConfig?.theme ?? "Aura";
     const primaryColor = uiConfig?.primaryColor ?? null;
     const darkModeSelector = uiConfig?.darkModeSelector ?? ".app-dark";
