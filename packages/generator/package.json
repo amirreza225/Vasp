@@ -27,7 +27,6 @@
     "handlebars": "^4.7.9"
   },
   "devDependencies": {
-    "@types/handlebars": "^4.1.0",
     "typescript": "^6.0.2",
     "vitest": "^4.1.2"
   },
