@@ -92,6 +92,8 @@ export interface BaseTemplateData {
   hasWebhook: boolean;
   hasInboundWebhook: boolean;
   hasOutboundWebhook: boolean;
+  /** True when outbound webhooks exist AND a PgBoss or BullMQ job executor is declared. */
+  hasOutboundWebhookJobQueue: boolean;
   webhooks: WebhookNode[];
   inboundWebhooks: WebhookNode[];
   outboundWebhooks: WebhookNode[];
@@ -229,6 +231,9 @@ export abstract class BaseGenerator {
       hasWebhook: webhooks.length > 0,
       hasInboundWebhook: inboundWebhooks.length > 0,
       hasOutboundWebhook: outboundWebhooks.length > 0,
+      hasOutboundWebhookJobQueue:
+        outboundWebhooks.length > 0 &&
+        ast.jobs.some((j) => j.executor === "PgBoss" || j.executor === "BullMQ"),
       webhooks,
       inboundWebhooks,
       outboundWebhooks,

@@ -1,4 +1,9 @@
 import { createHmac } from 'node:crypto'
+{{#if usesPgBoss}}
+import { getBoss } from '../jobs/boss.{{ext}}'
+{{else if usesBullMQ}}
+import { createQueue } from '../jobs/bullmq.{{ext}}'
+{{/if}}
 
 /**
  * Outbound webhook dispatcher: {{webhookName}}
@@ -8,10 +13,16 @@ import { createHmac } from 'node:crypto'
 {{#if hasSecret}}
  * Signs payloads with HMAC-SHA256 using env({{secretEnvVar}})
 {{/if}}
-{{#if hasRetry}}
- * Retry count: {{retry}}
+{{#if usesPgBoss}}
+ * Delivery: enqueued via PgBoss (queue: vasp-webhook-dispatch, retryLimit: {{retry}})
+{{else if usesBullMQ}}
+ * Delivery: enqueued via BullMQ (queue: vasp-webhook-dispatch, attempts: {{retryAttempts}})
+{{else}}
+ * Delivery: fire-and-forget (no job queue available — no retry)
 {{/if}}
  */
+
+const VASP_WEBHOOK_QUEUE = 'vasp-webhook-dispatch'
 
 function _getTargets() {
   const raw = process.env.{{targetsEnvVar}} ?? ''
@@ -28,30 +39,10 @@ function _signPayload(payload) {
 }
 {{/if}}
 
-async function _sendWithRetry(url, body, signature, attempt) {
-  const headers = {
-    'Content-Type': 'application/json',
-    'X-Vasp-Webhook-Event': body.event,
-{{#if hasSecret}}
-    'X-Webhook-Signature': signature,
-{{/if}}
-  }
-  try {
-    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
-    if (!res.ok) throw new Error('HTTP ' + res.status)
-  } catch (err) {
-{{#if hasRetry}}
-    if (attempt < {{retry}}) {
-      await new Promise((r) => setTimeout(r, 500 * attempt))
-      return _sendWithRetry(url, body, signature, attempt + 1)
-    }
-{{/if}}
-    console.error('[{{webhookName}}] Failed to deliver webhook to ' + url + ':', err)
-  }
-}
-
+{{#if usesPgBoss}}
 /**
- * Dispatch a {{webhookName}} outbound webhook event to all configured targets.
+ * Enqueue a {{webhookName}} outbound webhook event via PgBoss.
+ * Returns immediately after enqueueing — delivery is handled by the background worker.
  * @param event - The event type: {{join events " | "}}
  * @param data  - The entity payload to send
  */
@@ -68,5 +59,84 @@ export async function dispatch{{webhookPascal}}(event, data) {
 {{else}}
   const signature = ''
 {{/if}}
-  await Promise.allSettled(targets.map((url) => _sendWithRetry(url, body, signature, 1)))
+  const boss = await getBoss()
+  await Promise.all(
+    targets.map((url) =>
+      boss.send(
+        VASP_WEBHOOK_QUEUE,
+        { url, body, signature, hasSignature: {{hasSecret}}, event },
+        { retryLimit: {{retry}}, retryDelay: 30, retryBackoff: true },
+      )
+    ),
+  )
 }
+{{else if usesBullMQ}}
+const _queue = createQueue(VASP_WEBHOOK_QUEUE)
+
+/**
+ * Enqueue a {{webhookName}} outbound webhook event via BullMQ.
+ * Returns immediately after enqueueing — delivery is handled by the background worker.
+ * @param event - The event type: {{join events " | "}}
+ * @param data  - The entity payload to send
+ */
+export async function dispatch{{webhookPascal}}(event, data) {
+  const targets = _getTargets()
+  if (targets.length === 0) {
+    console.warn('[{{webhookName}}] No targets configured — set {{targetsEnvVar}} env var')
+    return
+  }
+  const body = { event, entity: '{{entity}}', data, timestamp: new Date().toISOString() }
+  const serialized = JSON.stringify(body)
+{{#if hasSecret}}
+  const signature = _signPayload(serialized)
+{{else}}
+  const signature = ''
+{{/if}}
+  await Promise.all(
+    targets.map((url) =>
+      _queue.add(
+        'dispatch',
+        { url, body, signature, hasSignature: {{hasSecret}}, event },
+        { attempts: {{retryAttempts}}, backoff: { type: 'exponential', delay: 5000 } },
+      )
+    ),
+  )
+}
+{{else}}
+/**
+ * Dispatch a {{webhookName}} outbound webhook event to all configured targets.
+ * Fire-and-forget: errors are logged but do not affect the caller.
+ * @param event - The event type: {{join events " | "}}
+ * @param data  - The entity payload to send
+ */
+export function dispatch{{webhookPascal}}(event, data) {
+  const targets = _getTargets()
+  if (targets.length === 0) {
+    console.warn('[{{webhookName}}] No targets configured — set {{targetsEnvVar}} env var')
+    return
+  }
+  const body = { event, entity: '{{entity}}', data, timestamp: new Date().toISOString() }
+  const serialized = JSON.stringify(body)
+{{#if hasSecret}}
+  const signature = _signPayload(serialized)
+{{else}}
+  const signature = ''
+{{/if}}
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Vasp-Webhook-Event': event,
+{{#if hasSecret}}
+    'X-Webhook-Signature': signature,
+{{/if}}
+  }
+  void Promise.allSettled(
+    targets.map((url) =>
+      fetch(url, { method: 'POST', headers, body: serialized }).then((res) => {
+        if (!res.ok) throw new Error('HTTP ' + res.status)
+      }).catch((err) => {
+        console.error('[{{webhookName}}] Failed to deliver webhook to ' + url + ':', err)
+      })
+    ),
+  )
+}
+{{/if}}

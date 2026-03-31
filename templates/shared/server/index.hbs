@@ -51,6 +51,9 @@ import { {{camelCase name}}UploadRoutes } from './routes/storage/{{camelCase nam
 {{#each inboundWebhooks}}
 import { {{camelCase name}}Routes } from './routes/webhooks/{{camelCase name}}.{{../ext}}'
 {{/each}}
+{{#if hasOutboundWebhookJobQueue}}
+import { registerWebhookDispatchWorker } from './webhooks/webhookDispatch.{{ext}}'
+{{/if}}
 {{#if hasObservabilityPrometheus}}
 import { getPrometheusMetrics } from './telemetry/metrics.{{ext}}'
 {{/if}}
@@ -170,3 +173,8 @@ export const app = new Elysia()
   .listen(PORT)
 
 console.log(`🚀 Vasp backend running at http://localhost:${PORT}`)
+{{#if hasOutboundWebhookJobQueue}}
+registerWebhookDispatchWorker().catch((err) => {
+  console.error('[vasp] Failed to start webhook dispatch worker:', err)
+})
+{{/if}}

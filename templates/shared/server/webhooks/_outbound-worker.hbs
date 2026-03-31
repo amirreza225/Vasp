@@ -1,0 +1,46 @@
+{{#if usesPgBoss}}
+import { getBoss } from '../jobs/boss.{{ext}}'
+{{else}}
+import { createQueue, createWorker } from '../jobs/bullmq.{{ext}}'
+{{/if}}
+
+const VASP_WEBHOOK_QUEUE = 'vasp-webhook-dispatch'
+
+async function _deliverWebhook(url, body, signature, hasSignature, event) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Vasp-Webhook-Event': event,
+  }
+  if (hasSignature && signature) {
+    headers['X-Webhook-Signature'] = signature
+  }
+  const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) })
+  if (!res.ok) throw new Error('Webhook delivery failed: HTTP ' + res.status + ' from ' + url)
+}
+
+{{#if usesPgBoss}}
+/**
+ * Register the shared outbound webhook dispatch worker with PgBoss.
+ * Call once at server startup.
+ */
+export async function registerWebhookDispatchWorker() {
+  const boss = await getBoss()
+  await boss.work(VASP_WEBHOOK_QUEUE, async (job) => {
+    const { url, body, signature, hasSignature, event } = job.data
+    await _deliverWebhook(url, body, signature, hasSignature, event)
+  })
+}
+{{else}}
+const _queue = createQueue(VASP_WEBHOOK_QUEUE)
+
+/**
+ * Register the shared outbound webhook dispatch worker with BullMQ.
+ * Call once at server startup. Returns the Worker instance.
+ */
+export async function registerWebhookDispatchWorker() {
+  return createWorker(VASP_WEBHOOK_QUEUE, async (job) => {
+    const { url, body, signature, hasSignature, event } = job.data
+    await _deliverWebhook(url, body, signature, hasSignature, event)
+  })
+}
+{{/if}}
