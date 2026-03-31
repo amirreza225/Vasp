@@ -1,0 +1,15 @@
+app SsrTsDebug {
+  title: "Ssr Ts Debug"
+  db: Drizzle
+  ssr: true
+  typescript: true
+}
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
