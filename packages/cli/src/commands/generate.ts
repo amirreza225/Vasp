@@ -29,6 +29,7 @@ export interface RegenerateResult {
   updated: number;
   skipped: number;
   errors: string[];
+  warnings: string[];
 }
 
 /**
@@ -56,6 +57,7 @@ export async function runRegenerate(
         updated: 0,
         skipped: 0,
         errors: ["main.vasp not found"],
+        warnings: [],
       };
     }
     throw err;
@@ -66,7 +68,7 @@ export async function runRegenerate(
     ast = parse(source, "main.vasp");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { success: false, added: 0, updated: 0, skipped: 0, errors: [msg] };
+    return { success: false, added: 0, updated: 0, skipped: 0, errors: [msg], warnings: [] };
   }
 
   const previousManifest = Manifest.load(projectDir);
@@ -85,11 +87,12 @@ export async function runRegenerate(
       updated: 0,
       skipped: 0,
       errors: result.errors,
+      warnings: result.warnings,
     };
   }
 
   const stats = computeDiff(previousManifest, result.filesWritten, projectDir);
-  return { success: true, errors: [], ...stats };
+  return { success: true, errors: [], warnings: result.warnings, ...stats };
 }
 
 /**
@@ -183,6 +186,16 @@ export async function generateCommand(args: string[]): Promise<void> {
     log.dim(
       `  ${result.skipped} user-modified file(s) preserved — use --force to overwrite`,
     );
+  }
+
+  if (result.warnings.length > 0) {
+    console.log();
+    log.warn("⚠ Destructive schema changes detected:");
+    for (const w of result.warnings) {
+      log.warn(`  ${w}`);
+    }
+    log.warn('Review these changes carefully before running "vasp db push".');
+    log.warn('Consider using a migration instead: vasp db generate && vasp db migrate');
   }
 }
 

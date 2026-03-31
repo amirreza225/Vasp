@@ -3,7 +3,8 @@ import { mkdirSync, rmSync, existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { generate } from "./generate.js";
+import { generate, detectDestructiveSchemaChanges } from "./generate.js";
+import { Manifest } from "./manifest/Manifest.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
 import { TEMPLATES_DIR, MINIMAL_VASP } from "./test-helpers.js";
 import * as EmailGeneratorModule from "./generators/EmailGenerator.js";
@@ -3256,5 +3257,214 @@ describe("generate()", () => {
       emailSpy.mockRestore();
       frontendSpy.mockRestore();
     }
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// detectDestructiveSchemaChanges unit tests
+// ────────────────────────────────────────────────────────────────────────────
+
+const makeAst = (entities: { name: string; fields: Array<{ name: string; type: string; nullable?: boolean; isRelation?: boolean; isArray?: boolean; isManyToMany?: boolean }> }[]) =>
+  parse(
+    [
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }`,
+      `route R { path: "/" to: P }`,
+      `page P { component: import P from "@src/P.vue" }`,
+      ...entities.map((e) => {
+        const fields = e.fields.map((f) => {
+          const nullable = f.nullable ? " @nullable" : "";
+          return `  ${f.name}: ${f.type}${nullable}`;
+        });
+        return `entity ${e.name} {\n${fields.join("\n")}\n}`;
+      }),
+    ].join("\n\n"),
+  );
+
+describe("detectDestructiveSchemaChanges", () => {
+  it("returns no warnings when there is no previous snapshot", () => {
+    const ast = makeAst([{ name: "Todo", fields: [{ name: "title", type: "String" }] }]);
+    // no previous snapshot → nothing to compare
+    expect(detectDestructiveSchemaChanges({ entities: {} }, ast)).toEqual([]);
+  });
+
+  it("returns no warnings when schema is unchanged", () => {
+    const previousSnapshot = {
+      entities: {
+        Todo: { fields: { title: { type: "String", nullable: false } } },
+      },
+    };
+    const ast = makeAst([{ name: "Todo", fields: [{ name: "title", type: "String" }] }]);
+    expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
+  });
+
+  it("warns when an entity is removed", () => {
+    const previousSnapshot = {
+      entities: {
+        OldEntity: { fields: { name: { type: "String", nullable: false } } },
+      },
+    };
+    const ast = makeAst([]); // OldEntity gone
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("OldEntity");
+    expect(warnings[0]).toContain("DROP");
+  });
+
+  it("warns when a column is removed from an entity", () => {
+    const previousSnapshot = {
+      entities: {
+        Todo: {
+          fields: {
+            title: { type: "String", nullable: false },
+            description: { type: "Text", nullable: true },
+          },
+        },
+      },
+    };
+    const ast = makeAst([{ name: "Todo", fields: [{ name: "title", type: "String" }] }]);
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("description");
+    expect(warnings[0]).toContain("Todo");
+    expect(warnings[0]).toContain("DROP");
+  });
+
+  it("warns when a column type changes", () => {
+    const previousSnapshot = {
+      entities: {
+        Product: { fields: { price: { type: "Int", nullable: false } } },
+      },
+    };
+    const ast = makeAst([{ name: "Product", fields: [{ name: "price", type: "Float" }] }]);
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("price");
+    expect(warnings[0]).toContain("Int");
+    expect(warnings[0]).toContain("Float");
+  });
+
+  it("warns for renamed field (detected as drop + add)", () => {
+    const previousSnapshot = {
+      entities: {
+        User: { fields: { username: { type: "String", nullable: false } } },
+      },
+    };
+    // 'username' replaced by 'name' → looks like a drop to the snapshot
+    const ast = makeAst([{ name: "User", fields: [{ name: "name", type: "String" }] }]);
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("username");
+    expect(warnings[0]).toContain("DROP");
+  });
+
+  it("does not warn when a new column is added (additive, not destructive)", () => {
+    const previousSnapshot = {
+      entities: {
+        Todo: { fields: { title: { type: "String", nullable: false } } },
+      },
+    };
+    const ast = makeAst([
+      {
+        name: "Todo",
+        fields: [
+          { name: "title", type: "String" },
+          { name: "done", type: "Boolean" },
+        ],
+      },
+    ]);
+    expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
+  });
+
+  it("emits multiple warnings when multiple destructive changes occur", () => {
+    const previousSnapshot = {
+      entities: {
+        Post: {
+          fields: {
+            title: { type: "String", nullable: false },
+            body: { type: "Text", nullable: false },
+          },
+        },
+        Comment: { fields: { text: { type: "String", nullable: false } } },
+      },
+    };
+    // Post.body dropped, Comment entity dropped
+    const ast = makeAst([{ name: "Post", fields: [{ name: "title", type: "String" }] }]);
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings.length).toBeGreaterThanOrEqual(2);
+    expect(warnings.some((w) => w.includes("Comment"))).toBe(true);
+    expect(warnings.some((w) => w.includes("body"))).toBe(true);
+  });
+
+  it("schema snapshot is stored in manifest after a successful generate() call", () => {
+    const outputDir = join(TMP_DIR, "snapshot-stored");
+    const vaspSource = `
+      app SnapApp { title: "Snap" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/P.vue" }
+      entity Todo {
+        title: String
+        done: Boolean
+      }
+    `;
+    const ast = parse(vaspSource);
+    const result = generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+    expect(result.success).toBe(true);
+
+    const loaded = Manifest.load(outputDir);
+    expect(loaded).not.toBeNull();
+    const snap = loaded!.getSchemaSnapshot();
+    expect(snap).toBeDefined();
+    expect(snap!.entities["Todo"]).toBeDefined();
+    expect(snap!.entities["Todo"]!.fields["title"]).toEqual({ type: "String", nullable: false });
+    expect(snap!.entities["Todo"]!.fields["done"]).toEqual({ type: "Boolean", nullable: false });
+  });
+
+  it("warnings are returned in generate() result when destructive changes are detected", () => {
+    const baseDir = join(TMP_DIR, "destructive-warning");
+    const vaspV1 = `
+      app DWApp { title: "DW" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/P.vue" }
+      entity Item {
+        name: String
+        quantity: Int
+      }
+    `;
+    const vaspV2 = `
+      app DWApp { title: "DW" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/P.vue" }
+      entity Item {
+        label: String
+      }
+    `;
+
+    // First generation — establish the snapshot
+    const r1 = generate(parse(vaspV1), {
+      outputDir: baseDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+    expect(r1.success).toBe(true);
+    expect(r1.warnings).toEqual([]);
+
+    // Second generation with destructive changes
+    const r2 = generate(parse(vaspV2), {
+      outputDir: baseDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+    expect(r2.success).toBe(true);
+    // Should warn about 'name' being dropped and 'quantity' being dropped
+    expect(r2.warnings.length).toBeGreaterThanOrEqual(2);
+    expect(r2.warnings.some((w) => w.includes("name"))).toBe(true);
+    expect(r2.warnings.some((w) => w.includes("quantity"))).toBe(true);
   });
 });

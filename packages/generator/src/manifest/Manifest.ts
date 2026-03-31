@@ -7,10 +7,41 @@ export interface ManifestEntry {
   generator: string;
 }
 
+/**
+ * A snapshot of a single DB column as it was last generated.
+ * Used to detect destructive schema changes on the next `vasp generate` run.
+ */
+export interface FieldSnapshot {
+  /** Drizzle column type ('String', 'Int', 'Boolean', …) */
+  type: string;
+  /** Whether the column allows NULL */
+  nullable: boolean;
+}
+
+/** All column snapshots for a single DB table. */
+export interface EntitySnapshot {
+  /** Maps DB column name → FieldSnapshot */
+  fields: Record<string, FieldSnapshot>;
+}
+
+/**
+ * Lightweight representation of the generated Drizzle schema, persisted into
+ * `.vasp/manifest.json` next to the file-hash entries.  On each regeneration,
+ * `DrizzleSchemaGenerator` compares the *previous* snapshot against the *new*
+ * AST so that potentially-destructive changes (column drops, type changes,
+ * table drops) can be surfaced as warnings before `vasp db push` runs.
+ */
+export interface SchemaSnapshot {
+  /** Maps entity name (PascalCase, as in the DSL) → EntitySnapshot */
+  entities: Record<string, EntitySnapshot>;
+}
+
 export interface ManifestData {
   version: string;
   generatedAt: string;
   files: Record<string, ManifestEntry>;
+  /** Schema snapshot captured after the last successful generation. Optional for backward compat. */
+  schemaSnapshot?: SchemaSnapshot;
 }
 
 const MANIFEST_DIR = ".vasp";
@@ -58,6 +89,19 @@ export class Manifest {
   /** The Vasp version used for this generation. */
   get version(): string {
     return this.data.version;
+  }
+
+  /** Store the Drizzle schema snapshot after a successful generation. */
+  setSchemaSnapshot(snapshot: SchemaSnapshot): void {
+    this.data.schemaSnapshot = snapshot;
+  }
+
+  /**
+   * Retrieve the schema snapshot from the previous generation.
+   * Returns `undefined` when the manifest pre-dates schema snapshot support.
+   */
+  getSchemaSnapshot(): SchemaSnapshot | undefined {
+    return this.data.schemaSnapshot;
   }
 
   /** Persist the manifest to `.vasp/manifest.json` in the output directory. */
