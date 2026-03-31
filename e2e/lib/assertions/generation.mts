@@ -12,6 +12,7 @@
 import { test, expect } from '../test.mts'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { spawnSync } from 'node:child_process'
 import type { FixtureState } from '../types.mts'
 
 export function generationSuite(state: FixtureState): void {
@@ -387,6 +388,101 @@ export function generationSuite(state: FixtureState): void {
             existsSync(join(appDir, `server/routes/webhook`)),
         ).toBe(true)
       })
+    }
+
+    // ── TypeScript compilation ──────────────────────────────────────────────
+    //
+    // Validates that the generated TypeScript compiles without errors.
+    // Only runs for TypeScript fixtures; deps are already installed by
+    // FixtureHarness so no extra install step is needed.
+    //
+    // SPA TypeScript:
+    //   vue-tsc --noEmit on the root tsconfig.json, which includes both
+    //   server/**/*.ts and src/**/*.{ts,vue} in a single pass.
+    //
+    // SSR/SSG TypeScript (two tests):
+    //   1. Server-side only — `tsc --noEmit --project server/tsconfig.json`.
+    //      server/tsconfig.json extends ../tsconfig.json which in turn extends
+    //      .nuxt/tsconfig.json, but tsc resolves missing extends gracefully
+    //      in recent versions (or the fixture harness already has .nuxt/ from
+    //      starting the Nuxt dev server).
+    //   2. Full project (frontend + server) — `nuxt prepare` (generates
+    //      .nuxt/tsconfig.json and component/composable type stubs) followed by
+    //      `vue-tsc --noEmit`. Nuxt's generated tsconfig includes `../**/*`
+    //      which is referenced by the root tsconfig through `extends`, so
+    //      vue-tsc transitively validates plugins/, composables/, middleware/,
+    //      pages/, app.vue, and error.vue in addition to drizzle/ and shared/.
+
+    if (capabilities.isTypeScript) {
+      const isSrr = capabilities.isSsr || capabilities.isSsg
+
+      if (isSrr) {
+        // Test 1: server-side TypeScript (fast, no nuxt prepare needed)
+        test(
+          'server-side TypeScript compiles without errors (tsc --noEmit)',
+          { timeout: 60_000 },
+          () => {
+            const tscResult = spawnSync(
+              'bunx',
+              ['tsc', '--noEmit', '--project', 'server/tsconfig.json'],
+              { cwd: appDir, encoding: 'utf8', timeout: 60_000 },
+            )
+            expect(
+              tscResult.status,
+              `Server-side TypeScript compilation failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
+            ).toBe(0)
+          },
+        )
+
+        // Test 2: full project (Nuxt frontend + server) via nuxt prepare + vue-tsc
+        test(
+          'full SSR project TypeScript compiles without errors (nuxt prepare + vue-tsc --noEmit)',
+          { timeout: 120_000 },
+          () => {
+            // nuxt prepare generates .nuxt/tsconfig.json and component/composable
+            // type stubs that reference plugins/, composables/, middleware/, pages/.
+            const prepareResult = spawnSync('bunx', ['nuxt', 'prepare'], {
+              cwd: appDir,
+              encoding: 'utf8',
+              timeout: 90_000,
+            })
+            expect(
+              prepareResult.status,
+              `nuxt prepare failed:\n${prepareResult.stdout}\n${prepareResult.stderr}`,
+            ).toBe(0)
+
+            // vue-tsc --noEmit reads the root tsconfig.json (which extends
+            // .nuxt/tsconfig.json), and Nuxt's type stubs transitively pull in
+            // every frontend source file, so errors in any .vue / .ts file are caught.
+            const tscResult = spawnSync('bunx', ['vue-tsc', '--noEmit'], {
+              cwd: appDir,
+              encoding: 'utf8',
+              timeout: 90_000,
+            })
+            expect(
+              tscResult.status,
+              `Full-project TypeScript compilation failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
+            ).toBe(0)
+          },
+        )
+      } else {
+        // SPA: vue-tsc --noEmit covers everything in one shot
+        test(
+          'generated TypeScript compiles without errors (vue-tsc --noEmit)',
+          { timeout: 60_000 },
+          () => {
+            const tscResult = spawnSync('bunx', ['vue-tsc', '--noEmit'], {
+              cwd: appDir,
+              encoding: 'utf8',
+              timeout: 60_000,
+            })
+            expect(
+              tscResult.status,
+              `TypeScript compilation failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
+            ).toBe(0)
+          },
+        )
+      }
     }
   })
 }

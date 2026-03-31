@@ -1,8 +1,22 @@
 {
-  "extends": "../tsconfig.json",
   "compilerOptions": {
-    "types": ["bun", "node"]
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "types": ["bun", "node"],
+    "paths": {
+      "@shared/*": ["../shared/*"]
+    }
   },
-  "include": ["**/*.ts"],
+  "include": ["**/*.ts", "../drizzle/**/*.ts", "../shared/**/*.ts"],
   "exclude": ["node_modules"]
 }

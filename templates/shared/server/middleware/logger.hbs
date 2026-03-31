@@ -194,7 +194,7 @@ export function logger() {
         `${colorMethod(method)} ${path} ` +
         `${sc}${status}${colors.reset} ${colors.dim}${duration}ms${colors.reset} ` +
         `${colors.dim}rid:${rid.slice(0, 8)}${colors.reset} ` +
-        `${colors.bold}\x1b[31m${error.message}${colors.reset}`,
+        `${colors.bold}\x1b[31m${error instanceof Error ? error.message : String(error)}${colors.reset}`,
       )
       {{/if}}
     })

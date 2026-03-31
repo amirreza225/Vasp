@@ -8,6 +8,7 @@
 
 import { test, expect } from '../../lib/test.mts'
 import { readFileSync, existsSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
 import { join } from 'node:path'
 
 const STATE_FILE = process.env.E2E_STATE_FILE!
@@ -138,4 +139,25 @@ test('package.json depends on @elysiajs/jwt (auth enabled)', () => {
 test('.env.example includes E2E_MAGIC_TOKEN', () => {
   const envExample = readFileSync(join(APP_DIR, '.env.example'), 'utf8')
   expect(envExample).toContain('E2E_MAGIC_TOKEN')
+})
+
+// ── TypeScript compilation (tsc --noEmit) ─────────────────────────────────────
+//
+// The fullstack setup runs `bun install` before these tests execute, so all
+// TypeScript dependencies are available and tsc can resolve third-party imports.
+// This catches generator regressions where the generated TypeScript doesn't
+// compile — something that file-existence and string-contains checks miss.
+
+test('server-side TypeScript compiles without errors (tsc --noEmit)', { timeout: 60_000 }, () => {
+  // e2e-todo is a SPA + TypeScript fixture so we use vue-tsc, which understands
+  // .vue SFCs and uses the root tsconfig.json (includes server/**/*.ts for SPA).
+  const tscResult = spawnSync(
+    'bunx',
+    ['vue-tsc', '--noEmit'],
+    { cwd: APP_DIR, encoding: 'utf8', timeout: 60_000 },
+  )
+  expect(
+    tscResult.status,
+    `TypeScript compilation failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
+  ).toBe(0)
 })

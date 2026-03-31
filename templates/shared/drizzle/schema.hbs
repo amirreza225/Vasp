@@ -1,4 +1,8 @@
+{{#if hasAnyTables}}
 import { pgTable, text, integer, boolean, timestamp, doublePrecision, jsonb{{#if hasEnums}}, pgEnum{{/if}}{{#if hasAnyIndexes}}, index, uniqueIndex{{/if}} } from 'drizzle-orm/pg-core'
+{{else}}{{#if hasEnums}}
+import { pgEnum } from 'drizzle-orm/pg-core'
+{{/if}}{{/if}}
 {{#if hasAnyRelations}}
 import { relations } from 'drizzle-orm'
 {{/if}}
@@ -6,7 +10,9 @@ import { relations } from 'drizzle-orm'
 import { sql } from 'drizzle-orm'
 {{/if}}
 {{#if isTypeScript}}
+{{#if hasAnyTables}}
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm'
+{{/if}}
 {{/if}}
 
 {{#if hasEnums}}
@@ -87,3 +93,7 @@ export const {{plural (camelCase name)}}Relations = relations({{plural (camelCas
 {{/each}}
 }))
 {{/if}}{{/each}}
+{{#unless hasAnyTables}}{{#unless hasEnums}}
+// No entities defined — export an empty object so this file is a valid module.
+export {}
+{{/unless}}{{/unless}}
