@@ -1,5 +1,6 @@
-import type { FieldValidation } from "@vasp-framework/core";
 import { GeneratorError } from "@vasp-framework/core";
+import { drizzleColumn } from "./drizzleColumn.js";
+import { valibotSchema } from "./valibotSchema.js";
 import Handlebars from "handlebars";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
@@ -150,77 +151,7 @@ export class TemplateEngine {
         optional?: unknown,
         enumValues?: unknown,
         validation?: unknown,
-      ) => {
-        const isNullable = nullable === true;
-        const isOptional = optional === true || optional === "true";
-        // validation may come from Handlebars template context (FieldValidation object or undefined)
-        const vld =
-          validation &&
-          typeof validation === "object" &&
-          !Array.isArray(validation) &&
-          !("hash" in (validation as object))
-            ? (validation as FieldValidation)
-            : undefined;
-
-        let base: string;
-        if (
-          fieldType === "Enum" &&
-          Array.isArray(enumValues) &&
-          enumValues.length > 0
-        ) {
-          const items = enumValues.map((v: string) => `'${v}'`).join(", ");
-          base = `v.picklist([${items}])`;
-        } else if (fieldType === "DateTime") {
-          // Validate that the string is non-empty and parses to a valid Date before transforming.
-          // For nullable fields use v.union so that null is accepted but empty strings are rejected.
-          const validDate = `v.pipe(v.string(), v.minLength(1), v.transform(s => new Date(s)), v.check(d => !isNaN(d.getTime()), 'Invalid date'))`;
-          if (isNullable) {
-            const schema = `v.union([v.null(), ${validDate}])`;
-            return isOptional ? `v.optional(${schema})` : schema;
-          }
-          return isOptional ? `v.optional(${validDate})` : validDate;
-        } else if (fieldType === "String" || fieldType === "Text") {
-          // Build a v.pipe() chain from the base string validator + any declared rules
-          const parts: string[] = ["v.string()"];
-
-          // Format validators (mutually exclusive: email, url, uuid)
-          if (vld?.email) parts.push("v.email()");
-          else if (vld?.url) parts.push("v.url()");
-          else if (vld?.uuid) parts.push("v.uuid()");
-
-          // Length constraints
-          if (vld?.minLength != null) {
-            parts.push(`v.minLength(${vld.minLength})`);
-          } else {
-            // Default: all strings must be non-empty unless user overrides minLength
-            parts.push("v.minLength(1)");
-          }
-          if (vld?.maxLength != null)
-            parts.push(`v.maxLength(${vld.maxLength})`);
-
-          base = parts.length > 1 ? `v.pipe(${parts.join(", ")})` : parts[0]!;
-        } else if (fieldType === "Int" || fieldType === "Float") {
-          // Build a v.pipe() chain for numeric types
-          const parts: string[] = ["v.number()"];
-          if (vld?.min != null) parts.push(`v.minValue(${vld.min})`);
-          if (vld?.max != null) parts.push(`v.maxValue(${vld.max})`);
-          base = parts.length > 1 ? `v.pipe(${parts.join(", ")})` : parts[0]!;
-        } else {
-          const baseMap: Record<string, string> = {
-            Boolean: "v.boolean()",
-            Json: "v.unknown()",
-          };
-          base = baseMap[fieldType] ?? "v.unknown()";
-        }
-
-        if (nullable) {
-          return isOptional
-            ? `v.optional(v.nullable(${base}))`
-            : `v.nullable(${base})`;
-        }
-
-        return isOptional ? `v.optional(${base})` : base;
-      },
+      ) => valibotSchema(fieldType, nullable, optional as boolean | string | undefined, enumValues, validation),
     );
 
     /** lookup: returns obj[key] — mirrors Handlebars built-in for sandboxed create() instances */
@@ -242,47 +173,7 @@ export class TemplateEngine {
         nullable?: boolean,
         defaultValue?: string,
         isUpdatedAt?: boolean,
-      ) => {
-        const typeMap: Record<string, string> = {
-          String: "text",
-          Text: "text",
-          Int: "integer",
-          Boolean: "boolean",
-          DateTime: "timestamp",
-          Float: "doublePrecision",
-          Json: "jsonb",
-          File: "text",
-        };
-        const drizzleFn = typeMap[fieldType] ?? "text";
-        let col = `${drizzleFn}('${toCamelCase(fieldName)}')`;
-        if (Array.isArray(modifiers)) {
-          if (modifiers.includes("id")) {
-            // Use identity column for auto-incrementing integer primary keys
-            if (fieldType === "Int") {
-              col = `integer('${toCamelCase(fieldName)}').primaryKey().generatedByDefaultAsIdentity()`;
-            } else {
-              col += ".primaryKey()";
-            }
-          } else {
-            // Non-PK columns: notNull by default unless @nullable
-            if (!nullable && !modifiers.includes("nullable"))
-              col += ".notNull()";
-            if (modifiers.includes("unique")) col += ".unique()";
-            if (modifiers.includes("default_now") || defaultValue === "now") {
-              col += ".defaultNow()";
-            } else if (defaultValue !== undefined && defaultValue !== "now") {
-              const isString = fieldType === "String" || fieldType === "Text";
-              col += isString
-                ? `.default('${defaultValue}')`
-                : `.default(${defaultValue})`;
-            }
-            if (isUpdatedAt || modifiers.includes("updatedAt")) {
-              col += ".$onUpdate(() => new Date())";
-            }
-          }
-        }
-        return col;
-      },
+      ) => drizzleColumn(fieldName, fieldType, modifiers, nullable, defaultValue, isUpdatedAt),
     );
   }
 
