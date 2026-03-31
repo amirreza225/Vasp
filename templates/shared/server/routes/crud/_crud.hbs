@@ -103,12 +103,16 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
       }
     }
 {{else}}
-    for (const [key, value] of Object.entries(query)) {
-      if (!key.startsWith('filter.')) continue
-      const field = key.slice(7)
-      if (!table[field]) continue
-      conditions.push(eq(table[field], value))
+{{#if hasEntityFilterableFields}}
+    // Allowlisted filter fields derived from entity declaration: ?filter.fieldName=value
+    const FILTERABLE_FIELDS = [{{#each entityFilterableFields}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]
+    for (const field of FILTERABLE_FIELDS) {
+      const value = (query as Record<string, string | undefined>)[`filter.${field}`]
+      if (value !== undefined && table[field]) {
+        conditions.push(eq(table[field], value))
+      }
     }
+{{/if}}
 {{/if}}
 {{#if hasSearch}}
     // Full-text search: ?search=keyword

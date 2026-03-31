@@ -104,6 +104,14 @@ export class CrudGenerator extends BaseGenerator {
       const hasSearch = searchFields.length > 0;
       const hasListConfig = !!listConfig;
 
+      // Allowlist of every scalar, non-hidden field on this entity.
+      // Used as the fallback filter guard when no explicit listConfig.filterable
+      // is declared, preventing user-controlled column enumeration via table[field].
+      const entityFilterableFields = (entity?.fields ?? [])
+        .filter((f) => !f.isRelation && !f.isHidden)
+        .map((f) => f.name);
+      const hasEntityFilterableFields = entityFilterableFields.length > 0;
+
       // Per-operation permission names (empty string = no permission required)
       const crudPerms = crud.permissions ?? {};
       const hasPermissions = Object.keys(crudPerms).length > 0;
@@ -208,6 +216,8 @@ export class CrudGenerator extends BaseGenerator {
           hasSortable,
           hasFilterable,
           hasSearch,
+          entityFilterableFields,
+          hasEntityFilterableFields,
           hasPermissions,
           listPermission,
           createPermission,

@@ -1208,6 +1208,44 @@ describe("generate()", () => {
     expect(route).not.toContain("eq(orders.id, Number(id)))"); // plain single-condition WHERE
   });
 
+  it("CRUD list filter uses entity-derived allowlist, not open-ended table[field] access", () => {
+    const source = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      entity Product {
+        id: Int @id
+        name: String
+        status: String
+        internalNote: String @hidden
+      }
+      crud Product { entity: Product operations: [list] }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/pages/P.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "crud-filter-allowlist");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const route = readFileSync(
+      join(outputDir, "server/routes/crud/product.js"),
+      "utf8",
+    );
+
+    // Must use an explicit allowlist of declared non-hidden field names
+    expect(route).toContain("FILTERABLE_FIELDS");
+    expect(route).toContain("'name'");
+    expect(route).toContain("'status'");
+    // @hidden field must NOT be in the allowlist
+    expect(route).not.toContain("'internalNote'");
+    // The old open-ended pattern must be absent
+    expect(route).not.toContain("Object.entries(query)");
+    expect(route).not.toContain("key.slice(7)");
+  });
+
   it("generates realtime WebSocket channel files", () => {
     const source = `
       app A { title: "T" db: Drizzle ssr: false typescript: false }
