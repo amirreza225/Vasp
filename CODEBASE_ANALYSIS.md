@@ -365,7 +365,7 @@ automatic enforcement.
 
 ## Tier 4 — Low severity / quality of life
 
-### 21. `.env` is always overwritten on regeneration (minor data loss risk)
+### 21. `.env` is always overwritten on regeneration (minor data loss risk) Done ✅
 
 `commitStagedFiles` only preserves `.env` when `DATABASE_URL` is
 non-placeholder. If the user has manually added `STRIPE_SECRET_KEY` to `.env`
