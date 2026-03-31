@@ -3,6 +3,7 @@ import { db } from '../db/client.{{ext}}'
 import { users } from '../../drizzle/schema.{{ext}}'
 import { eq } from 'drizzle-orm'
 import { authPlugin } from './plugin.{{ext}}'
+import { VaspError } from '../middleware/errorHandler.{{ext}}'
 {{#if (includes authMethods "usernameAndPassword")}}
 import { usernameAndPasswordRoutes } from './providers/usernameAndPassword.{{ext}}'
 {{/if}}
@@ -26,22 +27,20 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
 {{#if (includes authMethods "github")}}
   .use(githubRoutes)
 {{/if}}
-  .get('/me', async ({ jwt, cookie: { token }, set }) => {
+  .get('/me', async ({ jwt, cookie: { token } }) => {
     const tokenValue = {{#if isTypeScript}}token?.value as string | undefined{{else}}token?.value{{/if}}
     const payload = await jwt.verify(tokenValue ?? '')
     if (!payload || typeof payload.userId !== 'number') {
-      set.status = 401
-      return { error: 'Unauthorized' }
+      throw new VaspError('AUTH_REQUIRED', 'Unauthorized', 401)
     }
     const [user] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1)
     if (!user) {
-      set.status = 401
-      return { error: 'User not found' }
+      throw new VaspError('USER_NOT_FOUND', 'User not found', 401)
     }
     const { passwordHash: _ph, ...safeUser } = user
     return safeUser
   })
   .post('/logout', ({ cookie: { token } }) => {
     token?.remove()
-    return { ok: true }
+    return null
   })
