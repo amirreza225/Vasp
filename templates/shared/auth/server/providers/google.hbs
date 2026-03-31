@@ -6,8 +6,8 @@ import { authPlugin } from '../plugin.{{ext}}'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || ''
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || ''
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID!
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET!
 const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'http://localhost:{{backendPort}}/auth/google/callback'
 const GOOGLE_JWKS = createRemoteJWKSet(new URL('https://www.googleapis.com/oauth2/v3/certs'))
 

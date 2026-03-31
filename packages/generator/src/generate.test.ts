@@ -718,6 +718,209 @@ describe("generate()", () => {
     expect(occurrences).toBe(1);
   });
 
+  it("auto-injects DATABASE_URL startup validation for every app without app.env", () => {
+    const ast = parse(MINIMAL_VASP);
+    const outputDir = join(TMP_DIR, "db-url-auto");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
+    expect(serverIndex).toContain("DATABASE_URL is required");
+    expect(serverIndex).toContain("process.exit(1)");
+  });
+
+  it("does not duplicate DATABASE_URL validation when user already declared it in app.env", () => {
+    const source = `
+      app DbEnvApp {
+        title: "DB Env App"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          DATABASE_URL: required String @startsWith("postgres://")
+        }
+      }
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "db-url-no-dup");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
+    // User's @startsWith("postgres://") should be respected
+    expect(serverIndex).toContain('must start with "postgres://"');
+    // DATABASE_URL must appear exactly once in the required-check error messages
+    const occurrences = (serverIndex.match(/DATABASE_URL is required/g) ?? [])
+      .length;
+    expect(occurrences).toBe(1);
+  });
+
+  it("auto-injects GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET when google auth is enabled", () => {
+    const source = `
+      app GoogleAuthApp {
+        title: "Google Auth App"
+        db: Drizzle
+        ssr: false
+        typescript: false
+      }
+      auth User {
+        userEntity: User
+        methods: [google]
+      }
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "google-auth-auto");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
+    expect(serverIndex).toContain("GOOGLE_CLIENT_ID is required");
+    expect(serverIndex).toContain("GOOGLE_CLIENT_SECRET is required");
+    expect(serverIndex).toContain("process.exit(1)");
+  });
+
+  it("does not duplicate GOOGLE vars when user already declared them in app.env", () => {
+    const source = `
+      app GoogleEnvApp {
+        title: "Google Env App"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          GOOGLE_CLIENT_ID: required String
+          GOOGLE_CLIENT_SECRET: required String
+        }
+      }
+      auth User {
+        userEntity: User
+        methods: [google]
+      }
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "google-auth-no-dup");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
+    const clientIdOccurrences = (
+      serverIndex.match(/GOOGLE_CLIENT_ID is required/g) ?? []
+    ).length;
+    const clientSecretOccurrences = (
+      serverIndex.match(/GOOGLE_CLIENT_SECRET is required/g) ?? []
+    ).length;
+    expect(clientIdOccurrences).toBe(1);
+    expect(clientSecretOccurrences).toBe(1);
+  });
+
+  it("auto-injects GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET when github auth is enabled", () => {
+    const source = `
+      app GithubAuthApp {
+        title: "GitHub Auth App"
+        db: Drizzle
+        ssr: false
+        typescript: false
+      }
+      auth User {
+        userEntity: User
+        methods: [github]
+      }
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "github-auth-auto");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
+    expect(serverIndex).toContain("GITHUB_CLIENT_ID is required");
+    expect(serverIndex).toContain("GITHUB_CLIENT_SECRET is required");
+    expect(serverIndex).toContain("process.exit(1)");
+  });
+
+  it("does not duplicate GITHUB vars when user already declared them in app.env", () => {
+    const source = `
+      app GithubEnvApp {
+        title: "GitHub Env App"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        env: {
+          GITHUB_CLIENT_ID: required String
+          GITHUB_CLIENT_SECRET: required String
+        }
+      }
+      auth User {
+        userEntity: User
+        methods: [github]
+      }
+      route HomeRoute { path: "/" to: HomePage }
+      page HomePage { component: import Home from "@src/pages/Home.vue" }
+    `;
+    const ast = parse(source);
+    const outputDir = join(TMP_DIR, "github-auth-no-dup");
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
+    const clientIdOccurrences = (
+      serverIndex.match(/GITHUB_CLIENT_ID is required/g) ?? []
+    ).length;
+    const clientSecretOccurrences = (
+      serverIndex.match(/GITHUB_CLIENT_SECRET is required/g) ?? []
+    ).length;
+    expect(clientIdOccurrences).toBe(1);
+    expect(clientSecretOccurrences).toBe(1);
+  });
+
   it("users table is generated in schema when auth is present", () => {
     const source = `
       app A { title: "T" db: Drizzle ssr: false typescript: false }
