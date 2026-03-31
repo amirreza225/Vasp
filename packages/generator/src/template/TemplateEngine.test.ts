@@ -3,6 +3,7 @@ import {
   toCamelCase,
   toKebabCase,
   toPascalCase,
+  toPlural,
   TemplateEngine,
 } from "./TemplateEngine.js";
 
@@ -389,5 +390,94 @@ describe("TemplateEngine — valibotSchema helper with validation rules", () => 
     const result = render("String", false, false, undefined, { minLength: 0 });
     expect(result).toContain("v.minLength(0)");
     expect(result).not.toMatch(/v\.minLength\(1\)/);
+  });
+});
+
+describe("toPlural", () => {
+  it("handles regular words by appending s", () => {
+    expect(toPlural("todo")).toBe("todos");
+    expect(toPlural("post")).toBe("posts");
+    expect(toPlural("account")).toBe("accounts");
+    expect(toPlural("user")).toBe("users");
+    expect(toPlural("blogPost")).toBe("blogPosts");
+  });
+
+  it("handles words ending in s, x, z by appending es", () => {
+    expect(toPlural("address")).toBe("addresses");
+    expect(toPlural("status")).toBe("statuses");
+    expect(toPlural("box")).toBe("boxes");
+    // quiz → quizes (not quizzes — double-z requires a separate rule we omit)
+    expect(toPlural("quiz")).toBe("quizes");
+  });
+
+  it("handles words ending in ch or sh by appending es", () => {
+    expect(toPlural("match")).toBe("matches");
+    expect(toPlural("wish")).toBe("wishes");
+    expect(toPlural("church")).toBe("churches");
+  });
+
+  it("handles words ending in consonant+y by replacing y with ies", () => {
+    expect(toPlural("category")).toBe("categories");
+    expect(toPlural("city")).toBe("cities");
+    expect(toPlural("country")).toBe("countries");
+    expect(toPlural("entry")).toBe("entries");
+  });
+
+  it("does NOT replace y with ies when preceded by a vowel", () => {
+    expect(toPlural("day")).toBe("days");
+    expect(toPlural("key")).toBe("keys");
+    expect(toPlural("monkey")).toBe("monkeys");
+  });
+
+  it("handles irregular plurals", () => {
+    expect(toPlural("person")).toBe("people");
+    expect(toPlural("child")).toBe("children");
+    expect(toPlural("man")).toBe("men");
+    expect(toPlural("woman")).toBe("women");
+    expect(toPlural("tooth")).toBe("teeth");
+    expect(toPlural("foot")).toBe("feet");
+    expect(toPlural("mouse")).toBe("mice");
+    expect(toPlural("leaf")).toBe("leaves");
+    expect(toPlural("analysis")).toBe("analyses");
+    expect(toPlural("criterion")).toBe("criteria");
+    expect(toPlural("datum")).toBe("data");
+  });
+
+  it("returns empty string unchanged", () => {
+    expect(toPlural("")).toBe("");
+  });
+});
+
+describe("TemplateEngine — plural helper", () => {
+  const engine = new TemplateEngine();
+
+  it("pluralises regular words", () => {
+    expect(engine.renderString("{{plural name}}", { name: "todo" })).toBe(
+      "todos",
+    );
+  });
+
+  it("pluralises words ending in consonant+y (e.g. category)", () => {
+    expect(engine.renderString("{{plural name}}", { name: "category" })).toBe(
+      "categories",
+    );
+  });
+
+  it("pluralises irregular words (e.g. person → people)", () => {
+    expect(engine.renderString("{{plural name}}", { name: "person" })).toBe(
+      "people",
+    );
+  });
+
+  it("works with sub-expression: {{plural (camelCase name)}}", () => {
+    expect(
+      engine.renderString("{{plural (camelCase name)}}", { name: "Category" }),
+    ).toBe("categories");
+    expect(
+      engine.renderString("{{plural (camelCase name)}}", { name: "Person" }),
+    ).toBe("people");
+    expect(
+      engine.renderString("{{plural (camelCase name)}}", { name: "Address" }),
+    ).toBe("addresses");
   });
 });

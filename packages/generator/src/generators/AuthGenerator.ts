@@ -1,6 +1,6 @@
 import { DEFAULT_BACKEND_PORT } from "@vasp-framework/core";
 import { BaseGenerator } from "./BaseGenerator.js";
-import { toCamelCase } from "../template/TemplateEngine.js";
+import { toCamelCase, toPlural } from "../template/TemplateEngine.js";
 
 export class AuthGenerator extends BaseGenerator {
   run(): void {
@@ -36,9 +36,9 @@ export class AuthGenerator extends BaseGenerator {
     const passwordFieldName = passwordField?.name || "passwordHash";
 
     // Derive the Drizzle table const name from the user entity name.
-    // Matches the convention used in DrizzleSchemaGenerator: camelCase(name) + "s".
-    // e.g. "User" → "users", "Account" → "accounts", "BlogPost" → "blogPosts"
-    const userTableName = `${toCamelCase(ast.auth!.userEntity)}s`;
+    // Matches the convention used in DrizzleSchemaGenerator: toPlural(camelCase(name)).
+    // e.g. "User" → "users", "Account" → "accounts", "Person" → "people"
+    const userTableName = toPlural(toCamelCase(ast.auth!.userEntity));
 
     const data = {
       authMethods,

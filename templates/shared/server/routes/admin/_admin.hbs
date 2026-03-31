@@ -2,7 +2,7 @@ import { Elysia } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
 import { eq, sql } from 'drizzle-orm'
 import { safeParse } from 'valibot'
-import { {{camelCase entity}}s } from '../../../drizzle/schema.{{ext}}'
+import { {{plural (camelCase entity)}} } from '../../../drizzle/schema.{{ext}}'
 import { Create{{pascalCase entity}}Schema, Update{{pascalCase entity}}Schema } from '../../../shared/validation.{{ext}}'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 {{#if hasAuth}}
@@ -20,14 +20,14 @@ export const admin{{pascalCase entity}}Routes = new Elysia({ prefix: '/api/admin
     const limit = Math.min(Math.max(Number(query.limit) || 20, 1), 100)
     const offset = Math.max(Number(query.offset) || 0, 0)
     const [data, countResult] = await Promise.all([
-      db.select().from({{camelCase entity}}s).limit(limit).offset(offset),
-      db.select({ count: sql`count(*)::int` }).from({{camelCase entity}}s),
+      db.select().from({{plural (camelCase entity)}}).limit(limit).offset(offset),
+      db.select({ count: sql`count(*)::int` }).from({{plural (camelCase entity)}}),
     ])
     const items = {{#if hasAuth}}{{#if (eq entity auth.userEntity)}}data.map(({ passwordHash: _ph, ...rest }) => rest){{else}}data{{/if}}{{else}}data{{/if}}
     return { items, total: countResult[0]?.count ?? 0, limit, offset }
   })
   .get('/:id', async ({ params: { id } }) => {
-    const [item] = await db.select().from({{camelCase entity}}s).where(eq({{camelCase entity}}s.id, Number(id))).limit(1)
+    const [item] = await db.select().from({{plural (camelCase entity)}}).where(eq({{plural (camelCase entity)}}.id, Number(id))).limit(1)
     if (!item) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
 {{#if hasAuth}}{{#if (eq entity auth.userEntity)}}
     const { passwordHash: _ph, ...safe } = item
@@ -55,21 +55,21 @@ export const admin{{pascalCase entity}}Routes = new Elysia({ prefix: '/api/admin
       throw new VaspError('VALIDATION_FAILED', `Password must be at least ${MIN_PASSWORD_LENGTH} characters`, 400)
     }
     const passwordHash = await Bun.password.hash(rawPassword, 'argon2id')
-    const [created] = await db.insert({{camelCase entity}}s).values({ ...parsed.output, passwordHash }).returning()
+    const [created] = await db.insert({{plural (camelCase entity)}}).values({ ...parsed.output, passwordHash }).returning()
     set.status = 201
     const { passwordHash: _ph, ...safeCreated } = created
     return safeCreated
 {{else}}
-    const [created] = await db.insert({{camelCase entity}}s).values(parsed.output).returning()
+    const [created] = await db.insert({{plural (camelCase entity)}}).values(parsed.output).returning()
     set.status = 201
     const { passwordHash: _ph, ...safeCreated } = created
     return safeCreated
 {{/if}}{{else}}
-    const [created] = await db.insert({{camelCase entity}}s).values(parsed.output).returning()
+    const [created] = await db.insert({{plural (camelCase entity)}}).values(parsed.output).returning()
     set.status = 201
     return created
 {{/if}}{{else}}
-    const [created] = await db.insert({{camelCase entity}}s).values(parsed.output).returning()
+    const [created] = await db.insert({{plural (camelCase entity)}}).values(parsed.output).returning()
     set.status = 201
     return created
 {{/if}}
@@ -92,35 +92,35 @@ export const admin{{pascalCase entity}}Routes = new Elysia({ prefix: '/api/admin
     }
     const passwordHash = rawPassword.length >= MIN_PASSWORD_LENGTH ? await Bun.password.hash(rawPassword, 'argon2id') : undefined
     const [updated] = await db
-      .update({{camelCase entity}}s)
+      .update({{plural (camelCase entity)}})
       .set({ ...parsed.output, ...(passwordHash !== undefined ? { passwordHash } : {}) })
-      .where(eq({{camelCase entity}}s.id, Number(id)))
+      .where(eq({{plural (camelCase entity)}}.id, Number(id)))
       .returning()
     if (!updated) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
     const { passwordHash: _ph, ...safeUpdated } = updated
     return safeUpdated
 {{else}}
     const [updated] = await db
-      .update({{camelCase entity}}s)
+      .update({{plural (camelCase entity)}})
       .set(parsed.output)
-      .where(eq({{camelCase entity}}s.id, Number(id)))
+      .where(eq({{plural (camelCase entity)}}.id, Number(id)))
       .returning()
     if (!updated) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
     const { passwordHash: _ph, ...safeUpdated } = updated
     return safeUpdated
 {{/if}}{{else}}
     const [updated] = await db
-      .update({{camelCase entity}}s)
+      .update({{plural (camelCase entity)}})
       .set(parsed.output)
-      .where(eq({{camelCase entity}}s.id, Number(id)))
+      .where(eq({{plural (camelCase entity)}}.id, Number(id)))
       .returning()
     if (!updated) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
     return updated
 {{/if}}{{else}}
     const [updated] = await db
-      .update({{camelCase entity}}s)
+      .update({{plural (camelCase entity)}})
       .set(parsed.output)
-      .where(eq({{camelCase entity}}s.id, Number(id)))
+      .where(eq({{plural (camelCase entity)}}.id, Number(id)))
       .returning()
     if (!updated) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
     return updated
@@ -128,8 +128,8 @@ export const admin{{pascalCase entity}}Routes = new Elysia({ prefix: '/api/admin
   })
   .delete('/:id', async ({ params: { id } }) => {
     const [deleted] = await db
-      .delete({{camelCase entity}}s)
-      .where(eq({{camelCase entity}}s.id, Number(id)))
+      .delete({{plural (camelCase entity)}})
+      .where(eq({{plural (camelCase entity)}}.id, Number(id)))
       .returning()
     if (!deleted) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
     return { ok: true }

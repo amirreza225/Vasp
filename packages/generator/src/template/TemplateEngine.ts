@@ -75,6 +75,7 @@ export class TemplateEngine {
     this.hbs.registerHelper("kebabCase", (str: string) => toKebabCase(str));
     this.hbs.registerHelper("lowerCase", (str: string) => str.toLowerCase());
     this.hbs.registerHelper("upperCase", (str: string) => str.toUpperCase());
+    this.hbs.registerHelper("plural", (str: string) => toPlural(str));
 
     this.hbs.registerHelper("join", (arr: string[], sep: string) => {
       if (!Array.isArray(arr)) return "";
@@ -323,4 +324,61 @@ export function toKebabCase(str: string): string {
     .replace(/[\s_]+/g, "-")
     .toLowerCase()
     .replace(/^-/, "");
+}
+
+/**
+ * Pluralises an English word using a small set of rules + common irregular forms.
+ * Input is expected to be a camelCase identifier (e.g. "category", "person").
+ */
+export function toPlural(word: string): string {
+  if (!word) return word;
+
+  const lower = word.toLowerCase();
+
+  // Irregular plurals — keyed by singular lowercase form
+  const irregulars: Record<string, string> = {
+    person: "people",
+    man: "men",
+    woman: "women",
+    child: "children",
+    tooth: "teeth",
+    foot: "feet",
+    mouse: "mice",
+    goose: "geese",
+    ox: "oxen",
+    leaf: "leaves",
+    life: "lives",
+    knife: "knives",
+    wife: "wives",
+    half: "halves",
+    loaf: "loaves",
+    cactus: "cacti",
+    focus: "foci",
+    fungus: "fungi",
+    nucleus: "nuclei",
+    syllabus: "syllabi",
+    analysis: "analyses",
+    diagnosis: "diagnoses",
+    parenthesis: "parentheses",
+    thesis: "theses",
+    crisis: "crises",
+    phenomenon: "phenomena",
+    criterion: "criteria",
+    datum: "data",
+    medium: "media",
+    index: "indices",
+    matrix: "matrices",
+    vertex: "vertices",
+  };
+
+  if (lower in irregulars) return irregulars[lower]!;
+
+  // Words ending in s, x, z, ch, sh → add es
+  if (/(?:s|x|z|ch|sh)$/.test(lower)) return word + "es";
+
+  // Words ending in consonant + y → replace y with ies
+  if (/[^aeiou]y$/.test(lower)) return word.slice(0, -1) + "ies";
+
+  // Default → add s
+  return word + "s";
 }

@@ -1,5 +1,5 @@
 import { BaseGenerator } from "./BaseGenerator.js";
-import { toCamelCase, toPascalCase } from "../template/TemplateEngine.js";
+import { toCamelCase, toPascalCase, toPlural } from "../template/TemplateEngine.js";
 
 export class CrudGenerator extends BaseGenerator {
   run(): void {
@@ -90,7 +90,7 @@ export class CrudGenerator extends BaseGenerator {
         .map((f) => ({
           name: f.name,
           relatedEntity: f.relatedEntity,
-          relatedTable: `${toCamelCase(f.relatedEntity!)}s`,
+          relatedTable: toPlural(toCamelCase(f.relatedEntity!)),
         }));
 
       const hasRelations = withRelations.length > 0;
