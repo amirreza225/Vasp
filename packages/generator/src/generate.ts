@@ -65,29 +65,48 @@ export function generate(
 
   const filesWritten: string[] = [];
   const warnings: string[] = [];
+  const errors: string[] = [];
   const manifest = new Manifest(VASP_VERSION);
 
+  // Helper: run a generator and collect its error without aborting the pipeline.
+  function runGenerator(name: string, run: () => void): void {
+    try {
+      run();
+    } catch (err) {
+      const message = `[${name}] ${err instanceof Error ? err.message : String(err)}`;
+      logger.error(message);
+      errors.push(message);
+    }
+  }
+
   try {
-    // Execute generators in dependency order (all writes go to staging dir)
-    new ScaffoldGenerator(ctx, engine, filesWritten, manifest).run();
-    new DrizzleSchemaGenerator(ctx, engine, filesWritten, manifest).run();
-    new BackendGenerator(ctx, engine, filesWritten, manifest).run();
-    new ObservabilityGenerator(ctx, engine, filesWritten, manifest).run();
-    new AuthGenerator(ctx, engine, filesWritten, manifest).run();
-    new MiddlewareGenerator(ctx, engine, filesWritten, manifest).run();
-    new CacheGenerator(ctx, engine, filesWritten, manifest).run();
-    new QueryActionGenerator(ctx, engine, filesWritten, manifest).run();
-    new ApiGenerator(ctx, engine, filesWritten, manifest).run();
-    new CrudGenerator(ctx, engine, filesWritten, manifest).run();
-    new RealtimeGenerator(ctx, engine, filesWritten, manifest).run();
-    new AutoPageGenerator(ctx, engine, filesWritten, manifest).run();
-    new JobGenerator(ctx, engine, filesWritten, manifest).run();
-    new EmailGenerator(ctx, engine, filesWritten, manifest).run();
-    new SeedGenerator(ctx, engine, filesWritten, manifest).run();
-    new StorageGenerator(ctx, engine, filesWritten, manifest).run();
-    new WebhookGenerator(ctx, engine, filesWritten, manifest).run();
-    new FrontendGenerator(ctx, engine, filesWritten, manifest).run();
-    new AdminGenerator(ctx, engine, filesWritten, manifest).run();
+    // Execute generators in dependency order (all writes go to staging dir).
+    // Each generator is isolated so a single failure does not abort the rest.
+    runGenerator("ScaffoldGenerator", () => new ScaffoldGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("DrizzleSchemaGenerator", () => new DrizzleSchemaGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("BackendGenerator", () => new BackendGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("ObservabilityGenerator", () => new ObservabilityGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("AuthGenerator", () => new AuthGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("MiddlewareGenerator", () => new MiddlewareGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("CacheGenerator", () => new CacheGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("QueryActionGenerator", () => new QueryActionGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("ApiGenerator", () => new ApiGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("CrudGenerator", () => new CrudGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("RealtimeGenerator", () => new RealtimeGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("AutoPageGenerator", () => new AutoPageGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("JobGenerator", () => new JobGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("EmailGenerator", () => new EmailGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("SeedGenerator", () => new SeedGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("StorageGenerator", () => new StorageGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("WebhookGenerator", () => new WebhookGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("FrontendGenerator", () => new FrontendGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("AdminGenerator", () => new AdminGenerator(ctx, engine, filesWritten, manifest).run());
+
+    // If any generator reported an error, abort without touching the real output dir.
+    if (errors.length > 0) {
+      cleanupDir(stagingDir);
+      return { success: false, filesWritten, errors, warnings };
+    }
 
     // All generators succeeded — commit staged files to real output dir.
     // .env is preserved if the existing one has non-placeholder values.
@@ -154,10 +173,14 @@ export function generate(
 
     return { success: true, filesWritten, errors: [], warnings };
   } catch (err) {
-    // Clean up staging dir on failure — real output dir is untouched
+    // Infrastructure-level failure (staging dir setup, template loading, etc.).
+    // This catch is only reached when errors.length === 0 because any per-generator
+    // failure already triggers an early return above.  We therefore push exactly
+    // one new error (the infrastructure error) with no risk of duplication.
     cleanupDir(stagingDir);
     const message = err instanceof Error ? err.message : String(err);
     logger.error(message);
-    return { success: false, filesWritten, errors: [message], warnings };
+    errors.push(message);
+    return { success: false, filesWritten, errors, warnings };
   }
 }

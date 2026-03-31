@@ -2,10 +2,12 @@ import { parse } from "@vasp-framework/parser";
 import { mkdirSync, rmSync, existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { generate } from "./generate.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
 import { TEMPLATES_DIR, MINIMAL_VASP } from "./test-helpers.js";
+import * as EmailGeneratorModule from "./generators/EmailGenerator.js";
+import * as FrontendGeneratorModule from "./generators/FrontendGenerator.js";
 
 const TMP_DIR = join(import.meta.dirname, "__test_output__", "generate");
 
@@ -3141,5 +3143,45 @@ describe("generate()", () => {
     });
     expect(existsSync(join(outputDir, "nuxt.config.ts"))).toBe(false);
     expect(existsSync(join(outputDir, "vite.config.ts"))).toBe(true);
+  });
+
+  it("collects per-generator errors and continues running subsequent generators", () => {
+    // Make EmailGenerator throw so we can confirm that FrontendGenerator (which
+    // runs after it) still executes and that both errors end up in the result.
+    const emailSpy = vi
+      .spyOn(EmailGeneratorModule.EmailGenerator.prototype, "run")
+      .mockImplementationOnce(() => {
+        throw new Error("simulated email failure");
+      });
+    const frontendSpy = vi.spyOn(
+      FrontendGeneratorModule.FrontendGenerator.prototype,
+      "run",
+    );
+
+    try {
+      const outputDir = join(TMP_DIR, "per-generator-errors");
+      const ast = parse(MINIMAL_VASP);
+      const result = generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        engine: sharedEngine,
+      });
+
+      // Pipeline must not abort — FrontendGenerator (step 18) must have been called.
+      expect(frontendSpy).toHaveBeenCalledOnce();
+
+      // Result must reflect the failure.
+      expect(result.success).toBe(false);
+      expect(result.errors).toHaveLength(1);
+      expect(result.errors[0]).toContain("EmailGenerator");
+      expect(result.errors[0]).toContain("simulated email failure");
+
+      // Real output dir must remain untouched — no partial files committed.
+      expect(existsSync(join(outputDir, "server/index.js"))).toBe(false);
+    } finally {
+      emailSpy.mockRestore();
+      frontendSpy.mockRestore();
+    }
   });
 });
