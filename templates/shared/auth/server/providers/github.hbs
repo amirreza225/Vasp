@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
-import { users } from '../../../drizzle/schema.{{ext}}'
+import { {{userTableName}} } from '../../../drizzle/schema.{{ext}}'
 import { eq } from 'drizzle-orm'
 import { authPlugin } from '../plugin.{{ext}}'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'
@@ -53,9 +53,9 @@ export const githubRoutes = new Elysia()
     const githubId = String(ghUser.id)
     const email = ghUser.email || `${ghUser.login}@github.local`
 
-    let [user] = await db.select().from(users).where(eq(users.githubId, githubId)).limit(1)
+    let [user] = await db.select().from({{userTableName}}).where(eq({{userTableName}}.githubId, githubId)).limit(1)
     if (!user) {
-      ;[user] = await db.insert(users).values({ username: ghUser.login, email, githubId }).returning()
+      ;[user] = await db.insert({{userTableName}}).values({ username: ghUser.login, email, githubId }).returning()
     }
     if (!user) { set.status = 500; return { error: 'Failed to create user' } }
 

@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
-import { users } from '../../../drizzle/schema.{{ext}}'
+import { {{userTableName}} } from '../../../drizzle/schema.{{ext}}'
 import { eq } from 'drizzle-orm'
 import { authPlugin } from '../plugin.{{ext}}'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
@@ -62,9 +62,9 @@ export const googleRoutes = new Elysia()
     const googleId = payload.sub
     const email = payload.email
 
-    let [user] = await db.select().from(users).where(eq(users.googleId, googleId)).limit(1)
+    let [user] = await db.select().from({{userTableName}}).where(eq({{userTableName}}.googleId, googleId)).limit(1)
     if (!user) {
-      ;[user] = await db.insert(users).values({ username: email, email, googleId }).returning()
+      ;[user] = await db.insert({{userTableName}}).values({ username: email, email, googleId }).returning()
     }
     if (!user) { set.status = 500; return { error: 'Failed to create user' } }
 

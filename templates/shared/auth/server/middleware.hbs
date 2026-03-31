@@ -1,7 +1,7 @@
 import { Elysia } from 'elysia'
 import { jwtVerify } from 'jose'
 import { db } from '../db/client.{{ext}}'
-import { users } from '../../drizzle/schema.{{ext}}'
+import { {{userTableName}} } from '../../drizzle/schema.{{ext}}'
 import { eq } from 'drizzle-orm'
 import { VaspError } from '../middleware/errorHandler.{{ext}}'
 
@@ -53,9 +53,9 @@ export const requireAuth = new Elysia({ name: 'require-auth' })
         // fixtures with tenant/ownership filtering get the full user context
         // (e.g. workspaceId). Falls back to a synthetic stub if no row exists.
         try {
-          const [e2eUser] = await db.select().from(users).where(eq(users.id, 0)).limit(1)
+          const [e2eUser] = await db.select().from({{userTableName}}).where(eq({{userTableName}}.id, 0)).limit(1)
           if (e2eUser) {
-            const { passwordHash: _ph, ...safeUser } = e2eUser
+            const { {{passwordFieldName}}: _ph, ...safeUser } = e2eUser
             return { user: safeUser }
           }
         } catch {
@@ -71,11 +71,11 @@ export const requireAuth = new Elysia({ name: 'require-auth' })
       if (!payload || typeof payload.userId !== 'number') {
         return { user: null }
       }
-      const [user] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1)
+      const [user] = await db.select().from({{userTableName}}).where(eq({{userTableName}}.id, payload.userId)).limit(1)
       if (!user) {
         return { user: null }
       }
-      const { passwordHash: _ph, ...safeUser } = user
+      const { {{passwordFieldName}}: _ph, ...safeUser } = user
       return { user: safeUser }
     } catch (err) {
       console.debug('[auth] JWT verification failed:', err instanceof Error ? err.message : err)

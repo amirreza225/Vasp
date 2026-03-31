@@ -35,6 +35,11 @@ export class AuthGenerator extends BaseGenerator {
     );
     const passwordFieldName = passwordField?.name || "passwordHash";
 
+    // Derive the Drizzle table const name from the user entity name.
+    // Matches the convention used in DrizzleSchemaGenerator: camelCase(name) + "s".
+    // e.g. "User" → "users", "Account" → "accounts", "BlogPost" → "blogPosts"
+    const userTableName = `${toCamelCase(ast.auth!.userEntity)}s`;
+
     const data = {
       authMethods,
       backendPort: DEFAULT_BACKEND_PORT,
@@ -43,6 +48,7 @@ export class AuthGenerator extends BaseGenerator {
       userFkFields,
       hasUserFkFields,
       passwordFieldName,
+      userTableName,
     };
 
     // Server: auth plugin (JWT + cookie — separate file to avoid circular imports)
