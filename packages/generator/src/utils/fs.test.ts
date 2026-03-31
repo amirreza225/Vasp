@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 import { Manifest } from "../manifest/Manifest.js";
-import { deleteOrphanedFiles } from "./fs.js";
+import { commitStagedFiles, deleteOrphanedFiles } from "./fs.js";
 
 const TMP_DIR = join(import.meta.dirname, "__fs_test__");
 
@@ -167,5 +167,82 @@ describe("deleteOrphanedFiles", () => {
     for (const [relPath] of files) {
       expect(existsSync(join(TMP_DIR, relPath))).toBe(false);
     }
+  });
+});
+
+describe("commitStagedFiles — .env preservation", () => {
+  const STAGING_DIR = join(TMP_DIR, "staging");
+  const REAL_DIR = join(TMP_DIR, "real");
+
+  function setup() {
+    mkdirSync(STAGING_DIR, { recursive: true });
+    mkdirSync(REAL_DIR, { recursive: true });
+  }
+
+  it("preserves .env when DATABASE_URL is non-placeholder", () => {
+    setup();
+    const originalEnv = "DATABASE_URL=postgres://user:pass@prod/db\n";
+    writeFileSync(join(REAL_DIR, ".env"), originalEnv, "utf8");
+    writeFileSync(
+      join(STAGING_DIR, ".env"),
+      "DATABASE_URL=postgres://user:password@localhost/app\n",
+      "utf8",
+    );
+
+    commitStagedFiles(STAGING_DIR, REAL_DIR, { preserveEnv: true });
+
+    expect(readFileSync(join(REAL_DIR, ".env"), "utf8")).toBe(originalEnv);
+  });
+
+  it("preserves .env when a non-DATABASE_URL key has a non-placeholder value (STRIPE_SECRET_KEY)", () => {
+    setup();
+    // DATABASE_URL is still the placeholder default, but user added STRIPE_SECRET_KEY
+    const originalEnv =
+      "DATABASE_URL=postgres://user:password@localhost/app\nSTRIPE_SECRET_KEY=sk_live_abc123\n";
+    writeFileSync(join(REAL_DIR, ".env"), originalEnv, "utf8");
+    writeFileSync(
+      join(STAGING_DIR, ".env"),
+      "DATABASE_URL=postgres://user:password@localhost/app\n",
+      "utf8",
+    );
+
+    commitStagedFiles(STAGING_DIR, REAL_DIR, { preserveEnv: true });
+
+    expect(readFileSync(join(REAL_DIR, ".env"), "utf8")).toBe(originalEnv);
+  });
+
+  it("overwrites .env when ALL values are placeholders", () => {
+    setup();
+    const originalEnv =
+      "DATABASE_URL=postgres://user:password@localhost/app\nJWT_SECRET=change-me\n";
+    const newEnv = "DATABASE_URL=postgres://user:password@localhost/newapp\n";
+    writeFileSync(join(REAL_DIR, ".env"), originalEnv, "utf8");
+    writeFileSync(join(STAGING_DIR, ".env"), newEnv, "utf8");
+
+    commitStagedFiles(STAGING_DIR, REAL_DIR, { preserveEnv: true });
+
+    expect(readFileSync(join(REAL_DIR, ".env"), "utf8")).toBe(newEnv);
+  });
+
+  it("overwrites .env when preserveEnv is false", () => {
+    setup();
+    const originalEnv = "DATABASE_URL=postgres://user:pass@prod/db\n";
+    const newEnv = "DATABASE_URL=postgres://user:password@localhost/newapp\n";
+    writeFileSync(join(REAL_DIR, ".env"), originalEnv, "utf8");
+    writeFileSync(join(STAGING_DIR, ".env"), newEnv, "utf8");
+
+    commitStagedFiles(STAGING_DIR, REAL_DIR, { preserveEnv: false });
+
+    expect(readFileSync(join(REAL_DIR, ".env"), "utf8")).toBe(newEnv);
+  });
+
+  it("copies staged .env when no .env exists in the real dir", () => {
+    setup();
+    const newEnv = "DATABASE_URL=postgres://user:password@localhost/app\n";
+    writeFileSync(join(STAGING_DIR, ".env"), newEnv, "utf8");
+
+    commitStagedFiles(STAGING_DIR, REAL_DIR, { preserveEnv: true });
+
+    expect(readFileSync(join(REAL_DIR, ".env"), "utf8")).toBe(newEnv);
   });
 });
