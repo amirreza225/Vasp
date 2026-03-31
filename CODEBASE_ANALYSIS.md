@@ -139,7 +139,7 @@ user to remember.
 
 ## Tier 2 — High severity (reliability / expansion friction)
 
-### 6. Generated Drizzle schema has `// @ts-nocheck` at the top
+### 6. Generated Drizzle schema has `// @ts-nocheck` at the top Done ✅
 
 `schema.hbs` opens with `// @ts-nocheck`. This was added to avoid fighting
 Drizzle's complex generic types, but it means:
