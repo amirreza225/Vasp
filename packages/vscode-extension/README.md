@@ -122,7 +122,8 @@ cp -r packages/language-server/dist packages/vscode-extension/language-server/di
 
 # Package the extension
 cd packages/vscode-extension
-npx @vscode/vsce package
+# --no-dependencies avoids npm trying to re-resolve the monorepo workspace tree
+bunx @vscode/vsce package --no-dependencies
 # Produces: vasp-vscode-0.1.0.vsix
 ```
 

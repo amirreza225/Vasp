@@ -11,7 +11,7 @@
     "url": "https://github.com/amirreza225/Vasp"
   },
   "engines": {
-    "vscode": "^1.90.0"
+    "vscode": "^1.110.0"
   },
   "categories": [
     "Programming Languages",
@@ -68,6 +68,7 @@
     "package": "vsce package"
   },
   "dependencies": {
+    "latest": "^0.2.0",
     "vscode-languageclient": "^9.0.1"
   },
   "devDependencies": {
