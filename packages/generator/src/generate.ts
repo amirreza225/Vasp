@@ -26,7 +26,7 @@ import { StorageGenerator } from "./generators/StorageGenerator.js";
 import { WebhookGenerator } from "./generators/WebhookGenerator.js";
 import { Manifest } from "./manifest/Manifest.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
-import { cleanupDir, commitStagedFiles } from "./utils/fs.js";
+import { cleanupDir, commitStagedFiles, deleteOrphanedFiles } from "./utils/fs.js";
 import { dirname, join } from "node:path";
 import { mkdirSync, existsSync, rmSync } from "node:fs";
 
@@ -40,6 +40,10 @@ export function generate(
     dirname(realOutputDir),
     `.vasp-staging-${Date.now()}`,
   );
+
+  // Load the previous manifest now — before the staging run — so we can diff
+  // old vs new after committing and delete any orphaned generated files.
+  const previousManifest = Manifest.load(realOutputDir);
 
   mkdirSync(stagingDir, { recursive: true });
 
@@ -88,6 +92,21 @@ export function generate(
     // All generators succeeded — commit staged files to real output dir.
     // .env is preserved if the existing one has non-placeholder values.
     commitStagedFiles(stagingDir, realOutputDir, { preserveEnv: true });
+
+    // Delete any files that were tracked in the previous manifest but are no
+    // longer generated (e.g. a crud/query/action block was removed). Only
+    // unmodified files (hash matches the old manifest) are removed so that
+    // user-edited files are never silently deleted.
+    if (previousManifest) {
+      const orphaned = deleteOrphanedFiles(
+        previousManifest,
+        manifest,
+        realOutputDir,
+      );
+      if (orphaned.length > 0) {
+        logger.info(`✓ Deleted ${orphaned.length} orphaned file(s)`);
+      }
+    }
 
     // Remove stale counterpart router file from the real output dir.
     // Vite resolves '.js' imports literally, so if both index.js and index.ts
