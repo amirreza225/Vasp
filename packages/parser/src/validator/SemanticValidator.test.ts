@@ -1081,6 +1081,44 @@ describe("SemanticValidator — multiTenant", () => {
     `),
     ).toThrow("E181_MULTITENANT_ENTITY_NOT_DECLARED");
   });
+
+  it("fails when multiTenant.strategy is schema-level (E183 — not yet implemented)", () => {
+    expect(() =>
+      validate(`
+      app MySaas {
+        title: "My SaaS"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        multiTenant: {
+          strategy: "schema-level"
+          tenantEntity: Tenant
+          tenantField: tenantId
+        }
+      }
+      entity Tenant { id: Int @id name: String }
+    `),
+    ).toThrow("E183_MULTITENANT_STRATEGY_NOT_IMPLEMENTED");
+  });
+
+  it("fails when multiTenant.strategy is database-level (E183 — not yet implemented)", () => {
+    expect(() =>
+      validate(`
+      app MySaas {
+        title: "My SaaS"
+        db: Drizzle
+        ssr: false
+        typescript: false
+        multiTenant: {
+          strategy: "database-level"
+          tenantEntity: Tenant
+          tenantField: tenantId
+        }
+      }
+      entity Tenant { id: Int @id name: String }
+    `),
+    ).toThrow("E183_MULTITENANT_STRATEGY_NOT_IMPLEMENTED");
+  });
 });
 
 describe("SemanticValidator — cache blocks", () => {

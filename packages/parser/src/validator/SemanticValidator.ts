@@ -1105,6 +1105,16 @@ export class SemanticValidator {
       }
     }
 
+    // Reject strategies that are accepted by the parser but not yet implemented
+    if (mt.strategy === "schema-level" || mt.strategy === "database-level") {
+      this.diagnostics.push({
+        code: "E183_MULTITENANT_STRATEGY_NOT_IMPLEMENTED",
+        message: `multiTenant strategy '${mt.strategy}' is not yet implemented`,
+        hint: `Only 'row-level' isolation is currently supported. Use strategy: "row-level" or wait for a future release.`,
+        loc: ast.app.loc,
+      });
+    }
+
     // Validate tenantField exists on at least one entity (only for row-level strategy)
     if (mt.strategy === "row-level" && mt.tenantField && mt.tenantEntity) {
       const tenantEntityNode = ast.entities.find(
