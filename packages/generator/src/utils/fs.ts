@@ -55,7 +55,8 @@ export function isPlaceholderValue(value: string): boolean {
 
 /**
  * Copy all files from a staging directory to the real output directory.
- * Optionally preserves `.env` if it already exists with non-placeholder values.
+ * Optionally preserves `.env` if it already exists and contains at least one
+ * non-placeholder value (checked across all keys, not just DATABASE_URL).
  * `main.vasp` is always preserved when it already exists — it is the user's
  * source of truth and must never be overwritten by `vasp generate`.
  */
@@ -70,8 +71,10 @@ export function commitStagedFiles(
     const realEnvPath = join(realDir, ".env");
     if (existsSync(realEnvPath)) {
       const existing = parseEnvFile(readFileSync(realEnvPath, "utf8"));
-      const dbUrl = existing["DATABASE_URL"];
-      if (dbUrl && !isPlaceholderValue(dbUrl)) {
+      const hasNonPlaceholder = Object.values(existing).some(
+        (v) => v && !isPlaceholderValue(v),
+      );
+      if (hasNonPlaceholder) {
         protectedFiles.add(".env");
       }
     }
