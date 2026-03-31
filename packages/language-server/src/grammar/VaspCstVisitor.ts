@@ -11,7 +11,7 @@
  * This is sufficient for go-to-definition, completions, and diagnostics.
  */
 
-import { CstNode, IToken } from "chevrotain";
+import type { CstNode, IToken } from "chevrotain";
 import { VaspLexer } from "./VaspLexer.js";
 import { getVaspParser } from "./VaspParser.js";
 

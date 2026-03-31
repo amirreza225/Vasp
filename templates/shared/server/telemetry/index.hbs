@@ -78,7 +78,7 @@ process.on('SIGTERM', () => _sdk.shutdown().catch(console.error))
 
 {{#if metrics}}
 {{#if hasPrometheusExporter}}
-const _prometheusExporter = new PrometheusExporter({ port: Number(process.env.PROMETHEUS_PORT) || 9464, startServer: false })
+const _prometheusExporter = new PrometheusExporter({ port: parseInt(process.env.PROMETHEUS_PORT ?? '', 10) || 9464, startServer: false })
 export const meterProvider = new MeterProvider({
   readers: [_prometheusExporter],
   resource: new Resource({

@@ -5,14 +5,13 @@
  * then returns appropriate CompletionItem[] with documentation and auto-insert snippets.
  */
 
-import {
+import type {
   CompletionItem,
-  CompletionItemKind,
   Connection,
-  InsertTextFormat,
   TextDocuments,
 } from "vscode-languageserver";
-import { TextDocument } from "vscode-languageserver-textdocument";
+import { CompletionItemKind, InsertTextFormat } from "vscode-languageserver";
+import type { TextDocument } from "vscode-languageserver-textdocument";
 import { detectCursorContext } from "../utils/context-detector.js";
 import { VASP_DOCS } from "../utils/vasp-docs.js";
 import type { VaspDocumentStore } from "../utils/document-store.js";

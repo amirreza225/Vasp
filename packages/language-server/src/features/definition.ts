@@ -7,14 +7,9 @@
  *   - Works across multiple .vasp files in the workspace (multi-file support)
  */
 
-import {
-  Connection,
-  Location,
-  Position,
-  Range,
-  TextDocuments,
-} from "vscode-languageserver";
-import { TextDocument } from "vscode-languageserver-textdocument";
+import type { Connection, TextDocuments } from "vscode-languageserver";
+import { Location, Position, Range } from "vscode-languageserver";
+import type { TextDocument } from "vscode-languageserver-textdocument";
 import type { VaspDocumentStore } from "../utils/document-store.js";
 
 /** Convert character offset to LSP Position */

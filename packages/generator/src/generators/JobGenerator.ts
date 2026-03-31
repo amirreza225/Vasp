@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import type { JobNode } from "@vasp-framework/core";
 import { BaseGenerator } from "./BaseGenerator.js";
-import { toCamelCase, toPascalCase } from "../template/TemplateEngine.js";
+import { toCamelCase } from "../template/TemplateEngine.js";
 
 export class JobGenerator extends BaseGenerator {
   run(): void {

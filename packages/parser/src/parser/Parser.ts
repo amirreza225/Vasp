@@ -76,15 +76,12 @@ import {
   ParseError,
   SUPPORTED_UI_THEMES,
   SUPPORTED_UI_PRIMARY_COLORS,
-  SUPPORTED_AUTH_METHODS,
   SUPPORTED_AUTOPAGE_TYPES,
-  SUPPORTED_CRUD_OPERATIONS,
   SUPPORTED_FORM_LAYOUTS,
   SUPPORTED_JOB_BACKOFF_STRATEGIES,
   SUPPORTED_OBSERVABILITY_EXPORTERS,
   SUPPORTED_ERROR_TRACKING_PROVIDERS,
   SUPPORTED_OBSERVABILITY_LOGS_MODES,
-  SUPPORTED_REALTIME_EVENTS,
 } from "@vasp-framework/core";
 import type { ParseDiagnostic } from "@vasp-framework/core";
 import { Lexer } from "../lexer/Lexer.js";
@@ -2704,7 +2701,7 @@ class Parser {
    *   import { foo } from "@src/..."    → NamedImportExpression
    */
   private parseImportExpression(): ImportExpression {
-    const loc = this.consume(TokenType.KW_IMPORT).loc;
+    this.consume(TokenType.KW_IMPORT);
 
     // Named import: import { foo } from "..."
     if (this.check(TokenType.LBRACE)) {

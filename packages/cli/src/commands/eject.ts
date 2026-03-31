@@ -56,7 +56,6 @@ function rewriteRuntimeImport(
   const normalized = relPath.startsWith(".") ? relPath : `./${relPath}`;
 
   // Match both: import ... from '@vasp-framework/runtime'  (with single or double quotes)
-  const importRegex = /(['"])@vasp-framework\/runtime\1/g;
   if (!/@vasp-framework\/runtime/.test(content)) return null;
 
   return content.replace(

@@ -1,6 +1,6 @@
 import { generate } from "@vasp-framework/generator";
 import { parse } from "@vasp-framework/parser";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { readdirSync, statSync } from "node:fs";
 import { log } from "../utils/logger.js";

@@ -72,7 +72,7 @@ export function detectCursorContext(
   if (stack.length === 0) return { type: "top-level" };
 
   // Find which block we're actually inside by counting net brace depth from block start
-  let currentBlock = stack[stack.length - 1];
+  const currentBlock = stack[stack.length - 1];
   if (!currentBlock) return { type: "top-level" };
 
   // Find the opening brace of this block

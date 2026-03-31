@@ -8,7 +8,7 @@
  * at the actual error site rather than failing the entire file.
  */
 
-import { CstParser, type IToken, ParserMethod } from "chevrotain";
+import { CstParser } from "chevrotain";
 import {
   Action,
   Admin,
