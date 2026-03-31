@@ -261,52 +261,50 @@ describe('vasp new', () => {
   })
 
   // ---------------------------------------------------------------------------
-  // TypeScript compilation (tsc --noEmit)
+  // TypeScript compilation (tsc --noEmit / vue-tsc)
   //
   // These tests run `bun install` so they are slower than the other tests, but
   // they verify that the generated TypeScript is actually valid — not just that
-  // the files exist.  They are focused on the server-side code (Drizzle schema,
-  // Elysia routes, auth middleware, CRUD handlers, rate limiter, etc.) because:
-  //   • The server tsconfig doesn't require Nuxt or Vite type generation.
-  //   • Server-side code is where generator regressions most often manifest.
+  // the files exist.
   // ---------------------------------------------------------------------------
   describe('TypeScript compilation (tsc --noEmit)', () => {
+    /** Scaffolds an app, patches the runtime dep, and installs packages. */
+    function scaffoldAndInstall(appName: string, flags: string[]): string {
+      const result = vasp(['new', appName, ...flags, '--no-install'])
+      expect(result.status, `vasp new failed:\n${result.stderr}`).toBe(0)
+
+      const appDir = join(TMP_DIR, appName)
+      const pkgPath = join(appDir, 'package.json')
+      const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
+        dependencies?: Record<string, string>
+      }
+      if (pkg.dependencies?.['@vasp-framework/runtime']) {
+        pkg.dependencies['@vasp-framework/runtime'] =
+          `file:${join(MONOREPO_ROOT, 'packages', 'runtime')}`
+      }
+      writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
+
+      const installResult = spawnSync('bun', ['install'], {
+        cwd: appDir,
+        encoding: 'utf8',
+        timeout: 120_000,
+      })
+      expect(
+        installResult.status,
+        `bun install failed:\n${installResult.stderr}`,
+      ).toBe(0)
+
+      return appDir
+    }
+
     it(
-      'generated TypeScript SPA server-side code compiles without errors',
+      'SPA + TypeScript: generated code compiles without errors (vue-tsc --noEmit)',
       () => {
-        // 1. Scaffold a TypeScript SPA without installing deps
-        const result = vasp(['new', 'ts-compile-check', '--typescript', '--no-install'])
-        expect(result.status, `vasp new failed:\n${result.stderr}`).toBe(0)
+        const appDir = scaffoldAndInstall('ts-compile-check', ['--typescript'])
 
-        const appDir = join(TMP_DIR, 'ts-compile-check')
-
-        // 2. Patch @vasp-framework/runtime to use the local monorepo build so
-        //    `bun install` doesn't try to fetch a version that doesn't exist on npm.
-        const pkgPath = join(appDir, 'package.json')
-        const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
-          dependencies?: Record<string, string>
-        }
-        if (pkg.dependencies?.['@vasp-framework/runtime']) {
-          pkg.dependencies['@vasp-framework/runtime'] =
-            `file:${join(MONOREPO_ROOT, 'packages', 'runtime')}`
-        }
-        writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n')
-
-        // 3. Install dependencies (required for tsc to resolve third-party imports)
-        const installResult = spawnSync('bun', ['install'], {
-          cwd: appDir,
-          encoding: 'utf8',
-          timeout: 120_000,
-        })
-        expect(
-          installResult.status,
-          `bun install failed:\n${installResult.stderr}`,
-        ).toBe(0)
-
-        // 4. Run vue-tsc --noEmit on the generated TypeScript.
-        //    For SPA apps, the root tsconfig.json includes both server/**/*.ts
-        //    and src/**/*.{ts,vue}, so this catches errors across the whole project.
-        //    vue-tsc is used instead of plain tsc because it understands .vue SFCs.
+        // For SPA apps, the root tsconfig.json includes both server/**/*.ts
+        // and src/**/*.{ts,vue}, so this catches errors across the whole project.
+        // vue-tsc is used instead of plain tsc because it understands .vue SFCs.
         const tscResult = spawnSync(
           'bunx',
           ['vue-tsc', '--noEmit'],
@@ -314,10 +312,63 @@ describe('vasp new', () => {
         )
         expect(
           tscResult.status,
-          `Server-side TypeScript compilation failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
+          `SPA TypeScript compilation failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
         ).toBe(0)
       },
-      180_000, // 3 minutes: generation + bun install + tsc
+      180_000, // 3 minutes: generation + bun install + vue-tsc
+    )
+
+    it(
+      'SSR + TypeScript: server-side code compiles without errors (tsc --noEmit)',
+      () => {
+        const appDir = scaffoldAndInstall('ssr-ts-server-check', ['--ssr', '--typescript'])
+
+        // Validate server-side TypeScript (Drizzle schema, Elysia routes,
+        // auth middleware, rate limiter, etc.) without requiring nuxt prepare.
+        const tscResult = spawnSync(
+          'bunx',
+          ['tsc', '--noEmit', '--project', 'server/tsconfig.json'],
+          { cwd: appDir, encoding: 'utf8', timeout: 60_000 },
+        )
+        expect(
+          tscResult.status,
+          `SSR server-side TypeScript compilation failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
+        ).toBe(0)
+      },
+      180_000,
+    )
+
+    it(
+      'SSR + TypeScript: full project (frontend + server) compiles without errors (nuxt prepare + vue-tsc)',
+      () => {
+        const appDir = scaffoldAndInstall('ssr-ts-full-check', ['--ssr', '--typescript'])
+
+        // nuxt prepare generates .nuxt/tsconfig.json and type stubs for every
+        // Nuxt-managed file (plugins/, composables/, middleware/, pages/, app.vue).
+        // Nuxt's generated tsconfig includes `../**/*` which is referenced by the
+        // root tsconfig through `extends`, so vue-tsc transitively validates the
+        // full Nuxt frontend.
+        const prepareResult = spawnSync(
+          'bunx',
+          ['nuxt', 'prepare'],
+          { cwd: appDir, encoding: 'utf8', timeout: 120_000 },
+        )
+        expect(
+          prepareResult.status,
+          `nuxt prepare failed:\n${prepareResult.stdout}\n${prepareResult.stderr}`,
+        ).toBe(0)
+
+        const tscResult = spawnSync(
+          'bunx',
+          ['vue-tsc', '--noEmit'],
+          { cwd: appDir, encoding: 'utf8', timeout: 90_000 },
+        )
+        expect(
+          tscResult.status,
+          `SSR full-project TypeScript compilation failed:\n${tscResult.stdout}\n${tscResult.stderr}`,
+        ).toBe(0)
+      },
+      360_000, // 6 minutes: generation + bun install + nuxt prepare + vue-tsc
     )
   })
 })
