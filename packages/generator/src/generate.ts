@@ -142,7 +142,7 @@ export function generate(
     // Remove stale counterpart router file from the real output dir.
     // Vite resolves '.js' imports literally, so if both index.js and index.ts
     // exist, the explicit .js import in main.ts wins and the generated file is ignored.
-    const ext = ast.app.typescript ? "ts" : "js";
+    const ext = ast.app!.typescript ? "ts" : "js";
     const staleRouterExt = ext === "ts" ? "js" : "ts";
     const staleRouterPath = join(
       realOutputDir,
@@ -160,7 +160,7 @@ export function generate(
     // commitStagedFiles only adds/updates files, it never deletes from the real output dir.
     // Nuxt 4 explicitly warns when it finds a vite.config.* in the project root:
     //   "Using vite.config.js is not supported together with Nuxt."
-    const isSsrMode = ast.app.ssr === true || ast.app.ssr === "ssg";
+    const isSsrMode = ast.app!.ssr === true || ast.app!.ssr === "ssg";
     if (isSsrMode) {
       // SPA artifacts that are invalid in an SSR/SSG project
       for (const stale of ["vite.config.js", "vite.config.ts", "index.html"]) {

@@ -15,7 +15,7 @@ export class BackendGenerator extends BaseGenerator {
       fnSource: this.resolveServerImport(middleware.fn.source, "server/"),
       importAlias: `${this.camel(middleware.name)}Middleware`,
     }));
-    const userEnv = this.ctx.ast.app.env ?? {};
+    const userEnv = this.ctx.ast.app!.env ?? {};
     const envVars = Object.entries(userEnv).map(([name, def]) => ({
       name,
       requirement: def.requirement,

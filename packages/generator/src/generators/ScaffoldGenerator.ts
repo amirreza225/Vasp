@@ -152,17 +152,17 @@ export class ScaffoldGenerator extends BaseGenerator {
     const { ast } = this.ctx;
 
     const lines: string[] = [
-      `app ${ast.app.name} {`,
-      `  title: "${ast.app.title}"`,
-      `  db: ${ast.app.db}`,
-      `  ssr: ${typeof ast.app.ssr === "string" ? `"${ast.app.ssr}"` : ast.app.ssr}`,
-      `  typescript: ${ast.app.typescript}`,
+      `app ${ast.app!.name} {`,
+      `  title: "${ast.app!.title}"`,
+      `  db: ${ast.app!.db}`,
+      `  ssr: ${typeof ast.app!.ssr === "string" ? `"${ast.app!.ssr}"` : ast.app!.ssr}`,
+      `  typescript: ${ast.app!.typescript}`,
     ];
 
     // app.env sub-block
-    if (ast.app.env && Object.keys(ast.app.env).length > 0) {
+    if (ast.app!.env && Object.keys(ast.app!.env).length > 0) {
       lines.push(`  env: {`);
-      for (const [key, def] of Object.entries(ast.app.env)) {
+      for (const [key, def] of Object.entries(ast.app!.env)) {
         let line = `    ${key}: ${def.requirement} ${def.type}`;
         if (def.type === "Enum" && def.enumValues) {
           line += `(${def.enumValues.join(", ")})`;
@@ -189,8 +189,8 @@ export class ScaffoldGenerator extends BaseGenerator {
     }
 
     // app.multiTenant sub-block
-    if (ast.app.multiTenant) {
-      const mt = ast.app.multiTenant;
+    if (ast.app!.multiTenant) {
+      const mt = ast.app!.multiTenant;
       lines.push(
         `  multiTenant: {`,
         `    strategy: "${mt.strategy}"`,
@@ -201,8 +201,8 @@ export class ScaffoldGenerator extends BaseGenerator {
     }
 
     // app.ui sub-block
-    if (ast.app.ui) {
-      const ui = ast.app.ui;
+    if (ast.app!.ui) {
+      const ui = ast.app!.ui;
       lines.push(`  ui: {`, `    theme: ${ui.theme}`);
       if (ui.primaryColor) lines.push(`    primaryColor: ${ui.primaryColor}`);
       lines.push(

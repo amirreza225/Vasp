@@ -153,7 +153,6 @@ class Parser {
 
   parse(): VaspAST {
     const ast: VaspAST = {
-      app: null as unknown as AppNode, // validated by SemanticValidator
       entities: [],
       routes: [],
       pages: [],

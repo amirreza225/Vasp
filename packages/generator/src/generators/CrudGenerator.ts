@@ -58,7 +58,7 @@ export class CrudGenerator extends BaseGenerator {
       const entity = entityMap.get(crud.entity);
 
       // Multi-tenancy config for row-level isolation
-      const mt = ast.app.multiTenant;
+      const mt = ast.app!.multiTenant;
       const isRowLevelTenant = mt?.strategy === "row-level";
       const tenantField = isRowLevelTenant ? (mt?.tenantField ?? "") : "";
       const tenantEntity = isRowLevelTenant ? (mt?.tenantEntity ?? "") : "";

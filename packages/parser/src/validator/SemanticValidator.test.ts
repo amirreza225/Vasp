@@ -18,7 +18,7 @@ describe("SemanticValidator", () => {
     // Parse will produce null app — validator catches it
     const ast = parse(APP);
     // Manually break it for testing
-    const brokenAst = { ...ast, app: null as unknown as typeof ast.app };
+    const brokenAst = { ...ast, app: undefined };
     expect(() => new SemanticValidator().validate(brokenAst)).toThrow(
       "E100_MISSING_APP_BLOCK",
     );

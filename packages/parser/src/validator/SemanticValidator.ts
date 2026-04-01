@@ -497,7 +497,7 @@ export class SemanticValidator {
           code: "E122_INVALID_ENV_KEY",
           message: `Invalid env key '${envKey}' in app.env`,
           hint: "Use uppercase env names like DATABASE_URL or JWT_SECRET",
-          loc: ast.app.loc,
+          loc: ast.app!.loc,
         });
       }
 
@@ -512,7 +512,7 @@ export class SemanticValidator {
             code: "E123_INVALID_ENV_DEFAULT",
             message: `Default value '${def.defaultValue}' for '${envKey}' is not a valid enum variant`,
             hint: `Valid variants: ${def.enumValues.join(", ")}`,
-            loc: ast.app.loc,
+            loc: ast.app!.loc,
           });
         }
       }
@@ -524,7 +524,7 @@ export class SemanticValidator {
             code: "E124_INVALID_ENV_DEFAULT_TYPE",
             message: `Default value '${def.defaultValue}' for '${envKey}' must be an integer`,
             hint: "Example: MAX_SIZE: optional Int @default(1024)",
-            loc: ast.app.loc,
+            loc: ast.app!.loc,
           });
         }
       }
@@ -536,7 +536,7 @@ export class SemanticValidator {
             code: "E124_INVALID_ENV_DEFAULT_TYPE",
             message: `Default value '${def.defaultValue}' for '${envKey}' must be "true" or "false"`,
             hint: "Example: ENABLE_FEATURE: optional Boolean @default(false)",
-            loc: ast.app.loc,
+            loc: ast.app!.loc,
           });
         }
       }
@@ -551,7 +551,7 @@ export class SemanticValidator {
                 code: "E125_INCOMPATIBLE_ENV_VALIDATOR",
                 message: `Validator @${sv} is not valid for ${def.type} env var '${envKey}'`,
                 hint: `@${sv} can only be used on String or Enum env vars`,
-                loc: ast.app.loc,
+                loc: ast.app!.loc,
               });
             }
           }
@@ -564,7 +564,7 @@ export class SemanticValidator {
                 code: "E125_INCOMPATIBLE_ENV_VALIDATOR",
                 message: `Validator @${nv} is not valid for ${def.type} env var '${envKey}'`,
                 hint: `@${nv} can only be used on Int env vars`,
-                loc: ast.app.loc,
+                loc: ast.app!.loc,
               });
             }
           }
@@ -1088,7 +1088,7 @@ export class SemanticValidator {
         code: "E180_INVALID_MULTITENANT_STRATEGY",
         message: `Invalid multiTenant strategy '${mt.strategy}'`,
         hint: `Supported strategies: ${SUPPORTED_MULTI_TENANT_STRATEGIES.join(", ")}`,
-        loc: ast.app.loc,
+        loc: ast.app!.loc,
       });
     }
 
@@ -1100,7 +1100,7 @@ export class SemanticValidator {
           code: "E181_MULTITENANT_ENTITY_NOT_DECLARED",
           message: `multiTenant.tenantEntity '${mt.tenantEntity}' has no entity block`,
           hint: `Add an entity block for '${mt.tenantEntity}', or fix the tenantEntity value`,
-          loc: ast.app.loc,
+          loc: ast.app!.loc,
         });
       }
     }
@@ -1111,7 +1111,7 @@ export class SemanticValidator {
         code: "E183_MULTITENANT_STRATEGY_NOT_IMPLEMENTED",
         message: `multiTenant strategy '${mt.strategy}' is not yet implemented`,
         hint: `Only 'row-level' isolation is currently supported. Use strategy: "row-level" or wait for a future release.`,
-        loc: ast.app.loc,
+        loc: ast.app!.loc,
       });
     }
 
@@ -1130,7 +1130,7 @@ export class SemanticValidator {
             code: "E182_MULTITENANT_ENTITY_NO_ID",
             message: `multiTenant.tenantEntity '${mt.tenantEntity}' has no @id field`,
             hint: "Add an id field with @id modifier to the tenant entity",
-            loc: ast.app.loc,
+            loc: ast.app!.loc,
           });
         }
       }

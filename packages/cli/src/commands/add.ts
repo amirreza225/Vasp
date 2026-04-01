@@ -82,7 +82,7 @@ export async function addCommand(args: string[]): Promise<void> {
     handleParseError(err, source, "main.vasp");
   }
 
-  const ext = ast.app.typescript ? "ts" : "js";
+  const ext = ast.app!.typescript ? "ts" : "js";
   const name = args[1];
 
   switch (sub) {
@@ -293,7 +293,7 @@ export async function addCommand(args: string[]): Promise<void> {
         log.error("An auth block already exists in main.vasp");
         process.exit(1);
       }
-      const authName = `${ast.app.name}Auth`;
+      const authName = `${ast.app!.name}Auth`;
       const hasUserEntity = ast.entities.some((e) => e.name === "User");
 
       let block = "";

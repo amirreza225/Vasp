@@ -30,7 +30,7 @@ export async function migrateToTsCommand(): Promise<void> {
     handleParseError(err, source, "main.vasp");
   }
 
-  if (ast.app.typescript) {
+  if (ast.app!.typescript) {
     log.warn(
       "Project is already using TypeScript (typescript: true in main.vasp)",
     );

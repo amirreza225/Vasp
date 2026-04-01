@@ -172,8 +172,8 @@ export abstract class BaseGenerator {
     const inboundWebhooks = webhooks.filter((w) => w.mode === "inbound");
     const outboundWebhooks = webhooks.filter((w) => w.mode === "outbound");
     return {
-      appName: ast.app.name,
-      appTitle: ast.app.title,
+      appName: ast.app!.name,
+      appTitle: ast.app!.title,
       isTypeScript,
       isSsr,
       isSsg,

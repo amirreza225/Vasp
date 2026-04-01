@@ -51,9 +51,9 @@ export function createContext(
   outputDir: string,
   opts: { projectDir?: string; templateDir?: string; logger?: Logger } = {},
 ): GeneratorContext {
-  const isTypeScript = ast.app.typescript;
-  const isSsr = ast.app.ssr === true;
-  const isSsg = ast.app.ssr === "ssg";
+  const isTypeScript = ast.app!.typescript;
+  const isSsr = ast.app!.ssr === true;
+  const isSsg = ast.app!.ssr === "ssg";
   const isSpa = !isSsr && !isSsg;
 
   // Default template dir: two levels up from this file, then templates/

@@ -649,7 +649,7 @@ export interface AutoPageNode extends BaseNode {
 // ------ Top-level AST ------
 
 export interface VaspAST {
-  app: AppNode;
+  app?: AppNode;
   auth?: AuthNode;
   entities: EntityNode[];
   routes: RouteNode[];
