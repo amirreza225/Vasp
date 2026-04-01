@@ -140,6 +140,8 @@ export interface BaseTemplateData {
 }
 
 export abstract class BaseGenerator {
+  private _baseData?: BaseTemplateData;
+
   constructor(
     protected readonly ctx: GeneratorContext,
     protected readonly engine: TemplateEngine,
@@ -165,6 +167,10 @@ export abstract class BaseGenerator {
   }
 
   protected baseData(): BaseTemplateData {
+    return (this._baseData ??= this.computeBaseData());
+  }
+
+  private computeBaseData(): BaseTemplateData {
     const { ast, isTypeScript, isSsr, isSsg, isSpa, ext, mode } = this.ctx;
     const emails = ast.emails;
     const caches = ast.caches;
