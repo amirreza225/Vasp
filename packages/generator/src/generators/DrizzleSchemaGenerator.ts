@@ -1,5 +1,5 @@
 import type { VaspAST } from "@vasp-framework/core";
-import type { SchemaSnapshot } from "../manifest/Manifest.js";
+import type { EntitySnapshot, FieldSnapshot, SchemaSnapshot } from "../manifest/Manifest.js";
 import { toCamelCase, toPascalCase, toPlural } from "../template/TemplateEngine.js";
 import { BaseGenerator } from "./BaseGenerator.js";
 
@@ -417,7 +417,7 @@ function buildSchemaSnapshot(ast: VaspAST): SchemaSnapshot {
   const entities: SchemaSnapshot["entities"] = {};
 
   for (const entity of ast.entities) {
-    const fields: Record<string, { type: string; nullable: boolean }> = {};
+    const fields: Record<string, FieldSnapshot> = {};
 
     for (const f of entity.fields) {
       if (RESERVED.has(f.name)) continue;
@@ -428,11 +428,29 @@ function buildSchemaSnapshot(ast: VaspAST): SchemaSnapshot {
         // Many-to-one → FK column `${name}Id : Int`
         fields[`${f.name}Id`] = { type: "Int", nullable: f.nullable };
       } else {
-        fields[f.name] = { type: f.type, nullable: f.nullable };
+        const snap: FieldSnapshot = { type: f.type, nullable: f.nullable };
+        if (f.modifiers.includes("unique")) snap.unique = true;
+        if (f.type === "Enum" && f.enumValues?.length) snap.enumValues = [...f.enumValues];
+        fields[f.name] = snap;
       }
     }
 
-    entities[entity.name] = { fields };
+    const entitySnap: EntitySnapshot = { fields };
+
+    if (entity.uniqueConstraints?.length) {
+      entitySnap.uniqueConstraints = entity.uniqueConstraints.map((uc) =>
+        [...uc.fields].sort(),
+      );
+    }
+
+    if (entity.indexes?.length) {
+      entitySnap.indexes = entity.indexes.map((idx) => ({
+        fields: [...idx.fields],
+        ...(idx.type ? { type: idx.type } : {}),
+      }));
+    }
+
+    entities[entity.name] = entitySnap;
   }
 
   return { entities };

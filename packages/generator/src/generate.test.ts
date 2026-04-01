@@ -3993,6 +3993,329 @@ describe("detectDestructiveSchemaChanges", () => {
     expect(snap!.entities["Todo"]!.fields["done"]).toEqual({ type: "Boolean", nullable: false });
   });
 
+  it("warns when a column changes from nullable to NOT NULL", () => {
+    const previousSnapshot = {
+      entities: {
+        Post: { fields: { body: { type: "Text", nullable: true } } },
+      },
+    };
+    // body is no longer @nullable in the new AST
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Post {
+  body: Text
+}`,
+    );
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("Post.body");
+    expect(warnings[0]).toContain("NOT NULL");
+    expect(warnings[0]).toContain("Backfill");
+  });
+
+  it("does not warn when a column stays nullable", () => {
+    const previousSnapshot = {
+      entities: {
+        Post: { fields: { body: { type: "Text", nullable: true } } },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Post {
+  body: Text @nullable
+}`,
+    );
+    expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
+  });
+
+  it("does not warn when a column changes from NOT NULL to nullable (additive)", () => {
+    const previousSnapshot = {
+      entities: {
+        Post: { fields: { body: { type: "Text", nullable: false } } },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Post {
+  body: Text @nullable
+}`,
+    );
+    expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
+  });
+
+  it("warns when a field gains a UNIQUE constraint", () => {
+    const previousSnapshot = {
+      entities: {
+        User: { fields: { email: { type: "String", nullable: false, unique: false } } },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity User {
+  email: String @unique
+}`,
+    );
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("User.email");
+    expect(warnings[0]).toContain("UNIQUE");
+    expect(warnings[0]).toContain("duplicate");
+  });
+
+  it("does not warn when @unique is unchanged", () => {
+    const previousSnapshot = {
+      entities: {
+        User: { fields: { email: { type: "String", nullable: false, unique: true } } },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity User {
+  email: String @unique
+}`,
+    );
+    expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
+  });
+
+  it("warns for each removed enum value", () => {
+    const previousSnapshot = {
+      entities: {
+        Task: {
+          fields: {
+            status: {
+              type: "Enum",
+              nullable: false,
+              enumValues: ["active", "inactive", "archived"],
+            },
+          },
+        },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Task {
+  status: Enum(active, inactive)
+}`,
+    );
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("archived");
+    expect(warnings[0]).toContain("Task.status");
+    expect(warnings[0]).toContain("Migrate");
+  });
+
+  it("warns for multiple removed enum values independently", () => {
+    const previousSnapshot = {
+      entities: {
+        Task: {
+          fields: {
+            status: {
+              type: "Enum",
+              nullable: false,
+              enumValues: ["active", "inactive", "archived"],
+            },
+          },
+        },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Task {
+  status: Enum(active)
+}`,
+    );
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings).toHaveLength(2);
+    expect(warnings.some((w) => w.includes("inactive"))).toBe(true);
+    expect(warnings.some((w) => w.includes("archived"))).toBe(true);
+  });
+
+  it("does not warn when enum values are unchanged", () => {
+    const previousSnapshot = {
+      entities: {
+        Task: {
+          fields: {
+            status: {
+              type: "Enum",
+              nullable: false,
+              enumValues: ["active", "inactive"],
+            },
+          },
+        },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Task {
+  status: Enum(active, inactive)
+}`,
+    );
+    expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
+  });
+
+  it("does not warn when enum values are only added (additive)", () => {
+    const previousSnapshot = {
+      entities: {
+        Task: {
+          fields: {
+            status: {
+              type: "Enum",
+              nullable: false,
+              enumValues: ["active"],
+            },
+          },
+        },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Task {
+  status: Enum(active, inactive)
+}`,
+    );
+    expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
+  });
+
+  it("warns when a new composite UNIQUE constraint is added to an existing table", () => {
+    const previousSnapshot = {
+      entities: {
+        Membership: {
+          fields: {
+            userId: { type: "Int", nullable: false },
+            teamId: { type: "Int", nullable: false },
+          },
+          // no uniqueConstraints in previous snapshot
+        },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Membership {
+  userId: Int
+  teamId: Int
+  @@unique([userId, teamId])
+}`,
+    );
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("Membership");
+    expect(warnings[0]).toContain("UNIQUE");
+    expect(warnings[0]).toContain("duplicate");
+  });
+
+  it("does not warn when a composite UNIQUE constraint is unchanged", () => {
+    const previousSnapshot = {
+      entities: {
+        Membership: {
+          fields: {
+            userId: { type: "Int", nullable: false },
+            teamId: { type: "Int", nullable: false },
+          },
+          uniqueConstraints: [["teamId", "userId"]], // sorted
+        },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Membership {
+  userId: Int
+  teamId: Int
+  @@unique([userId, teamId])
+}`,
+    );
+    expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
+  });
+
+  it("warns when an index type changes between btree and fulltext", () => {
+    const previousSnapshot = {
+      entities: {
+        Article: {
+          fields: { title: { type: "String", nullable: false } },
+          indexes: [{ fields: ["title"] }], // default btree
+        },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Article {
+  title: String
+  @@index([title], type: fulltext)
+}`,
+    );
+    const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("Article");
+    expect(warnings[0]).toContain("title");
+    expect(warnings[0]).toContain("btree");
+    expect(warnings[0]).toContain("fulltext");
+  });
+
+  it("does not warn when an index type is unchanged", () => {
+    const previousSnapshot = {
+      entities: {
+        Article: {
+          fields: { title: { type: "String", nullable: false } },
+          indexes: [{ fields: ["title"], type: "fulltext" }],
+        },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Article {
+  title: String
+  @@index([title], type: fulltext)
+}`,
+    );
+    expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
+  });
+
+  it("does not warn when a new index is added (additive)", () => {
+    const previousSnapshot = {
+      entities: {
+        Article: {
+          fields: { title: { type: "String", nullable: false } },
+          // no indexes in previous snapshot
+        },
+      },
+    };
+    const ast = parse(
+      `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }
+route R { path: "/" to: P }
+page P { component: import P from "@src/P.vue" }
+entity Article {
+  title: String
+  @@index([title])
+}`,
+    );
+    expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
+  });
+
   it("warnings are returned in generate() result when destructive changes are detected", () => {
     const baseDir = join(TMP_DIR, "destructive-warning");
     const vaspV1 = `

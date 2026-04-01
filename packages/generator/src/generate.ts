@@ -25,7 +25,7 @@ import { SeedGenerator } from "./generators/SeedGenerator.js";
 import { StorageGenerator } from "./generators/StorageGenerator.js";
 import { WebhookGenerator } from "./generators/WebhookGenerator.js";
 import { Manifest } from "./manifest/Manifest.js";
-import type { SchemaSnapshot } from "./manifest/Manifest.js";
+import type { FieldSnapshot, SchemaSnapshot } from "./manifest/Manifest.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
 import { cleanupDir, commitStagedFiles, deleteOrphanedFiles } from "./utils/fs.js";
 import { dirname, join } from "node:path";
@@ -205,6 +205,11 @@ export function generate(
  *   - Table dropped (entity removed from the DSL)
  *   - Column dropped or renamed (field removed — rename = drop + add in Drizzle)
  *   - Column type changed (may require lossy casting or fail entirely)
+ *   - Column changed from nullable to NOT NULL (fails if NULL rows exist)
+ *   - New UNIQUE constraint on an existing column (fails if duplicates exist)
+ *   - Enum value removed (existing rows violate the constraint)
+ *   - Table-level composite UNIQUE constraint added (fails if duplicate combos exist)
+ *   - Index type changed on same fields (drop + recreate, slow on large tables)
  *
  * Exported so it can be unit-tested directly without running a full generation.
  */
@@ -237,7 +242,7 @@ export function detectDestructiveSchemaChanges(
     //   - primitive (non-relation) fields → column name = f.name, type = f.type
     //   - many-to-one relation fields    → column name = `${f.name}Id`, type = 'Int'
     //   - virtual array / M:N fields     → no DB column, skip
-    const currentColumns = new Map<string, { type: string; nullable: boolean }>();
+    const currentColumns = new Map<string, FieldSnapshot>();
     for (const f of currentEntity.fields) {
       if (RESERVED.has(f.name)) continue;
       if (f.isRelation && f.isArray) continue; // virtual / M:N — no column
@@ -245,10 +250,14 @@ export function detectDestructiveSchemaChanges(
       if (f.isRelation) {
         currentColumns.set(`${f.name}Id`, { type: "Int", nullable: f.nullable });
       } else {
-        currentColumns.set(f.name, { type: f.type, nullable: f.nullable });
+        const snap: FieldSnapshot = { type: f.type, nullable: f.nullable };
+        if (f.modifiers.includes("unique")) snap.unique = true;
+        if (f.type === "Enum" && f.enumValues?.length) snap.enumValues = [...f.enumValues];
+        currentColumns.set(f.name, snap);
       }
     }
 
+    // ── Per-column checks ────────────────────────────────────────────────────
     for (const [colName, colSnap] of Object.entries(entitySnap.fields)) {
       const current = currentColumns.get(colName);
 
@@ -258,12 +267,81 @@ export function detectDestructiveSchemaChanges(
           ` Running 'vasp db push' will DROP the column and destroy its data.` +
           ` If you renamed the field, migrate the data manually before pushing.`,
         );
-      } else if (current.type !== colSnap.type) {
+        continue;
+      }
+
+      if (current.type !== colSnap.type) {
         warnings.push(
           `Destructive schema change: column '${entityName}.${colName}' type changed` +
           ` from '${colSnap.type}' to '${current.type}'.` +
           ` Running 'vasp db push' may ALTER the column type and cause data loss or errors.`,
         );
+      }
+
+      if (colSnap.nullable && !current.nullable) {
+        warnings.push(
+          `Destructive schema change: column '${entityName}.${colName}' changed from nullable to NOT NULL.` +
+          ` Running 'vasp db push' will fail if any existing rows contain NULL in this column.` +
+          ` Backfill all NULLs before pushing (e.g., UPDATE <table> SET "${colName}" = <default> WHERE "${colName}" IS NULL).`,
+        );
+      }
+
+      if (!colSnap.unique && current.unique) {
+        warnings.push(
+          `Destructive schema change: column '${entityName}.${colName}' gained a UNIQUE constraint.` +
+          ` Running 'vasp db push' will fail if duplicate values exist in this column.` +
+          ` Verify or deduplicate data before pushing.`,
+        );
+      }
+
+      if (colSnap.enumValues && current.enumValues) {
+        const removedValues = colSnap.enumValues.filter((v) => !current.enumValues!.includes(v));
+        for (const val of removedValues) {
+          warnings.push(
+            `Destructive schema change: enum value '${val}' was removed from '${entityName}.${colName}'.` +
+            ` Running 'vasp db push' will fail if any existing rows contain this value.` +
+            ` Migrate all rows away from this value before removing it from the schema.`,
+          );
+        }
+      }
+    }
+
+    // ── Table-level composite UNIQUE constraint checks ───────────────────────
+    const snapConstraintKeys = new Set(
+      (entitySnap.uniqueConstraints ?? []).map((uc) => [...uc].sort().join(",")),
+    );
+    for (const uc of (currentEntity.uniqueConstraints ?? [])) {
+      const key = [...uc.fields].sort().join(",");
+      if (!snapConstraintKeys.has(key)) {
+        warnings.push(
+          `Destructive schema change: a new composite UNIQUE constraint on [${uc.fields.join(", ")}]` +
+          ` was added to entity '${entityName}'.` +
+          ` Running 'vasp db push' will fail if duplicate combinations exist.` +
+          ` Verify or deduplicate data before pushing.`,
+        );
+      }
+    }
+
+    // ── Index type change checks ─────────────────────────────────────────────
+    const curIndexesByKey = new Map(
+      (currentEntity.indexes ?? []).map((idx) => [
+        [...idx.fields].sort().join(","),
+        idx.type ?? "btree",
+      ]),
+    );
+    for (const snapIdx of (entitySnap.indexes ?? [])) {
+      const key = [...snapIdx.fields].sort().join(",");
+      const curType = curIndexesByKey.get(key);
+      if (curType !== undefined) {
+        const prevType = snapIdx.type ?? "btree";
+        if (curType !== prevType) {
+          warnings.push(
+            `Destructive schema change: index on [${snapIdx.fields.join(", ")}]` +
+            ` in entity '${entityName}' changed type from '${prevType}' to '${curType}'.` +
+            ` Running 'vasp db push' will drop and recreate the index,` +
+            ` which may be slow on large tables.`,
+          );
+        }
       }
     }
   }

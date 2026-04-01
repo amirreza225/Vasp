@@ -16,12 +16,23 @@ export interface FieldSnapshot {
   type: string;
   /** Whether the column allows NULL */
   nullable: boolean;
+  /** Whether the column has a UNIQUE constraint (@unique modifier) */
+  unique?: boolean;
+  /** Declared variant values for Enum fields */
+  enumValues?: string[];
 }
 
 /** All column snapshots for a single DB table. */
 export interface EntitySnapshot {
   /** Maps DB column name → FieldSnapshot */
   fields: Record<string, FieldSnapshot>;
+  /**
+   * Table-level composite unique constraints (@@unique).
+   * Each inner array is the sorted list of field names forming the constraint.
+   */
+  uniqueConstraints?: string[][];
+  /** Table-level indexes (@@index). Preserves declaration order. */
+  indexes?: { fields: string[]; type?: string }[];
 }
 
 /**
