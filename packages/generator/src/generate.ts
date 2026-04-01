@@ -24,12 +24,107 @@ import { ScaffoldGenerator } from "./generators/ScaffoldGenerator.js";
 import { SeedGenerator } from "./generators/SeedGenerator.js";
 import { StorageGenerator } from "./generators/StorageGenerator.js";
 import { WebhookGenerator } from "./generators/WebhookGenerator.js";
-import { Manifest } from "./manifest/Manifest.js";
+import { computeHash, Manifest } from "./manifest/Manifest.js";
 import type { FieldSnapshot, SchemaSnapshot } from "./manifest/Manifest.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
 import { cleanupDir, commitStagedFiles, deleteOrphanedFiles } from "./utils/fs.js";
 import { dirname, join } from "node:path";
 import { mkdirSync, existsSync, rmSync } from "node:fs";
+
+// ---------------------------------------------------------------------------
+// Incremental generation helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Compute a per-block-group JSON fingerprint of the AST.
+ * Each entry maps a block key to the SHA-256 hash of its JSON representation.
+ * Used to detect which block types changed between two generation runs.
+ */
+function computeAstSnapshot(ast: VaspAST): Record<string, string> {
+  const h = (val: unknown): string => computeHash(JSON.stringify(val ?? null));
+  return {
+    app:           h(ast.app),
+    auth:          h(ast.auth),
+    entities:      h(ast.entities),
+    routes:        h(ast.routes),
+    pages:         h(ast.pages),
+    queries:       h(ast.queries),
+    actions:       h(ast.actions),
+    cruds:         h(ast.cruds),
+    realtimes:     h(ast.realtimes),
+    jobs:          h(ast.jobs),
+    apis:          h(ast.apis),
+    middlewares:   h(ast.middlewares),
+    storages:      h(ast.storages),
+    emails:        h(ast.emails),
+    admin:         h(ast.admin),
+    seed:          h(ast.seed),
+    caches:        h(ast.caches),
+    webhooks:      h(ast.webhooks),
+    observability: h(ast.observability),
+    autoPages:     h(ast.autoPages),
+  };
+}
+
+/**
+ * Maps each generator name to the AST block keys (from computeAstSnapshot) it
+ * depends on.  A generator is (re-)run only when at least one of its
+ * dependencies has a different hash from the previous generation.
+ *
+ * Maintenance: keep in sync with the generator execution order in generate().
+ */
+const GENERATOR_DEPS: Readonly<Record<string, readonly string[]>> = {
+  ScaffoldGenerator:      ["app"],
+  DrizzleSchemaGenerator: ["entities", "auth"],
+  BackendGenerator:       ["app", "auth", "entities", "middlewares", "queries", "actions",
+                           "cruds", "jobs", "storages", "emails", "caches", "webhooks",
+                           "observability", "apis", "seed"],
+  ObservabilityGenerator: ["observability", "app"],
+  AuthGenerator:          ["auth", "entities"],
+  MiddlewareGenerator:    ["middlewares"],
+  CacheGenerator:         ["caches", "app"],
+  QueryActionGenerator:   ["queries", "actions", "emails"],
+  ApiGenerator:           ["apis"],
+  CrudGenerator:          ["cruds", "entities", "auth"],
+  RealtimeGenerator:      ["realtimes", "cruds"],
+  AutoPageGenerator:      ["autoPages", "entities", "app"],
+  JobGenerator:           ["jobs", "app"],
+  EmailGenerator:         ["emails", "app"],
+  SeedGenerator:          ["seed"],
+  StorageGenerator:       ["storages", "entities"],
+  WebhookGenerator:       ["webhooks", "entities", "cruds", "jobs"],
+  FrontendGenerator:      ["app", "routes", "pages", "auth", "queries", "actions",
+                           "cruds", "autoPages", "entities"],
+  AdminGenerator:         ["admin", "entities"],
+};
+
+/**
+ * Return the set of block-type keys whose content changed between the previous
+ * and next AST snapshots (added, removed, or hash-changed).
+ */
+function changedBlocks(
+  prev: Record<string, string>,
+  next: Record<string, string>,
+): Set<string> {
+  const changed = new Set<string>();
+  const allKeys = new Set([...Object.keys(prev), ...Object.keys(next)]);
+  for (const key of allKeys) {
+    if (prev[key] !== next[key]) changed.add(key);
+  }
+  return changed;
+}
+
+/**
+ * Return the set of generator names that must run given the changed block types.
+ * A generator runs if ANY of its block-type dependencies appear in `changed`.
+ */
+function generatorsToRun(changed: Set<string>): Set<string> {
+  const toRun = new Set<string>();
+  for (const [name, deps] of Object.entries(GENERATOR_DEPS)) {
+    if (deps.some((d) => changed.has(d))) toRun.add(name);
+  }
+  return toRun;
+}
 
 export function generate(
   ast: VaspAST,
@@ -80,8 +175,39 @@ export function generate(
     }
   }
 
+  // Compute the AST snapshot for incremental generation.
+  // Compare against the previous snapshot to determine which block types changed.
+  const newAstSnapshot = computeAstSnapshot(ast);
+  // null = run all generators; Set = run only the listed generators
+  let generatorFilter: Set<string> | null = null;
+  if (previousManifest) {
+    const prevAstSnapshot = previousManifest.getAstSnapshot();
+    if (prevAstSnapshot) {
+      const changed = changedBlocks(prevAstSnapshot, newAstSnapshot);
+      generatorFilter = generatorsToRun(changed);
+      if (generatorFilter.size === 0) {
+        logger.info("↷ No block types changed — skipping all generators");
+      } else {
+        const skippedCount =
+          Object.keys(GENERATOR_DEPS).length - generatorFilter.size;
+        if (skippedCount > 0) {
+          logger.verbose(
+            `↷ Skipping ${skippedCount} generator(s) whose block types are unchanged`,
+          );
+        }
+      }
+    }
+    // If prevAstSnapshot is absent (old manifest format), generatorFilter stays
+    // null and all generators run (safe fallback).
+  }
+
   // Helper: run a generator and collect its error without aborting the pipeline.
+  // When generatorFilter is set, generators not in the filter are silently skipped.
   function runGenerator(name: string, run: () => void): void {
+    if (generatorFilter !== null && !generatorFilter.has(name)) {
+      logger.verbose(`↷ Skipped ${name} (block types unchanged)`);
+      return;
+    }
     try {
       run();
     } catch (err) {
@@ -120,8 +246,26 @@ export function generate(
       return { success: false, filesWritten, errors, warnings };
     }
 
+    // Propagate manifest entries from skipped generators into the new manifest.
+    // Without this, deleteOrphanedFiles would consider their still-valid files
+    // as orphaned and delete them on the next run.
+    let reusedFileCount = 0;
+    if (previousManifest && generatorFilter !== null) {
+      const skippedGenerators = new Set(
+        Object.keys(GENERATOR_DEPS).filter((n) => !generatorFilter!.has(n)),
+      );
+      for (const [relPath, entry] of Object.entries(previousManifest.files)) {
+        if (skippedGenerators.has(entry.generator) && !manifest.hasFile(relPath)) {
+          manifest.setEntry(relPath, entry);
+          reusedFileCount++;
+        }
+      }
+    }
+
     // All generators succeeded — commit staged files to real output dir.
     // .env is preserved if the existing one has non-placeholder values.
+    // Unchanged files (same SHA-256) are skipped to avoid spurious mtime changes
+    // and Vite HMR triggers.
     commitStagedFiles(stagingDir, realOutputDir, { preserveEnv: true });
 
     // Delete any files that were tracked in the previous manifest but are no
@@ -175,13 +319,17 @@ export function generate(
       }
     }
 
-    // Persist manifest to real output dir
+    // Persist manifest (with updated AST snapshot) to real output dir.
+    manifest.setAstSnapshot(newAstSnapshot);
     manifest.save(realOutputDir);
 
     // Clean up staging dir
     cleanupDir(stagingDir);
 
-    logger.info(`✓ Generated ${filesWritten.length} files`);
+    if (reusedFileCount > 0) {
+      logger.verbose(`↷ Reused ${reusedFileCount} file(s) from previous generation`);
+    }
+    logger.info(`✓ Generated ${filesWritten.length} file(s)`);
 
     return { success: true, filesWritten, errors: [], warnings };
   } catch (err) {

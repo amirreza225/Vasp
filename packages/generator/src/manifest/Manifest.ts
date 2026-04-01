@@ -53,6 +53,15 @@ export interface ManifestData {
   files: Record<string, ManifestEntry>;
   /** Schema snapshot captured after the last successful generation. Optional for backward compat. */
   schemaSnapshot?: SchemaSnapshot;
+  /**
+   * Per-block-type JSON fingerprints for selective (incremental) regeneration.
+   * Maps block key (e.g. "entities", "queries") → SHA-256 hash of the serialised
+   * block data from the AST.  On the next `vasp generate` run the hashes are
+   * compared against freshly-computed ones; only generators whose block types
+   * changed are executed.  Absent in manifests created before this field was
+   * introduced — treated as "run all generators".
+   */
+  astSnapshot?: Record<string, string>;
 }
 
 const MANIFEST_DIR = ".vasp";
@@ -113,6 +122,19 @@ export class Manifest {
    */
   getSchemaSnapshot(): SchemaSnapshot | undefined {
     return this.data.schemaSnapshot;
+  }
+
+  /** Store the per-block-type AST fingerprint snapshot after a successful generation. */
+  setAstSnapshot(snapshot: Record<string, string>): void {
+    this.data.astSnapshot = snapshot;
+  }
+
+  /**
+   * Retrieve the AST snapshot from the previous generation.
+   * Returns `undefined` when the manifest pre-dates AST snapshot support.
+   */
+  getAstSnapshot(): Record<string, string> | undefined {
+    return this.data.astSnapshot;
   }
 
   /** Persist the manifest to `.vasp/manifest.json` in the output directory. */

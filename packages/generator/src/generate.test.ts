@@ -3946,6 +3946,159 @@ describe("generate()", () => {
 });
 
 // ────────────────────────────────────────────────────────────────────────────
+// Incremental generation tests (generator dependency graph + skip-unchanged)
+// ────────────────────────────────────────────────────────────────────────────
+
+describe("incremental generation — generator dependency graph", () => {
+  const BASE_SOURCE = `
+    app A { title: "T" db: Drizzle ssr: false typescript: false }
+    route R { path: "/" to: P }
+    page P { component: import P from "@src/P.vue" }
+    entity Todo { title: String }
+    query getTodos { fn: import { getTodos } from "@src/queries.js" entities: [Todo] }
+    action createTodo { fn: import { createTodo } from "@src/actions.js" entities: [Todo] }
+    crud Todo { entity: Todo operations: [list, create, update, delete] }
+  `;
+
+  it("first run stores an astSnapshot in the manifest", () => {
+    const outputDir = join(TMP_DIR, "incremental-snapshot");
+    generate(parse(BASE_SOURCE), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+    const m = Manifest.load(outputDir);
+    expect(m).not.toBeNull();
+    const snap = m!.getAstSnapshot();
+    expect(snap).toBeDefined();
+    expect(typeof snap!["entities"]).toBe("string");
+    expect(typeof snap!["queries"]).toBe("string");
+    expect(typeof snap!["app"]).toBe("string");
+  });
+
+  it("second run with identical AST writes zero new files (all generators skipped)", () => {
+    const outputDir = join(TMP_DIR, "incremental-no-change");
+    // First run — full generation
+    generate(parse(BASE_SOURCE), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    // Second run — same AST
+    const result2 = generate(parse(BASE_SOURCE), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result2.success).toBe(true);
+    // No generators ran, so nothing was written in this pass
+    expect(result2.filesWritten).toHaveLength(0);
+  });
+
+  it("second run with changed queries runs QueryActionGenerator but not DrizzleSchemaGenerator", () => {
+    const outputDir = join(TMP_DIR, "incremental-query-change");
+    // First run
+    generate(parse(BASE_SOURCE), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    // Second run: add a new query (queries block changed, entities unchanged)
+    const source2 = BASE_SOURCE + `
+      query getById { fn: import { getById } from "@src/queries.js" entities: [Todo] }
+    `;
+    const result2 = generate(parse(source2), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result2.success).toBe(true);
+    // The new query route was generated
+    expect(result2.filesWritten.some((f) => f.includes("getById"))).toBe(true);
+    // DrizzleSchemaGenerator was NOT run (entities unchanged)
+    expect(result2.filesWritten.some((f) => f.includes("schema"))).toBe(false);
+  });
+
+  it("second run with changed entities runs DrizzleSchemaGenerator but not QueryActionGenerator (when queries unchanged)", () => {
+    const baseNoQuery = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/P.vue" }
+      entity Todo { title: String }
+      crud Todo { entity: Todo operations: [list] }
+    `;
+    const outputDir = join(TMP_DIR, "incremental-entity-change");
+    // First run
+    generate(parse(baseNoQuery), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    // Second run: add a field (entities block changed, queries block unchanged / absent)
+    const source2 = `
+      app A { title: "T" db: Drizzle ssr: false typescript: false }
+      route R { path: "/" to: P }
+      page P { component: import P from "@src/P.vue" }
+      entity Todo { title: String done: Boolean }
+      crud Todo { entity: Todo operations: [list] }
+    `;
+    const result2 = generate(parse(source2), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    expect(result2.success).toBe(true);
+    // DrizzleSchemaGenerator regenerated the schema
+    expect(result2.filesWritten.some((f) => f.includes("schema"))).toBe(true);
+    // QueryActionGenerator was NOT run (no queries in either AST)
+    expect(
+      result2.filesWritten.some((f) => f.includes("routes/queries")),
+    ).toBe(false);
+  });
+
+  it("skipped generators' files remain on disk and in the manifest after incremental run", () => {
+    const outputDir = join(TMP_DIR, "incremental-files-preserved");
+    // First run — full generation (includes schema)
+    generate(parse(BASE_SOURCE), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    // Second run — change only queries (schema generator skipped)
+    const source2 = BASE_SOURCE + `
+      query getById { fn: import { getById } from "@src/queries.js" entities: [Todo] }
+    `;
+    generate(parse(source2), {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
+
+    // Schema file must still exist (not orphaned / deleted)
+    expect(existsSync(join(outputDir, "drizzle/schema.js"))).toBe(true);
+    // New manifest must still track the schema file
+    const m = Manifest.load(outputDir);
+    expect(m!.hasFile("drizzle/schema.js")).toBe(true);
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
 // detectDestructiveSchemaChanges unit tests
 // ────────────────────────────────────────────────────────────────────────────
 

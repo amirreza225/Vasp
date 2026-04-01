@@ -1,5 +1,4 @@
 import {
-  copyFileSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -104,7 +103,16 @@ function copyDirRecursive(
       const relPath = relative(base, srcPath);
       if (protectedFiles.has(relPath)) continue;
       mkdirSync(dirname(destPath), { recursive: true });
-      copyFileSync(srcPath, destPath);
+      // Skip files whose content is identical to avoid spurious mtime changes
+      // (which would trigger Vite's HMR for unchanged generated files).
+      const srcContent = readFileSync(srcPath, "utf8");
+      if (
+        existsSync(destPath) &&
+        computeHash(srcContent) === computeHash(readFileSync(destPath, "utf8"))
+      ) {
+        continue;
+      }
+      writeFileSync(destPath, srcContent, "utf8");
     }
   }
 }

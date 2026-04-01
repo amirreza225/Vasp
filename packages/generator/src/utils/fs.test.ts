@@ -4,6 +4,7 @@ import {
   mkdirSync,
   readFileSync,
   rmSync,
+  statSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -244,5 +245,62 @@ describe("commitStagedFiles — .env preservation", () => {
     commitStagedFiles(STAGING_DIR, REAL_DIR, { preserveEnv: true });
 
     expect(readFileSync(join(REAL_DIR, ".env"), "utf8")).toBe(newEnv);
+  });
+});
+
+describe("commitStagedFiles — skip-unchanged optimisation", () => {
+  const STAGING_DIR = join(TMP_DIR, "skip-staging");
+  const REAL_DIR = join(TMP_DIR, "skip-real");
+
+  function setup() {
+    mkdirSync(STAGING_DIR, { recursive: true });
+    mkdirSync(REAL_DIR, { recursive: true });
+  }
+
+  it("does not overwrite a file whose content is identical (mtime is preserved)", () => {
+    setup();
+    const content = "// generated\nexport const x = 1;\n";
+    mkdirSync(join(REAL_DIR, "server"), { recursive: true });
+    writeFileSync(join(REAL_DIR, "server/index.js"), content, "utf8");
+    mkdirSync(join(STAGING_DIR, "server"), { recursive: true });
+    writeFileSync(join(STAGING_DIR, "server/index.js"), content, "utf8");
+
+    const mtimeBefore = statSync(join(REAL_DIR, "server/index.js")).mtimeMs;
+
+    // Spin for at least 1 ms so a re-write would produce a newer mtime
+    const deadline = Date.now() + 5;
+    while (Date.now() < deadline) { /* busy wait */ }
+
+    commitStagedFiles(STAGING_DIR, REAL_DIR);
+
+    const mtimeAfter = statSync(join(REAL_DIR, "server/index.js")).mtimeMs;
+    expect(mtimeAfter).toBe(mtimeBefore);
+    expect(readFileSync(join(REAL_DIR, "server/index.js"), "utf8")).toBe(content);
+  });
+
+  it("does overwrite a file whose content changed", () => {
+    setup();
+    const oldContent = "// old\nexport const x = 1;\n";
+    const newContent = "// new\nexport const x = 2;\n";
+    mkdirSync(join(REAL_DIR, "server"), { recursive: true });
+    writeFileSync(join(REAL_DIR, "server/index.js"), oldContent, "utf8");
+    mkdirSync(join(STAGING_DIR, "server"), { recursive: true });
+    writeFileSync(join(STAGING_DIR, "server/index.js"), newContent, "utf8");
+
+    commitStagedFiles(STAGING_DIR, REAL_DIR);
+
+    expect(readFileSync(join(REAL_DIR, "server/index.js"), "utf8")).toBe(newContent);
+  });
+
+  it("writes a new file that does not yet exist in the real dir", () => {
+    setup();
+    const content = "export const brand_new = true;\n";
+    mkdirSync(join(STAGING_DIR, "src"), { recursive: true });
+    writeFileSync(join(STAGING_DIR, "src/new.js"), content, "utf8");
+
+    commitStagedFiles(STAGING_DIR, REAL_DIR);
+
+    expect(existsSync(join(REAL_DIR, "src/new.js"))).toBe(true);
+    expect(readFileSync(join(REAL_DIR, "src/new.js"), "utf8")).toBe(content);
   });
 });
