@@ -248,7 +248,7 @@ export class SemanticValidator {
           });
         }
       }
-      for (const api of ast.apis ?? []) {
+      for (const api of ast.apis) {
         if ((api.roles ?? []).length > 0) {
           this.diagnostics.push({
             code: "E118_ROLES_WITHOUT_AUTH_CONFIG",
@@ -302,7 +302,7 @@ export class SemanticValidator {
       }
     }
 
-    for (const api of ast.apis ?? []) {
+    for (const api of ast.apis) {
       if ((api.roles ?? []).length > 0 && !api.auth) {
         this.diagnostics.push({
           code: "E119_ROLES_REQUIRE_AUTH",
@@ -439,7 +439,7 @@ export class SemanticValidator {
 
   private checkApiMethods(ast: VaspAST): void {
     const seen = new Set<string>();
-    for (const api of ast.apis ?? []) {
+    for (const api of ast.apis) {
       if (!(SUPPORTED_API_METHODS as readonly string[]).includes(api.method)) {
         this.diagnostics.push({
           code: "E116_UNKNOWN_API_METHOD",
@@ -463,7 +463,7 @@ export class SemanticValidator {
   }
 
   private checkMiddlewareScopes(ast: VaspAST): void {
-    for (const middleware of ast.middlewares ?? []) {
+    for (const middleware of ast.middlewares) {
       if (
         !(SUPPORTED_MIDDLEWARE_SCOPES as readonly string[]).includes(
           middleware.scope,
@@ -747,7 +747,7 @@ export class SemanticValidator {
     this.checkDuplicateNames(
       "middleware",
       "E130_DUPLICATE_MIDDLEWARE",
-      ast.middlewares ?? [],
+      ast.middlewares,
     );
   }
 
@@ -920,7 +920,7 @@ export class SemanticValidator {
 
   private checkStorageBlocks(ast: VaspAST): void {
     const seen = new Set<string>();
-    for (const storage of ast.storages ?? []) {
+    for (const storage of ast.storages) {
       // Duplicate storage block names
       if (seen.has(storage.name)) {
         this.diagnostics.push({
@@ -960,7 +960,7 @@ export class SemanticValidator {
   }
 
   private checkStorageFieldRefs(ast: VaspAST): void {
-    const storageNames = new Set((ast.storages ?? []).map((s) => s.name));
+    const storageNames = new Set(ast.storages.map((s) => s.name));
 
     for (const entity of ast.entities) {
       for (const field of entity.fields) {
@@ -1024,7 +1024,7 @@ export class SemanticValidator {
   }
 
   private checkEmailProviders(ast: VaspAST): void {
-    for (const email of ast.emails ?? []) {
+    for (const email of ast.emails) {
       if (
         !(SUPPORTED_EMAIL_PROVIDERS as readonly string[]).includes(
           email.provider,
@@ -1043,7 +1043,7 @@ export class SemanticValidator {
   private checkEmailOnSuccess(ast: VaspAST): void {
     // Build a set of all template names across all email blocks
     const allTemplateNames = new Set<string>();
-    for (const email of ast.emails ?? []) {
+    for (const email of ast.emails) {
       for (const tpl of email.templates) {
         allTemplateNames.add(tpl.name);
       }
@@ -1053,7 +1053,7 @@ export class SemanticValidator {
       const templateName = action.onSuccess?.sendEmail;
       if (!templateName) continue;
 
-      if ((ast.emails ?? []).length === 0) {
+      if (ast.emails.length === 0) {
         this.diagnostics.push({
           code: "E116_SEND_EMAIL_NO_EMAIL_BLOCK",
           message: `Action '${action.name}' uses onSuccess.sendEmail but no email block is defined`,
@@ -1138,7 +1138,7 @@ export class SemanticValidator {
   }
 
   private checkCacheBlocks(ast: VaspAST): void {
-    const caches = ast.caches ?? [];
+    const caches = ast.caches;
     const cacheNames = new Set<string>();
     const entityNames = new Set([
       ...ast.entities.map((e) => e.name),
@@ -1241,7 +1241,7 @@ export class SemanticValidator {
     const entityNames = new Set(ast.entities.map((e) => e.name));
     const validEvents = new Set(["created", "updated", "deleted"]);
 
-    for (const webhook of ast.webhooks ?? []) {
+    for (const webhook of ast.webhooks) {
       // E197: duplicate webhook block names
       if (seen.has(webhook.name)) {
         this.diagnostics.push({
@@ -1328,7 +1328,7 @@ export class SemanticValidator {
   }
 
   private checkAutoPages(ast: VaspAST): void {
-    if (!ast.autoPages?.length) return;
+    if (!ast.autoPages.length) return;
 
     const entityNames = new Set(ast.entities?.map((e) => e.name) ?? []);
     const autoPageNames = new Set<string>();

@@ -30,6 +30,7 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
       "type": "Action",
     },
   ],
+  "apis": [],
   "app": {
     "db": "Drizzle",
     "name": "MyTodoApp",
@@ -125,6 +126,7 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
       "type": "AutoPage",
     },
   ],
+  "caches": [],
   "cruds": [
     {
       "entity": "Todo",
@@ -152,6 +154,7 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
       "type": "Crud",
     },
   ],
+  "emails": [],
   "entities": [
     {
       "fields": [
@@ -430,6 +433,7 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
       "type": "Job",
     },
   ],
+  "middlewares": [],
   "pages": [
     {
       "component": {
@@ -506,6 +510,7 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
       "type": "Route",
     },
   ],
+  "storages": [],
   "webhooks": [
     {
       "fn": {
@@ -541,6 +546,7 @@ exports[`Parser — snapshot: full-featured fixture > matches snapshot 1`] = `
 exports[`Parser — snapshot: minimal fixture > matches snapshot 1`] = `
 {
   "actions": [],
+  "apis": [],
   "app": {
     "db": "Drizzle",
     "name": "MinimalApp",
@@ -550,9 +556,12 @@ exports[`Parser — snapshot: minimal fixture > matches snapshot 1`] = `
     "typescript": false,
   },
   "autoPages": [],
+  "caches": [],
   "cruds": [],
+  "emails": [],
   "entities": [],
   "jobs": [],
+  "middlewares": [],
   "pages": [
     {
       "component": {
@@ -575,5 +584,7 @@ exports[`Parser — snapshot: minimal fixture > matches snapshot 1`] = `
       "type": "Route",
     },
   ],
+  "storages": [],
+  "webhooks": [],
 }
 `;

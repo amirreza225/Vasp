@@ -387,7 +387,7 @@ export class ScaffoldGenerator extends BaseGenerator {
     }
 
     // middleware blocks
-    for (const middleware of ast.middlewares ?? []) {
+    for (const middleware of ast.middlewares) {
       const fn = middleware.fn;
       const fnStr =
         fn.kind === "named"
@@ -403,7 +403,7 @@ export class ScaffoldGenerator extends BaseGenerator {
     }
 
     // api blocks
-    for (const api of ast.apis ?? []) {
+    for (const api of ast.apis) {
       const fn = api.fn;
       const fnStr =
         fn.kind === "named"
@@ -514,7 +514,7 @@ export class ScaffoldGenerator extends BaseGenerator {
     }
 
     // storage blocks
-    for (const storage of ast.storages ?? []) {
+    for (const storage of ast.storages) {
       lines.push(
         `storage ${storage.name} {`,
         `  provider: ${storage.provider}`,
@@ -531,7 +531,7 @@ export class ScaffoldGenerator extends BaseGenerator {
     }
 
     // email blocks
-    for (const email of ast.emails ?? []) {
+    for (const email of ast.emails) {
       lines.push(
         `email ${email.name} {`,
         `  provider: ${email.provider}`,
@@ -552,7 +552,7 @@ export class ScaffoldGenerator extends BaseGenerator {
     }
 
     // cache blocks
-    for (const cache of ast.caches ?? []) {
+    for (const cache of ast.caches) {
       lines.push(`cache ${cache.name} {`, `  provider: ${cache.provider}`);
       if (cache.ttl !== undefined) lines.push(`  ttl: ${cache.ttl}`);
       if (cache.redis) {
@@ -562,7 +562,7 @@ export class ScaffoldGenerator extends BaseGenerator {
     }
 
     // webhook blocks
-    for (const webhook of ast.webhooks ?? []) {
+    for (const webhook of ast.webhooks) {
       lines.push(`webhook ${webhook.name} {`);
       if (webhook.mode === "inbound") {
         if (webhook.path) lines.push(`  path: "${webhook.path}"`);
@@ -606,7 +606,7 @@ export class ScaffoldGenerator extends BaseGenerator {
     }
 
     // autoPage blocks
-    for (const ap of ast.autoPages ?? []) {
+    for (const ap of ast.autoPages) {
       lines.push(
         `autoPage ${ap.name} {`,
         `  entity: ${ap.entity}`,

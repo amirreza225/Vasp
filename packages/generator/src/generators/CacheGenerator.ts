@@ -4,7 +4,7 @@ import { toCamelCase } from "../template/TemplateEngine.js";
 export class CacheGenerator extends BaseGenerator {
   run(): void {
     const { ast, ext } = this.ctx;
-    const caches = ast.caches ?? [];
+    const caches = ast.caches;
     if (caches.length === 0) return;
 
     this.ctx.logger.info("Generating cache stores...");

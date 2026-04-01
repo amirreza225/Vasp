@@ -656,19 +656,19 @@ export interface VaspAST {
   pages: PageNode[];
   queries: QueryNode[];
   actions: ActionNode[];
-  apis?: ApiNode[];
-  middlewares?: MiddlewareNode[];
+  apis: ApiNode[];
+  middlewares: MiddlewareNode[];
   cruds: CrudNode[];
   realtimes: RealtimeNode[];
   jobs: JobNode[];
   seed?: SeedNode;
   admin?: AdminNode;
-  storages?: StorageNode[];
-  emails?: EmailNode[];
-  caches?: CacheNode[];
-  webhooks?: WebhookNode[];
+  storages: StorageNode[];
+  emails: EmailNode[];
+  caches: CacheNode[];
+  webhooks: WebhookNode[];
   observability?: ObservabilityNode;
-  autoPages?: AutoPageNode[];
+  autoPages: AutoPageNode[];
 }
 
 // ------ Union of all node types ------

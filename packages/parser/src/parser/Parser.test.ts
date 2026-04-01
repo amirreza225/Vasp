@@ -1765,9 +1765,9 @@ describe("Parser — storage block", () => {
     expect(ast.storages![1]?.name).toBe("Docs");
   });
 
-  it("storages is undefined when no storage block is present", () => {
+  it("storages is empty when no storage block is present", () => {
     const ast = parse(`${APP}`);
-    expect(ast.storages).toBeUndefined();
+    expect(ast.storages).toEqual([]);
   });
 
   it("throws on missing provider (E056)", () => {
@@ -1983,9 +1983,9 @@ describe("Parser — email block", () => {
     expect(ast.emails![1]?.name).toBe("MarketingMailer");
   });
 
-  it("emails is undefined when no email block is present", () => {
+  it("emails is empty when no email block is present", () => {
     const ast = parse(`${APP}`);
-    expect(ast.emails).toBeUndefined();
+    expect(ast.emails).toEqual([]);
   });
 
   it("throws on missing provider (E059)", () => {
@@ -2241,9 +2241,9 @@ describe("Parser — cache block", () => {
     expect(ast.caches![1]?.name).toBe("RCache");
   });
 
-  it("caches is undefined when no cache block is present", () => {
+  it("caches is empty when no cache block is present", () => {
     const ast = parse(`${APP}`);
-    expect(ast.caches).toBeUndefined();
+    expect(ast.caches).toEqual([]);
   });
 
   it("throws on missing provider (E070)", () => {
@@ -2561,9 +2561,9 @@ describe("Parser — webhook block", () => {
     expect(ast.webhooks![1]?.name).toBe("TaskWebhook");
   });
 
-  it("webhooks is undefined when no webhook block is present", () => {
+  it("webhooks is empty when no webhook block is present", () => {
     const ast = parse(`${APP}`);
-    expect(ast.webhooks).toBeUndefined();
+    expect(ast.webhooks).toEqual([]);
   });
 
   it("throws when neither fn nor entity is provided (E081)", () => {

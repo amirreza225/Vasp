@@ -10,7 +10,7 @@ export class BackendGenerator extends BaseGenerator {
   run(): void {
     this.ctx.logger.info("Generating Elysia backend...");
 
-    const middlewares = (this.ctx.ast.middlewares ?? []).map((middleware) => ({
+    const middlewares = this.ctx.ast.middlewares.map((middleware) => ({
       ...middleware,
       fnSource: this.resolveServerImport(middleware.fn.source, "server/"),
       importAlias: `${this.camel(middleware.name)}Middleware`,

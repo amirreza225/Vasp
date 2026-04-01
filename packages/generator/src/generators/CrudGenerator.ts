@@ -42,7 +42,7 @@ export class CrudGenerator extends BaseGenerator {
       string,
       { name: string; events: string[] }[]
     >();
-    for (const wh of ast.webhooks ?? []) {
+    for (const wh of ast.webhooks) {
       if (wh.mode === "outbound" && wh.entity) {
         const list = webhooksByEntity.get(wh.entity) ?? [];
         list.push({ name: wh.name, events: wh.events ?? [] });

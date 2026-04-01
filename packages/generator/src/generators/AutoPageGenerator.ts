@@ -18,7 +18,7 @@ import { BaseGenerator } from "./BaseGenerator.js";
 export class AutoPageGenerator extends BaseGenerator {
   run(): void {
     const { ast, isSpa } = this.ctx;
-    if (!ast.autoPages?.length) return;
+    if (!ast.autoPages.length) return;
 
     for (const ap of ast.autoPages) {
       const entity = this.resolveEntity(ap.entity);

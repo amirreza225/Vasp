@@ -6,7 +6,7 @@ import { BaseGenerator } from "./BaseGenerator.js";
 export class ApiGenerator extends BaseGenerator {
   run(): void {
     const { ast, ext } = this.ctx;
-    const apis = ast.apis ?? [];
+    const apis = ast.apis;
 
     if (apis.length > 0) {
       this.ctx.logger.info("Generating custom API routes...");

@@ -70,7 +70,7 @@ export class QueryActionGenerator extends BaseGenerator {
         onSuccessSendEmail = templateName;
 
         // Find the email block that owns this template
-        const emailBlock = (ast.emails ?? []).find((e) =>
+        const emailBlock = ast.emails.find((e) =>
           e.templates.some((t) => t.name === templateName),
         );
 

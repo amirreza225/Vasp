@@ -5,7 +5,7 @@ import { BaseGenerator } from "./BaseGenerator.js";
 
 export class MiddlewareGenerator extends BaseGenerator {
   run(): void {
-    const middlewares = this.ctx.ast.middlewares ?? [];
+    const middlewares = this.ctx.ast.middlewares;
     if (middlewares.length === 0) return;
 
     this.ctx.logger.info("Generating middleware stubs...");

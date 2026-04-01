@@ -343,7 +343,7 @@ export async function addCommand(args: string[]): Promise<void> {
         args.find((a) => a.startsWith("--path="))?.slice("--path=".length) ??
         `/api/${toKebab(name)}`;
 
-      if ((ast.apis ?? []).some((a) => a.name === apiName)) {
+      if (ast.apis.some((a) => a.name === apiName)) {
         log.error(`API '${apiName}' already exists in main.vasp`);
         process.exit(1);
       }

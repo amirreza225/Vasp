@@ -4,7 +4,7 @@ import { toCamelCase } from "../template/TemplateEngine.js";
 export class StorageGenerator extends BaseGenerator {
   run(): void {
     const { ast, ext } = this.ctx;
-    const storages = ast.storages ?? [];
+    const storages = ast.storages;
     if (storages.length === 0) return;
 
     this.ctx.logger.info("Generating storage providers...");

@@ -166,9 +166,9 @@ export abstract class BaseGenerator {
 
   protected baseData(): BaseTemplateData {
     const { ast, isTypeScript, isSsr, isSsg, isSpa, ext, mode } = this.ctx;
-    const emails = ast.emails ?? [];
-    const caches = ast.caches ?? [];
-    const webhooks = ast.webhooks ?? [];
+    const emails = ast.emails;
+    const caches = ast.caches;
+    const webhooks = ast.webhooks;
     const inboundWebhooks = webhooks.filter((w) => w.mode === "inbound");
     const outboundWebhooks = webhooks.filter((w) => w.mode === "outbound");
     return {
@@ -216,11 +216,11 @@ export abstract class BaseGenerator {
           (j) => j.executor === "BullMQ" || j.executor === "RedisStreams",
         ) ||
         caches.some((c) => c.provider === "redis" || c.provider === "valkey"),
-      hasStorage: (ast.storages?.length ?? 0) > 0,
-      hasCloudStorage: (ast.storages ?? []).some((s) =>
+      hasStorage: ast.storages.length > 0,
+      hasCloudStorage: ast.storages.some((s) =>
         ["s3", "r2", "gcs"].includes(s.provider),
       ),
-      storages: ast.storages ?? [],
+      storages: ast.storages,
       hasEmail: emails.length > 0,
       hasEmailResend: emails.some((e) => e.provider === "resend"),
       hasEmailSendgrid: emails.some((e) => e.provider === "sendgrid"),
@@ -241,8 +241,8 @@ export abstract class BaseGenerator {
       pages: ast.pages,
       queries: ast.queries,
       actions: ast.actions,
-      apis: ast.apis ?? [],
-      middlewares: ast.middlewares ?? [],
+      apis: ast.apis,
+      middlewares: ast.middlewares,
       cruds: ast.cruds,
       hasCrudListConfig: ast.cruds.some((c) => !!c.listConfig),
       hasCrudFormConfig: ast.cruds.some((c) => !!c.formConfig),
@@ -265,8 +265,8 @@ export abstract class BaseGenerator {
       hasObservabilitySentry: ast.observability?.errorTracking === "sentry",
       hasObservabilityDatadog: ast.observability?.errorTracking === "datadog",
       hasStructuredLogs: ast.observability?.logs === "structured",
-      autoPages: ast.autoPages ?? [],
-      hasAutoPages: (ast.autoPages?.length ?? 0) > 0,
+      autoPages: ast.autoPages,
+      hasAutoPages: ast.autoPages.length > 0,
       ui: this.resolveUIConfig(ast.app?.ui),
       backendPort: DEFAULT_BACKEND_PORT,
       frontendPort: this.ctx.isSpa ? DEFAULT_SPA_PORT : DEFAULT_SSR_PORT,

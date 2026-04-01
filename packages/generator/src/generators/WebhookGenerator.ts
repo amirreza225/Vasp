@@ -6,7 +6,7 @@ import { toCamelCase, toPascalCase } from "../template/TemplateEngine.js";
 export class WebhookGenerator extends BaseGenerator {
   run(): void {
     const { ast, ext } = this.ctx;
-    const webhooks = ast.webhooks ?? [];
+    const webhooks = ast.webhooks;
     if (webhooks.length === 0) return;
 
     this.ctx.logger.info("Generating webhook handlers...");
@@ -101,7 +101,7 @@ export class WebhookGenerator extends BaseGenerator {
   /** Groups inbound webhook handler functions by source file and writes stubs. */
   private generateWebhookStubs(): void {
     const bySource = new Map<string, string[]>();
-    for (const webhook of this.ctx.ast.webhooks ?? []) {
+    for (const webhook of this.ctx.ast.webhooks) {
       if (webhook.mode !== "inbound" || !webhook.fn) continue;
       const { fn } = webhook;
       if (!fn.source.startsWith("@src/")) continue;

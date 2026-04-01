@@ -158,9 +158,15 @@ class Parser {
       pages: [],
       queries: [],
       actions: [],
+      apis: [],
+      middlewares: [],
       cruds: [],
       realtimes: [],
       jobs: [],
+      storages: [],
+      emails: [],
+      caches: [],
+      webhooks: [],
       autoPages: [],
     };
 
@@ -209,10 +215,10 @@ class Parser {
             ast.actions.push(this.parseAction());
             break;
           case TokenType.KW_MIDDLEWARE:
-            (ast.middlewares ??= []).push(this.parseMiddleware());
+            ast.middlewares.push(this.parseMiddleware());
             break;
           case TokenType.KW_API:
-            (ast.apis ??= []).push(this.parseApi());
+            ast.apis.push(this.parseApi());
             break;
           case TokenType.KW_CRUD:
             ast.cruds.push(this.parseCrud());
@@ -248,16 +254,16 @@ class Parser {
             ast.admin = this.parseAdmin();
             break;
           case TokenType.KW_STORAGE:
-            (ast.storages ??= []).push(this.parseStorage());
+            ast.storages.push(this.parseStorage());
             break;
           case TokenType.KW_EMAIL:
-            (ast.emails ??= []).push(this.parseEmail());
+            ast.emails.push(this.parseEmail());
             break;
           case TokenType.KW_CACHE:
-            (ast.caches ??= []).push(this.parseCache());
+            ast.caches.push(this.parseCache());
             break;
           case TokenType.KW_WEBHOOK:
-            (ast.webhooks ??= []).push(this.parseWebhook());
+            ast.webhooks.push(this.parseWebhook());
             break;
           case TokenType.KW_OBSERVABILITY:
             if (ast.observability) {
@@ -272,7 +278,7 @@ class Parser {
             ast.observability = this.parseObservability();
             break;
           case TokenType.KW_AUTOPAGE:
-            (ast.autoPages ??= []).push(this.parseAutoPage());
+            ast.autoPages.push(this.parseAutoPage());
             break;
           default:
             throw this.error(

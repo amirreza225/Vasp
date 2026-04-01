@@ -6,11 +6,11 @@ import { toCamelCase } from "../template/TemplateEngine.js";
 export class EmailGenerator extends BaseGenerator {
   run(): void {
     const { ast, ext } = this.ctx;
-    if ((ast.emails ?? []).length === 0) return;
+    if (ast.emails.length === 0) return;
 
     this.ctx.logger.info("Generating email mailers...");
 
-    for (const email of ast.emails!) {
+    for (const email of ast.emails) {
       this.write(
         `server/email/${toCamelCase(email.name)}.${ext}`,
         this.render("shared/email/_mailer.hbs", {
@@ -40,7 +40,7 @@ export class EmailGenerator extends BaseGenerator {
     const { ast, ext } = this.ctx;
     const bySource = new Map<string, string[]>();
 
-    for (const email of ast.emails ?? []) {
+    for (const email of ast.emails) {
       for (const tpl of email.templates) {
         const { fn } = tpl;
         if (!fn.source.startsWith("@src/")) continue;
