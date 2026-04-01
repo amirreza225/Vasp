@@ -1,4 +1,4 @@
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import type {
   AppUIConfig,
   AuthNode,
@@ -308,14 +308,16 @@ export abstract class BaseGenerator {
   }
 
   /**
-   * Rewrites `@src/foo.js` → relative path from the given output directory.
+   * Rewrites `@src/foo.js` → a relative path from the given output sub-directory.
+   * Uses `node:path`'s `relative()` so the result is correct for any nesting depth.
    * E.g. from `server/routes/queries/` → `../../../src/foo.js`
    */
   protected resolveServerImport(source: string, fromDir: string): string {
     if (!source.startsWith("@src/")) return source;
-    const depth = fromDir.replace(/\/$/, "").split("/").length;
-    const prefix = "../".repeat(depth);
-    return prefix + source.slice(1); // strip the leading '@'
+    const srcRelPath = source.slice("@src/".length); // e.g. "queries.js"
+    const absoluteSrcPath = join(this.ctx.outputDir, "src", srcRelPath);
+    const absoluteFromDir = join(this.ctx.outputDir, fromDir);
+    return relative(absoluteFromDir, absoluteSrcPath);
   }
 
   /** Looks up an entity by name from the current AST */
