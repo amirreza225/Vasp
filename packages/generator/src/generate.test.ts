@@ -348,6 +348,122 @@ describe("generate()", () => {
     expect(serverIndex).toContain("createTodoRoute");
   });
 
+  describe("resolveServerImport — @src/ paths resolve correctly for every nesting depth", () => {
+    it("depth 3 (server/routes/queries/): @src/queries.js → ../../../src/queries.js", () => {
+      const ast = parse(WITH_QUERY_VASP);
+      const outputDir = join(TMP_DIR, "resolve-depth-queries");
+      generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        engine: sharedEngine,
+      });
+      const queryRoute = readFileSync(
+        join(outputDir, "server/routes/queries/getTodos.js"),
+        "utf8",
+      );
+      expect(queryRoute).toContain("from '../../../src/queries.js'");
+    });
+
+    it("depth 3 (server/routes/actions/): @src/actions.js → ../../../src/actions.js", () => {
+      const ast = parse(WITH_QUERY_VASP);
+      const outputDir = join(TMP_DIR, "resolve-depth-actions");
+      generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        engine: sharedEngine,
+      });
+      const actionRoute = readFileSync(
+        join(outputDir, "server/routes/actions/createTodo.js"),
+        "utf8",
+      );
+      expect(actionRoute).toContain("from '../../../src/actions.js'");
+    });
+
+    it("depth 2 (server/db/): @src/seed.js → ../../src/seed.js", () => {
+      const ast = parse(WITH_SEED_VASP);
+      const outputDir = join(TMP_DIR, "resolve-depth-seed");
+      generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        engine: sharedEngine,
+      });
+      const seedRunner = readFileSync(
+        join(outputDir, "server/db/seed.js"),
+        "utf8",
+      );
+      expect(seedRunner).toContain("from '../../src/seed.js'");
+    });
+
+    it("depth 2 (server/jobs/): @src/jobs.js → ../../src/jobs.js", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/P.vue" }
+        job sendWelcome {
+          executor: PgBoss
+          perform: { fn: import { sendWelcome } from "@src/jobs.js" }
+        }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "resolve-depth-jobs");
+      generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        engine: sharedEngine,
+      });
+      const workerFile = readFileSync(
+        join(outputDir, "server/jobs/sendWelcome.js"),
+        "utf8",
+      );
+      expect(workerFile).toContain("from '../../src/jobs.js'");
+    });
+
+    it("depth 1 (server/): @src/middleware/logger.js → ../src/middleware/logger.js", () => {
+      const ast = parse(WITH_MIDDLEWARE_VASP);
+      const outputDir = join(TMP_DIR, "resolve-depth-middleware");
+      generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        engine: sharedEngine,
+      });
+      const serverIndex = readFileSync(
+        join(outputDir, "server/index.js"),
+        "utf8",
+      );
+      expect(serverIndex).toContain("from '../src/middleware/logger.js'");
+    });
+
+    it("non-@src/ source is returned unchanged", () => {
+      const source = `
+        app A { title: "T" db: Drizzle ssr: false typescript: false }
+        route R { path: "/" to: P }
+        page P { component: import P from "@src/P.vue" }
+        query getItems {
+          fn: import { getItems } from "some-external-lib"
+          entities: []
+        }
+      `;
+      const ast = parse(source);
+      const outputDir = join(TMP_DIR, "resolve-non-src");
+      generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        engine: sharedEngine,
+      });
+      const queryRoute = readFileSync(
+        join(outputDir, "server/routes/queries/getItems.js"),
+        "utf8",
+      );
+      expect(queryRoute).toContain("from 'some-external-lib'");
+    });
+  });
+
   it("generates custom api route files and wires them in server index", () => {
     const ast = parse(WITH_API_VASP);
     const outputDir = join(TMP_DIR, "with-api");
