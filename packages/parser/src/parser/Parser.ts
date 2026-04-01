@@ -74,6 +74,7 @@ import type {
 } from "@vasp-framework/core";
 import {
   ParseError,
+  SUPPORTED_FIELD_TYPES,
   SUPPORTED_UI_THEMES,
   SUPPORTED_UI_PRIMARY_COLORS,
   SUPPORTED_AUTOPAGE_TYPES,
@@ -682,17 +683,7 @@ class Parser {
     this.consume(TokenType.LBRACE);
 
     // Primitive types recognized by the parser — entity names accepted for relations
-    const primitiveTypes = new Set([
-      "String",
-      "Int",
-      "Boolean",
-      "DateTime",
-      "Float",
-      "Text",
-      "Json",
-      "Enum",
-      "File",
-    ]);
+    const primitiveTypes = new Set<string>(SUPPORTED_FIELD_TYPES);
 
     const fields: FieldNode[] = [];
     const indexes: EntityIndex[] = [];
