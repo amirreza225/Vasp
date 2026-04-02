@@ -109,6 +109,90 @@ interface EntityUniqueConstraint {
 | `ParseError` | Thrown by the parser with structured diagnostics |
 | `GeneratorError` | Thrown by the code generator |
 
+### Plugin Types
+
+Types for the Vasp plugin system — used by `vasp.config.ts` at the project root and accepted by `generate()` in `@vasp-framework/generator`.
+
+```typescript
+/**
+ * Shape of vasp.config.ts / vasp.config.js at the project root.
+ * vasp generate and vasp start load this file automatically.
+ */
+interface VaspConfig {
+  plugins?: VaspPlugin[]
+}
+
+/** Top-level plugin — attach to VaspConfig.plugins */
+interface VaspPlugin {
+  name: string
+
+  /** Custom generators that run after all built-in generators */
+  generators?: PluginGenerator[]
+
+  /**
+   * Override built-in Handlebars templates.
+   * Keys = template path relative to templates/ root (e.g. "shared/server/index.hbs")
+   * Values = raw .hbs source strings
+   */
+  templateOverrides?: Record<string, string>
+
+  /**
+   * Custom Handlebars helpers available in all templates.
+   * Keys become helper names; values are functions (options hash stripped automatically).
+   * Block helpers are not supported via this API.
+   */
+  helpers?: Record<string, (...args: unknown[]) => unknown>
+}
+
+/** A single generator contributed by a VaspPlugin */
+interface PluginGenerator {
+  name: string
+  run(ctx: PluginGeneratorContext, write: PluginWriteFn): void
+}
+
+/** Read-only context passed to every plugin generator */
+interface PluginGeneratorContext {
+  ast: VaspAST        // fully-parsed main.vasp
+  projectDir: string  // absolute path to the real project directory
+  isTypeScript: boolean
+  isSsr: boolean
+  isSsg: boolean
+  isSpa: boolean
+  ext: 'ts' | 'js'
+}
+
+/**
+ * Write a file relative to the project root.
+ * Records the file in the manifest — do not write to disk directly.
+ * Path traversal attempts are rejected with an error.
+ */
+type PluginWriteFn = (relativePath: string, content: string) => void
+```
+
+**Example `vasp.config.ts`:**
+
+```typescript
+import type { VaspPlugin } from '@vasp-framework/core'
+
+const acmePlugin: VaspPlugin = {
+  name: 'acme-plugin',
+  generators: [{
+    name: 'VersionFile',
+    run(ctx, write) {
+      write(`src/version.${ctx.ext}`, `export const APP = "${ctx.ast.app?.title}";\n`)
+    },
+  }],
+  templateOverrides: {
+    'shared/server/index.hbs': '// custom Elysia entry\n{{appName}}',
+  },
+  helpers: {
+    shout: (str: unknown) => String(str).toUpperCase() + '!!!',
+  },
+}
+
+export default { plugins: [acmePlugin] }
+```
+
 ### Constants
 
 ```typescript

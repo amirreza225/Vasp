@@ -475,6 +475,7 @@ Returns reactive `user`, `loading`, `error`, `isAuthenticated`, and methods for 
 ```
 my-app/
 ├── main.vasp               ← Your entire app declaration
+├── vasp.config.ts          ← Optional plugin configuration (custom generators, template overrides)
 ├── README.md               ← Project documentation
 ├── .env                    ← Working environment config
 ├── .env.example            ← Template for environment variables
@@ -608,6 +609,7 @@ vasp --version
 | v2 DSL nested entity field config (`label`, `placeholder`, `validate {}`) | Done |
 | v2 DSL nested CRUD sub-blocks (`list {}`, `form {}`, `columns {}`, `sections {}`, `steps {}`) | Done |
 | `vasp migrate` — auto-upgrade v1 → v2 DSL syntax | Done |
+| Plugin system (`vasp.config.ts` — custom generators, template overrides, Handlebars helpers) | Done |
 | VS Code extension (syntax highlighting, snippets, diagnostics, completions, hover, go-to-definition) | Done |
 | Language server (`@vasp-framework/language-server` — Chevrotain, LSP, multi-file workspace) | Done |
 
@@ -728,6 +730,74 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
    All output files are produced from [Handlebars](https://handlebarsjs.com) templates under `templates/`. There are four frontend template trees (SPA+JS, SPA+TS, SSR+JS, SSR+TS) plus a shared backend tree and an admin tree.
 
 3. **Run** — `bun` runs the generated backend and frontend simultaneously with hot reload.
+
+---
+
+## Plugin System
+
+Vasp's code-generation pipeline is fully extensible without forking the monorepo. Create a `vasp.config.ts` (or `vasp.config.js`) at your project root and export a `plugins` array. `vasp generate` and `vasp start` load this file automatically.
+
+```typescript
+// vasp.config.ts
+import type { VaspPlugin } from "@vasp-framework/core";
+
+const myPlugin: VaspPlugin = {
+  name: "acme-plugin",
+
+  // 1. Custom generators — run after all 19 built-in generators
+  generators: [
+    {
+      name: "VersionFileGenerator",
+      run(ctx, write) {
+        // ctx exposes the parsed AST and output-mode flags (isTypeScript, isSpa, etc.)
+        write(
+          `src/version.${ctx.ext}`,
+          `export const APP_TITLE = "${ctx.ast.app?.title}";\n`,
+        );
+      },
+    },
+  ],
+
+  // 2. Template overrides — replace any built-in Handlebars template
+  templateOverrides: {
+    // Key = path relative to templates/ root; value = raw .hbs source
+    "shared/server/index.hbs": `// My company's custom Elysia entry\n{{appName}}`,
+  },
+
+  // 3. Custom Handlebars helpers — available in all templates (including overrides)
+  helpers: {
+    shout: (str: unknown) => String(str).toUpperCase() + "!!!",
+  },
+};
+
+export default { plugins: [myPlugin] };
+```
+
+### Extension points
+
+| Extension | How it works |
+|-----------|-------------|
+| `generators` | Array of `{ name, run(ctx, write) }` objects. Each runs **after** all built-in generators. Use the `write(relativePath, content)` callback to emit files — it records every file in the manifest so incremental generation and orphan-deletion stay consistent. |
+| `templateOverrides` | A `Record<string, string>` where keys are template paths relative to the `templates/` root (e.g. `"shared/server/index.hbs"`) and values are raw Handlebars source strings. Overrides take effect after the built-in template directory is loaded, so they win over defaults. All built-in template data (`appName`, `isTypeScript`, entity lists, etc.) is available in overridden templates. |
+| `helpers` | A `Record<string, fn>` of custom Handlebars helpers registered before any template is rendered. Keys become helper names (e.g. `"shout"` → `{{shout name}}`). The trailing Handlebars options object is stripped automatically so your function receives only the declared arguments. |
+
+### Plugin generator context
+
+```typescript
+interface PluginGeneratorContext {
+  ast: VaspAST;        // fully-parsed main.vasp
+  projectDir: string;  // absolute path to the real project directory
+  isTypeScript: boolean;
+  isSsr: boolean;
+  isSsg: boolean;
+  isSpa: boolean;
+  ext: "ts" | "js";   // file extension for generated source files
+}
+```
+
+### Security
+
+The `write` callback validates that `relativePath` resolves inside the project directory — path-traversal attempts (e.g. `../../etc/passwd`) are rejected with an error.
 
 ---
 

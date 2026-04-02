@@ -18,6 +18,7 @@ const result = generate(ast, {
   outputDir: '/path/to/my-app',
   templateDir: '/path/to/templates', // optional, defaults to bundled templates
   logLevel: 'info',                  // 'silent' | 'info' | 'verbose'
+  plugins: [],                       // optional — see Plugin System below
 })
 
 console.log(result.success)        // true
@@ -80,6 +81,83 @@ The `Manifest` class tracks which generator wrote each file and a content hash. 
 - Stale generated files (from removed DSL blocks) are deleted
 
 When a generator silently fails (e.g. early `BackendGenerator` error prevents later generators from running), check `result.errors` — tests pass `logLevel: 'silent'` so errors are not printed to stdout.
+
+## Plugin System
+
+`generate()` accepts an optional `plugins` array that lets you extend the pipeline without forking the monorepo.
+
+### Custom generators
+
+```typescript
+import { generate } from '@vasp-framework/generator'
+import type { VaspPlugin } from '@vasp-framework/core'
+
+const plugin: VaspPlugin = {
+  name: 'my-plugin',
+  generators: [
+    {
+      name: 'VersionFileGenerator',
+      run(ctx, write) {
+        // ctx: { ast, projectDir, isTypeScript, isSpa, isSsr, isSsg, ext }
+        write(`src/version.${ctx.ext}`, `export const VERSION = "${ctx.ast.app?.title}";\n`)
+      },
+    },
+  ],
+}
+
+const result = generate(ast, { outputDir, plugins: [plugin] })
+```
+
+Plugin generators run **after** all 19 built-in generators. The `write(relativePath, content)` callback records every emitted file in the manifest so incremental generation and orphan-deletion stay consistent. A path-traversal guard rejects any path that escapes the output directory.
+
+### Template overrides
+
+Replace any built-in Handlebars template by its key (relative to the `templates/` root):
+
+```typescript
+const plugin: VaspPlugin = {
+  name: 'my-plugin',
+  templateOverrides: {
+    'shared/server/index.hbs': '// My custom Elysia entry\n{{appName}}',
+  },
+}
+```
+
+Overrides are applied **after** `engine.loadDirectory()`, so they win over defaults. All standard template data (`appName`, `isTypeScript`, entity lists, etc.) is available.
+
+### Custom Handlebars helpers
+
+```typescript
+const plugin: VaspPlugin = {
+  name: 'my-plugin',
+  helpers: {
+    shout: (str: unknown) => String(str).toUpperCase() + '!!!',
+    // Usage in any .hbs template: {{shout appName}}
+  },
+}
+```
+
+Helpers are registered before any template is rendered. The trailing Handlebars options object is stripped automatically; block helpers (`{{#helper}}`) are not supported via this API.
+
+### `TemplateEngine` public API
+
+For advanced use cases you can obtain and manipulate the engine directly:
+
+```typescript
+import { TemplateEngine } from '@vasp-framework/generator'
+
+const engine = new TemplateEngine()
+engine.loadDirectory('/path/to/templates')
+
+// Register a helper manually
+engine.registerHelper('shout', (str: unknown) => String(str).toUpperCase() + '!!!')
+
+// Override a template
+engine.applyTemplateOverride('shared/server/index.hbs', '{{appName}} custom entry')
+
+// Pass the pre-built engine to generate() to avoid re-compilation costs
+const result = generate(ast, { outputDir, engine })
+```
 
 ## License
 

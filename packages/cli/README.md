@@ -72,6 +72,33 @@ vasp generate --force   # Overwrite all generated files
 vasp generate --dry-run # Preview what would change
 ```
 
+`vasp generate` (and `vasp start`) automatically load `vasp.config.ts` or `vasp.config.js` from the project root when present. Use this file to register plugins that add custom generators, override built-in Handlebars templates, or register custom Handlebars helpers — all without forking the framework.
+
+```typescript
+// vasp.config.ts  (place at your project root)
+import type { VaspPlugin } from "@vasp-framework/core";
+
+const myPlugin: VaspPlugin = {
+  name: "acme-plugin",
+  generators: [{
+    name: "VersionFile",
+    run(ctx, write) {
+      write(`src/version.${ctx.ext}`, `export const APP = "${ctx.ast.app?.title}";\n`);
+    },
+  }],
+  templateOverrides: {
+    "shared/server/index.hbs": "// custom Elysia entry\n{{appName}}",
+  },
+  helpers: {
+    shout: (str: unknown) => String(str).toUpperCase() + "!!!",
+  },
+};
+
+export default { plugins: [myPlugin] };
+```
+
+See the [Plugin System documentation](../../README.md#plugin-system) in the root README for the full API reference.
+
 ### `vasp start`
 
 Start the dev servers (backend + frontend) concurrently with color-prefixed output. Automatically pushes the Drizzle schema when it detects changes, and opens your browser to the app URL after the servers are ready.
