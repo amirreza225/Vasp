@@ -64,7 +64,12 @@ describe("registerQuery / unregisterQuery", () => {
   });
 
   it("is a no-op when unregistering a name that was never registered", () => {
-    expect(() => unregisterQuery("nonExistent", vi.fn(async () => {}))).not.toThrow();
+    expect(() =>
+      unregisterQuery(
+        "nonExistent",
+        vi.fn(async () => {}),
+      ),
+    ).not.toThrow();
   });
 });
 

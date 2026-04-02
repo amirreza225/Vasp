@@ -335,4 +335,3 @@ describe("VaspDocScanner — error recovery", () => {
     expect(ast.blocks).toHaveLength(0);
   });
 });
-

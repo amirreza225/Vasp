@@ -67,7 +67,11 @@ describe("deleteOrphanedFiles", () => {
 
     const oldManifest = new Manifest("1.0.0");
     // old manifest has the original generated content
-    oldManifest.record("server/routes/todos.ts", originalContent, "CrudGenerator");
+    oldManifest.record(
+      "server/routes/todos.ts",
+      originalContent,
+      "CrudGenerator",
+    );
 
     const newManifest = new Manifest("1.0.0");
     // not in new manifest
@@ -269,13 +273,17 @@ describe("commitStagedFiles — skip-unchanged optimisation", () => {
 
     // Spin for at least 1 ms so a re-write would produce a newer mtime
     const deadline = Date.now() + 5;
-    while (Date.now() < deadline) { /* busy wait */ }
+    while (Date.now() < deadline) {
+      /* busy wait */
+    }
 
     commitStagedFiles(STAGING_DIR, REAL_DIR);
 
     const mtimeAfter = statSync(join(REAL_DIR, "server/index.js")).mtimeMs;
     expect(mtimeAfter).toBe(mtimeBefore);
-    expect(readFileSync(join(REAL_DIR, "server/index.js"), "utf8")).toBe(content);
+    expect(readFileSync(join(REAL_DIR, "server/index.js"), "utf8")).toBe(
+      content,
+    );
   });
 
   it("does overwrite a file whose content changed", () => {
@@ -289,7 +297,9 @@ describe("commitStagedFiles — skip-unchanged optimisation", () => {
 
     commitStagedFiles(STAGING_DIR, REAL_DIR);
 
-    expect(readFileSync(join(REAL_DIR, "server/index.js"), "utf8")).toBe(newContent);
+    expect(readFileSync(join(REAL_DIR, "server/index.js"), "utf8")).toBe(
+      newContent,
+    );
   });
 
   it("writes a new file that does not yet exist in the real dir", () => {

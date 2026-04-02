@@ -144,8 +144,10 @@ export class AstSerializer {
         parts.push(`minLength: ${f.validation.minLength}`);
       if (f.validation.maxLength !== undefined)
         parts.push(`maxLength: ${f.validation.maxLength}`);
-      if (f.validation.min !== undefined) parts.push(`min: ${f.validation.min}`);
-      if (f.validation.max !== undefined) parts.push(`max: ${f.validation.max}`);
+      if (f.validation.min !== undefined)
+        parts.push(`min: ${f.validation.min}`);
+      if (f.validation.max !== undefined)
+        parts.push(`max: ${f.validation.max}`);
       mods.push(`@validate(${parts.join(", ")})`);
     }
 
@@ -214,7 +216,8 @@ export class AstSerializer {
 
   private job(node: JobNode): string {
     const lines: string[] = [`${I}executor: ${node.executor}`];
-    if (node.priority !== undefined) lines.push(`${I}priority: ${node.priority}`);
+    if (node.priority !== undefined)
+      lines.push(`${I}priority: ${node.priority}`);
     if (node.retries) {
       lines.push(`${I}retries: {`);
       if (node.retries.limit !== undefined)
@@ -301,8 +304,7 @@ export class AstSerializer {
     if (node.secret) lines.push(`${I}secret: env(${node.secret})`);
     if (node.mode === "inbound") {
       if (node.path) lines.push(`${I}path: "${node.path}"`);
-      if (node.verifyWith)
-        lines.push(`${I}verifyWith: "${node.verifyWith}"`);
+      if (node.verifyWith) lines.push(`${I}verifyWith: "${node.verifyWith}"`);
       if (node.fn) lines.push(`${I}fn: ${imp(node.fn)}`);
     } else {
       if (node.entity) lines.push(`${I}entity: ${node.entity}`);
@@ -332,8 +334,7 @@ export class AstSerializer {
       `${I}type: ${node.pageType}`,
     ];
     if (node.title) lines.push(`${I}title: "${node.title}"`);
-    if (node.columns?.length)
-      lines.push(`${I}columns: ${lst(node.columns)}`);
+    if (node.columns?.length) lines.push(`${I}columns: ${lst(node.columns)}`);
     if (node.sortable?.length)
       lines.push(`${I}sortable: ${lst(node.sortable)}`);
     if (node.filterable?.length)
@@ -350,8 +351,7 @@ export class AstSerializer {
       lines.push(`${I}topActions: ${lst(node.topActions)}`);
     if (node.fields?.length) lines.push(`${I}fields: ${lst(node.fields)}`);
     if (node.layout) lines.push(`${I}layout: "${node.layout}"`);
-    if (node.submitAction)
-      lines.push(`${I}submitAction: ${node.submitAction}`);
+    if (node.submitAction) lines.push(`${I}submitAction: ${node.submitAction}`);
     if (node.successRoute)
       lines.push(`${I}successRoute: "${node.successRoute}"`);
     if (node.auth !== undefined) lines.push(`${I}auth: ${node.auth}`);

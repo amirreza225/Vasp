@@ -305,7 +305,7 @@ describe("AstSerializer.serialize — round-trip", () => {
     expect(dsl).toContain("retries: {");
     expect(dsl).toContain("limit: 3");
     expect(dsl).toContain("backoff: exponential");
-    expect(dsl).toContain('deadLetter: {');
+    expect(dsl).toContain("deadLetter: {");
     expect(dsl).toContain('"failed-payments"');
     expect(dsl).toContain('schedule: "0 * * * *"');
     parseWith(dsl);

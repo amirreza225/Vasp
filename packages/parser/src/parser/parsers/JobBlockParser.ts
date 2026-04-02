@@ -49,9 +49,9 @@ export function parseJob(ctx: IParserContext): JobNode {
             case "backoff": {
               const backoffTok = ctx.consumeIdentifier();
               if (
-                !(SUPPORTED_JOB_BACKOFF_STRATEGIES as readonly string[]).includes(
-                  backoffTok.value,
-                )
+                !(
+                  SUPPORTED_JOB_BACKOFF_STRATEGIES as readonly string[]
+                ).includes(backoffTok.value)
               ) {
                 throw ctx.error(
                   "E026_UNKNOWN_BACKOFF",

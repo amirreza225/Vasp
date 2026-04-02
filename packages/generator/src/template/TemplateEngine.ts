@@ -194,7 +194,15 @@ export class TemplateEngine {
         enumValues?: unknown,
         validation?: unknown,
         configValidate?: unknown,
-      ) => valibotSchema(fieldType, nullable, optional as boolean | string | undefined, enumValues, validation, configValidate),
+      ) =>
+        valibotSchema(
+          fieldType,
+          nullable,
+          optional as boolean | string | undefined,
+          enumValues,
+          validation,
+          configValidate,
+        ),
     );
 
     /** lookup: returns obj[key] — mirrors Handlebars built-in for sandboxed create() instances */
@@ -216,7 +224,15 @@ export class TemplateEngine {
         nullable?: boolean,
         defaultValue?: string,
         isUpdatedAt?: boolean,
-      ) => drizzleColumn(fieldName, fieldType, modifiers, nullable, defaultValue, isUpdatedAt),
+      ) =>
+        drizzleColumn(
+          fieldName,
+          fieldType,
+          modifiers,
+          nullable,
+          defaultValue,
+          isUpdatedAt,
+        ),
     );
   }
 

@@ -4,7 +4,13 @@ import type { VaspPlugin } from "@vasp-framework/core";
 import { parse } from "@vasp-framework/parser";
 import { join, resolve, dirname } from "node:path";
 import { pathToFileURL } from "node:url";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+} from "node:fs";
 import { log } from "../utils/logger.js";
 import { handleParseError } from "../utils/parse-error.js";
 import { resolveTemplateDir } from "../utils/template-dir.js";
@@ -58,7 +64,9 @@ async function loadPlugins(projectDir: string): Promise<VaspPlugin[]> {
       }
       return [];
     } catch (err) {
-      log.warn(`Failed to load ${configPath}: ${err instanceof Error ? err.message : String(err)}`);
+      log.warn(
+        `Failed to load ${configPath}: ${err instanceof Error ? err.message : String(err)}`,
+      );
       return [];
     }
   }
@@ -102,7 +110,14 @@ export async function runRegenerate(
     ast = parse(source, "main.vasp");
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return { success: false, added: 0, updated: 0, skipped: 0, errors: [msg], warnings: [] };
+    return {
+      success: false,
+      added: 0,
+      updated: 0,
+      skipped: 0,
+      errors: [msg],
+      warnings: [],
+    };
   }
 
   const previousManifest = Manifest.load(projectDir);
@@ -182,7 +197,9 @@ export async function generateCommand(args: string[]): Promise<void> {
   // Load plugins from vasp.config.{ts,js} once; thread them through all sub-commands.
   const plugins = await loadPlugins(projectDir);
   if (plugins.length > 0) {
-    log.dim(`  Loaded ${plugins.length} plugin(s): ${plugins.map((p) => p.name).join(", ")}`);
+    log.dim(
+      `  Loaded ${plugins.length} plugin(s): ${plugins.map((p) => p.name).join(", ")}`,
+    );
   }
 
   if (opts.dryRun) {
@@ -198,7 +215,14 @@ export async function generateCommand(args: string[]): Promise<void> {
   }
 
   if (opts.only.length > 0) {
-    await runOnly(ast, projectDir, opts.only, previousManifest, opts.force, plugins);
+    await runOnly(
+      ast,
+      projectDir,
+      opts.only,
+      previousManifest,
+      opts.force,
+      plugins,
+    );
     return;
   }
 
@@ -237,7 +261,9 @@ export async function generateCommand(args: string[]): Promise<void> {
       log.warn(`  ${w}`);
     }
     log.warn('Review these changes carefully before running "vasp db push".');
-    log.warn('Consider using a migration instead: vasp db generate && vasp db migrate');
+    log.warn(
+      "Consider using a migration instead: vasp db generate && vasp db migrate",
+    );
   }
 }
 

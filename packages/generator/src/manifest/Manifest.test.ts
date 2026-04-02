@@ -1,5 +1,11 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  rmSync,
+  existsSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { Manifest, computeHash } from "./Manifest.js";
 
@@ -156,7 +162,11 @@ describe("Manifest — schemaSnapshot", () => {
     mkdirSync(join(dir, ".vasp"), { recursive: true });
     writeFileSync(
       join(dir, ".vasp", "manifest.json"),
-      JSON.stringify({ version: "0.1.0", generatedAt: "2024-01-01T00:00:00.000Z", files: {} }),
+      JSON.stringify({
+        version: "0.1.0",
+        generatedAt: "2024-01-01T00:00:00.000Z",
+        files: {},
+      }),
       "utf8",
     );
     const loaded = Manifest.load(dir);

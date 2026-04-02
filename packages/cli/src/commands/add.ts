@@ -256,9 +256,7 @@ export async function addCommand(args: string[]): Promise<void> {
     // ------------------------------------------------------------------
     case "route": {
       if (!name) {
-        log.error(
-          "Usage: vasp add route <Name> --path=/path --to=PageName",
-        );
+        log.error("Usage: vasp add route <Name> --path=/path --to=PageName");
         process.exit(1);
       }
       const routeName = toPascal(name);
@@ -277,9 +275,7 @@ export async function addCommand(args: string[]): Promise<void> {
         process.exit(1);
       }
       if (ast.routes.some((r) => r.path === routePath)) {
-        log.error(
-          `Route with path '${routePath}' already exists in main.vasp`,
-        );
+        log.error(`Route with path '${routePath}' already exists in main.vasp`);
         process.exit(1);
       }
       const node: RouteNode = {
@@ -359,8 +355,9 @@ export async function addCommand(args: string[]): Promise<void> {
       };
       appendToVasp(vaspFile, source, wrapBlock(serializer.serialize(node)));
       log.success(`Added query '${fnName}' to main.vasp`);
-      const entityFields =
-        entityArg ? lookupEntityFields(ast, toPascal(entityArg)) : undefined;
+      const entityFields = entityArg
+        ? lookupEntityFields(ast, toPascal(entityArg))
+        : undefined;
       appendFunctionStub(
         projectDir,
         `queries.${ext}`,
@@ -401,8 +398,9 @@ export async function addCommand(args: string[]): Promise<void> {
       };
       appendToVasp(vaspFile, source, wrapBlock(serializer.serialize(node)));
       log.success(`Added action '${fnName}' to main.vasp`);
-      const entityFields =
-        entityArg ? lookupEntityFields(ast, toPascal(entityArg)) : undefined;
+      const entityFields = entityArg
+        ? lookupEntityFields(ast, toPascal(entityArg))
+        : undefined;
       appendFunctionStub(
         projectDir,
         `actions.${ext}`,
@@ -503,17 +501,14 @@ export async function addCommand(args: string[]): Promise<void> {
     // ------------------------------------------------------------------
     case "api": {
       if (!name) {
-        log.error(
-          "Usage: vasp add api <name> [--method=GET] [--path=/path]",
-        );
+        log.error("Usage: vasp add api <name> [--method=GET] [--path=/path]");
         process.exit(1);
       }
       const apiName = toCamel(name);
       const methodArg = (
         argValue(args, "--method") ?? "GET"
       ).toUpperCase() as ApiNode["method"];
-      const pathArg =
-        argValue(args, "--path") ?? `/api/${toKebab(name)}`;
+      const pathArg = argValue(args, "--path") ?? `/api/${toKebab(name)}`;
 
       if (ast.apis.some((a) => a.name === apiName)) {
         log.error(`API '${apiName}' already exists in main.vasp`);
@@ -652,8 +647,7 @@ export async function addCommand(args: string[]): Promise<void> {
         "inbound";
       let node: WebhookNode;
       if (mode === "inbound") {
-        const wPath =
-          argValue(args, "--path") ?? `/webhooks/${toKebab(name)}`;
+        const wPath = argValue(args, "--path") ?? `/webhooks/${toKebab(name)}`;
         const fnName = toCamel(name);
         node = {
           type: "Webhook",
@@ -1166,4 +1160,3 @@ function toKebab(str: string): string {
     .replace(/^-/, "")
     .replace(/[-_\s]+/g, "-");
 }
-

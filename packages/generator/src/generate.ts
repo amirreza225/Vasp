@@ -28,7 +28,12 @@ import { WebhookGenerator } from "./generators/WebhookGenerator.js";
 import { computeHash, Manifest } from "./manifest/Manifest.js";
 import type { FieldSnapshot, SchemaSnapshot } from "./manifest/Manifest.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
-import { cleanupDir, commitStagedFiles, deleteOrphanedFiles, writeFile } from "./utils/fs.js";
+import {
+  cleanupDir,
+  commitStagedFiles,
+  deleteOrphanedFiles,
+  writeFile,
+} from "./utils/fs.js";
 import { dirname, join, resolve, normalize } from "node:path";
 import { mkdirSync, existsSync, rmSync } from "node:fs";
 
@@ -44,26 +49,26 @@ import { mkdirSync, existsSync, rmSync } from "node:fs";
 function computeAstSnapshot(ast: VaspAST): Record<string, string> {
   const h = (val: unknown): string => computeHash(JSON.stringify(val ?? null));
   return {
-    app:           h(ast.app),
-    auth:          h(ast.auth),
-    entities:      h(ast.entities),
-    routes:        h(ast.routes),
-    pages:         h(ast.pages),
-    queries:       h(ast.queries),
-    actions:       h(ast.actions),
-    cruds:         h(ast.cruds),
-    realtimes:     h(ast.realtimes),
-    jobs:          h(ast.jobs),
-    apis:          h(ast.apis),
-    middlewares:   h(ast.middlewares),
-    storages:      h(ast.storages),
-    emails:        h(ast.emails),
-    admin:         h(ast.admin),
-    seed:          h(ast.seed),
-    caches:        h(ast.caches),
-    webhooks:      h(ast.webhooks),
+    app: h(ast.app),
+    auth: h(ast.auth),
+    entities: h(ast.entities),
+    routes: h(ast.routes),
+    pages: h(ast.pages),
+    queries: h(ast.queries),
+    actions: h(ast.actions),
+    cruds: h(ast.cruds),
+    realtimes: h(ast.realtimes),
+    jobs: h(ast.jobs),
+    apis: h(ast.apis),
+    middlewares: h(ast.middlewares),
+    storages: h(ast.storages),
+    emails: h(ast.emails),
+    admin: h(ast.admin),
+    seed: h(ast.seed),
+    caches: h(ast.caches),
+    webhooks: h(ast.webhooks),
     observability: h(ast.observability),
-    autoPages:     h(ast.autoPages),
+    autoPages: h(ast.autoPages),
   };
 }
 
@@ -75,28 +80,51 @@ function computeAstSnapshot(ast: VaspAST): Record<string, string> {
  * Maintenance: keep in sync with the generator execution order in generate().
  */
 const GENERATOR_DEPS: Readonly<Record<string, readonly string[]>> = {
-  ScaffoldGenerator:      ["app"],
+  ScaffoldGenerator: ["app"],
   DrizzleSchemaGenerator: ["entities", "auth"],
-  BackendGenerator:       ["app", "auth", "entities", "middlewares", "queries", "actions",
-                           "cruds", "jobs", "storages", "emails", "caches", "webhooks",
-                           "observability", "apis", "seed"],
+  BackendGenerator: [
+    "app",
+    "auth",
+    "entities",
+    "middlewares",
+    "queries",
+    "actions",
+    "cruds",
+    "jobs",
+    "storages",
+    "emails",
+    "caches",
+    "webhooks",
+    "observability",
+    "apis",
+    "seed",
+  ],
   ObservabilityGenerator: ["observability", "app"],
-  AuthGenerator:          ["auth", "entities"],
-  MiddlewareGenerator:    ["middlewares"],
-  CacheGenerator:         ["caches", "app"],
-  QueryActionGenerator:   ["queries", "actions", "emails"],
-  ApiGenerator:           ["apis"],
-  CrudGenerator:          ["cruds", "entities", "auth"],
-  RealtimeGenerator:      ["realtimes", "cruds"],
-  AutoPageGenerator:      ["autoPages", "entities", "app"],
-  JobGenerator:           ["jobs", "app"],
-  EmailGenerator:         ["emails", "app"],
-  SeedGenerator:          ["seed"],
-  StorageGenerator:       ["storages", "entities"],
-  WebhookGenerator:       ["webhooks", "entities", "cruds", "jobs"],
-  FrontendGenerator:      ["app", "routes", "pages", "auth", "queries", "actions",
-                           "cruds", "autoPages", "entities"],
-  AdminGenerator:         ["admin", "entities"],
+  AuthGenerator: ["auth", "entities"],
+  MiddlewareGenerator: ["middlewares"],
+  CacheGenerator: ["caches", "app"],
+  QueryActionGenerator: ["queries", "actions", "emails"],
+  ApiGenerator: ["apis"],
+  CrudGenerator: ["cruds", "entities", "auth"],
+  RealtimeGenerator: ["realtimes", "cruds"],
+  AutoPageGenerator: ["autoPages", "entities", "app"],
+  JobGenerator: ["jobs", "app"],
+  EmailGenerator: ["emails", "app"],
+  SeedGenerator: ["seed"],
+  StorageGenerator: ["storages", "entities"],
+  WebhookGenerator: ["webhooks", "entities", "cruds", "jobs"],
+  FrontendGenerator: [
+    "app",
+    "routes",
+    "pages",
+    "auth",
+    "queries",
+    "actions",
+    "cruds",
+    "autoPages",
+    "entities",
+  ],
+  AdminGenerator: ["admin", "entities"],
 };
 
 /**
@@ -190,7 +218,10 @@ export function generate(
   if (previousManifest) {
     const previousSnapshot = previousManifest.getSchemaSnapshot();
     if (previousSnapshot) {
-      const destructiveWarnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
+      const destructiveWarnings = detectDestructiveSchemaChanges(
+        previousSnapshot,
+        ast,
+      );
       warnings.push(...destructiveWarnings);
     }
   }
@@ -240,25 +271,63 @@ export function generate(
   try {
     // Execute generators in dependency order (all writes go to staging dir).
     // Each generator is isolated so a single failure does not abort the rest.
-    runGenerator("ScaffoldGenerator", () => new ScaffoldGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("DrizzleSchemaGenerator", () => new DrizzleSchemaGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("BackendGenerator", () => new BackendGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("ObservabilityGenerator", () => new ObservabilityGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("AuthGenerator", () => new AuthGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("MiddlewareGenerator", () => new MiddlewareGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("CacheGenerator", () => new CacheGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("QueryActionGenerator", () => new QueryActionGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("ApiGenerator", () => new ApiGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("CrudGenerator", () => new CrudGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("RealtimeGenerator", () => new RealtimeGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("AutoPageGenerator", () => new AutoPageGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("JobGenerator", () => new JobGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("EmailGenerator", () => new EmailGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("SeedGenerator", () => new SeedGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("StorageGenerator", () => new StorageGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("WebhookGenerator", () => new WebhookGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("FrontendGenerator", () => new FrontendGenerator(ctx, engine, filesWritten, manifest).run());
-    runGenerator("AdminGenerator", () => new AdminGenerator(ctx, engine, filesWritten, manifest).run());
+    runGenerator("ScaffoldGenerator", () =>
+      new ScaffoldGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("DrizzleSchemaGenerator", () =>
+      new DrizzleSchemaGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("BackendGenerator", () =>
+      new BackendGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("ObservabilityGenerator", () =>
+      new ObservabilityGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("AuthGenerator", () =>
+      new AuthGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("MiddlewareGenerator", () =>
+      new MiddlewareGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("CacheGenerator", () =>
+      new CacheGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("QueryActionGenerator", () =>
+      new QueryActionGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("ApiGenerator", () =>
+      new ApiGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("CrudGenerator", () =>
+      new CrudGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("RealtimeGenerator", () =>
+      new RealtimeGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("AutoPageGenerator", () =>
+      new AutoPageGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("JobGenerator", () =>
+      new JobGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("EmailGenerator", () =>
+      new EmailGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("SeedGenerator", () =>
+      new SeedGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("StorageGenerator", () =>
+      new StorageGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("WebhookGenerator", () =>
+      new WebhookGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("FrontendGenerator", () =>
+      new FrontendGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
+    runGenerator("AdminGenerator", () =>
+      new AdminGenerator(ctx, engine, filesWritten, manifest).run(),
+    );
 
     // Run plugin generators after all built-in generators have completed.
     // Each plugin generator receives a read-only context subset and a write callback
@@ -283,7 +352,10 @@ export function generate(
               // Guard against path-traversal: the resolved path must stay inside
               // the staging directory (ctx.outputDir).
               const fullPath = resolve(ctx.outputDir, normalize(relativePath));
-              if (!fullPath.startsWith(ctx.outputDir + "/") && fullPath !== ctx.outputDir) {
+              if (
+                !fullPath.startsWith(ctx.outputDir + "/") &&
+                fullPath !== ctx.outputDir
+              ) {
                 throw new Error(
                   `Plugin '${plugin.name}' tried to write outside the output directory: '${relativePath}'`,
                 );
@@ -318,7 +390,10 @@ export function generate(
         Object.keys(GENERATOR_DEPS).filter((n) => !generatorFilter!.has(n)),
       );
       for (const [relPath, entry] of Object.entries(previousManifest.files)) {
-        if (skippedGenerators.has(entry.generator) && !manifest.hasFile(relPath)) {
+        if (
+          skippedGenerators.has(entry.generator) &&
+          !manifest.hasFile(relPath)
+        ) {
           manifest.setEntry(relPath, entry);
           reusedFileCount++;
         }
@@ -390,7 +465,9 @@ export function generate(
     cleanupDir(stagingDir);
 
     if (reusedFileCount > 0) {
-      logger.verbose(`↷ Reused ${reusedFileCount} file(s) from previous generation`);
+      logger.verbose(
+        `↷ Reused ${reusedFileCount} file(s) from previous generation`,
+      );
     }
     logger.info(`✓ Generated ${filesWritten.length} file(s)`);
 
@@ -431,19 +508,19 @@ export function detectDestructiveSchemaChanges(
   const warnings: string[] = [];
 
   // Build a lookup of current entity → field name → field for O(1) checks
-  const currentEntityMap = new Map(
-    ast.entities.map((e) => [e.name, e]),
-  );
+  const currentEntityMap = new Map(ast.entities.map((e) => [e.name, e]));
 
   const RESERVED = new Set(["createdAt", "updatedAt"]);
 
-  for (const [entityName, entitySnap] of Object.entries(previousSnapshot.entities)) {
+  for (const [entityName, entitySnap] of Object.entries(
+    previousSnapshot.entities,
+  )) {
     const currentEntity = currentEntityMap.get(entityName);
 
     if (!currentEntity) {
       warnings.push(
         `Destructive schema change: entity '${entityName}' was removed.` +
-        ` Running 'vasp db push' will DROP the '${entityName}' table and destroy all its data.`,
+          ` Running 'vasp db push' will DROP the '${entityName}' table and destroy all its data.`,
       );
       continue;
     }
@@ -459,11 +536,15 @@ export function detectDestructiveSchemaChanges(
       if (f.isRelation && f.isArray) continue; // virtual / M:N — no column
 
       if (f.isRelation) {
-        currentColumns.set(`${f.name}Id`, { type: "Int", nullable: f.nullable });
+        currentColumns.set(`${f.name}Id`, {
+          type: "Int",
+          nullable: f.nullable,
+        });
       } else {
         const snap: FieldSnapshot = { type: f.type, nullable: f.nullable };
         if (f.modifiers.includes("unique")) snap.unique = true;
-        if (f.type === "Enum" && f.enumValues?.length) snap.enumValues = [...f.enumValues];
+        if (f.type === "Enum" && f.enumValues?.length)
+          snap.enumValues = [...f.enumValues];
         currentColumns.set(f.name, snap);
       }
     }
@@ -475,8 +556,8 @@ export function detectDestructiveSchemaChanges(
       if (!current) {
         warnings.push(
           `Destructive schema change: column '${colName}' was removed from entity '${entityName}'.` +
-          ` Running 'vasp db push' will DROP the column and destroy its data.` +
-          ` If you renamed the field, migrate the data manually before pushing.`,
+            ` Running 'vasp db push' will DROP the column and destroy its data.` +
+            ` If you renamed the field, migrate the data manually before pushing.`,
         );
         continue;
       }
@@ -484,34 +565,36 @@ export function detectDestructiveSchemaChanges(
       if (current.type !== colSnap.type) {
         warnings.push(
           `Destructive schema change: column '${entityName}.${colName}' type changed` +
-          ` from '${colSnap.type}' to '${current.type}'.` +
-          ` Running 'vasp db push' may ALTER the column type and cause data loss or errors.`,
+            ` from '${colSnap.type}' to '${current.type}'.` +
+            ` Running 'vasp db push' may ALTER the column type and cause data loss or errors.`,
         );
       }
 
       if (colSnap.nullable && !current.nullable) {
         warnings.push(
           `Destructive schema change: column '${entityName}.${colName}' changed from nullable to NOT NULL.` +
-          ` Running 'vasp db push' will fail if any existing rows contain NULL in this column.` +
-          ` Backfill all NULLs before pushing (e.g., UPDATE <table> SET "${colName}" = <default> WHERE "${colName}" IS NULL).`,
+            ` Running 'vasp db push' will fail if any existing rows contain NULL in this column.` +
+            ` Backfill all NULLs before pushing (e.g., UPDATE <table> SET "${colName}" = <default> WHERE "${colName}" IS NULL).`,
         );
       }
 
       if (!colSnap.unique && current.unique) {
         warnings.push(
           `Destructive schema change: column '${entityName}.${colName}' gained a UNIQUE constraint.` +
-          ` Running 'vasp db push' will fail if duplicate values exist in this column.` +
-          ` Verify or deduplicate data before pushing.`,
+            ` Running 'vasp db push' will fail if duplicate values exist in this column.` +
+            ` Verify or deduplicate data before pushing.`,
         );
       }
 
       if (colSnap.enumValues && current.enumValues) {
-        const removedValues = colSnap.enumValues.filter((v) => !current.enumValues!.includes(v));
+        const removedValues = colSnap.enumValues.filter(
+          (v) => !current.enumValues!.includes(v),
+        );
         for (const val of removedValues) {
           warnings.push(
             `Destructive schema change: enum value '${val}' was removed from '${entityName}.${colName}'.` +
-            ` Running 'vasp db push' will fail if any existing rows contain this value.` +
-            ` Migrate all rows away from this value before removing it from the schema.`,
+              ` Running 'vasp db push' will fail if any existing rows contain this value.` +
+              ` Migrate all rows away from this value before removing it from the schema.`,
           );
         }
       }
@@ -519,16 +602,18 @@ export function detectDestructiveSchemaChanges(
 
     // ── Table-level composite UNIQUE constraint checks ───────────────────────
     const snapConstraintKeys = new Set(
-      (entitySnap.uniqueConstraints ?? []).map((uc) => [...uc].sort().join(",")),
+      (entitySnap.uniqueConstraints ?? []).map((uc) =>
+        [...uc].sort().join(","),
+      ),
     );
-    for (const uc of (currentEntity.uniqueConstraints ?? [])) {
+    for (const uc of currentEntity.uniqueConstraints ?? []) {
       const key = [...uc.fields].sort().join(",");
       if (!snapConstraintKeys.has(key)) {
         warnings.push(
           `Destructive schema change: a new composite UNIQUE constraint on [${uc.fields.join(", ")}]` +
-          ` was added to entity '${entityName}'.` +
-          ` Running 'vasp db push' will fail if duplicate combinations exist.` +
-          ` Verify or deduplicate data before pushing.`,
+            ` was added to entity '${entityName}'.` +
+            ` Running 'vasp db push' will fail if duplicate combinations exist.` +
+            ` Verify or deduplicate data before pushing.`,
         );
       }
     }
@@ -540,7 +625,7 @@ export function detectDestructiveSchemaChanges(
         idx.type ?? "btree",
       ]),
     );
-    for (const snapIdx of (entitySnap.indexes ?? [])) {
+    for (const snapIdx of entitySnap.indexes ?? []) {
       const key = [...snapIdx.fields].sort().join(",");
       const curType = curIndexesByKey.get(key);
       if (curType !== undefined) {
@@ -548,9 +633,9 @@ export function detectDestructiveSchemaChanges(
         if (curType !== prevType) {
           warnings.push(
             `Destructive schema change: index on [${snapIdx.fields.join(", ")}]` +
-            ` in entity '${entityName}' changed type from '${prevType}' to '${curType}'.` +
-            ` Running 'vasp db push' will drop and recreate the index,` +
-            ` which may be slow on large tables.`,
+              ` in entity '${entityName}' changed type from '${prevType}' to '${curType}'.` +
+              ` Running 'vasp db push' will drop and recreate the index,` +
+              ` which may be slow on large tables.`,
           );
         }
       }

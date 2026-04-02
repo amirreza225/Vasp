@@ -136,7 +136,9 @@ export function parseCrudFormConfig(ctx: IParserContext): CrudFormConfig {
     switch (key.value) {
       case "layout": {
         const layoutTok = ctx.consumeString();
-        if (!(SUPPORTED_FORM_LAYOUTS as readonly string[]).includes(layoutTok)) {
+        if (
+          !(SUPPORTED_FORM_LAYOUTS as readonly string[]).includes(layoutTok)
+        ) {
           throw ctx.error(
             "E174_INVALID_FORM_LAYOUT",
             `Invalid form layout '${layoutTok}'`,
@@ -222,9 +224,7 @@ export function parseCrudFormSectionMap(
  * Keys are simple operation names; values are permission names (may be
  * namespaced, e.g. "task:read").
  */
-export function parseCrudPermissionsMap(
-  ctx: IParserContext,
-): CrudPermissions {
+export function parseCrudPermissionsMap(ctx: IParserContext): CrudPermissions {
   ctx.consume(TokenType.LBRACE);
   const result: CrudPermissions = {};
 

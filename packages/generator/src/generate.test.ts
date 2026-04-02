@@ -2,7 +2,15 @@ import { parse } from "@vasp-framework/parser";
 import { mkdirSync, rmSync, existsSync } from "node:fs";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { generate, detectDestructiveSchemaChanges } from "./generate.js";
 import { Manifest } from "./manifest/Manifest.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
@@ -1136,8 +1144,12 @@ describe("generate()", () => {
 
     const schema = readFileSync(join(outputDir, "drizzle/schema.ts"), "utf8");
     // TypeScript types should reflect the entity name
-    expect(schema).toContain("export type Account = InferSelectModel<typeof accounts>");
-    expect(schema).toContain("export type NewAccount = InferInsertModel<typeof accounts>");
+    expect(schema).toContain(
+      "export type Account = InferSelectModel<typeof accounts>",
+    );
+    expect(schema).toContain(
+      "export type NewAccount = InferInsertModel<typeof accounts>",
+    );
     // No User/NewUser types from old hardcoded template
     expect(schema).not.toContain("export type User = InferSelectModel");
     expect(schema).not.toContain("export type NewUser = InferInsertModel");
@@ -3011,10 +3023,18 @@ describe("generate()", () => {
     `;
     const ast = parse(source);
     const outputDir = join(TMP_DIR, "webhook-outbound-pgboss");
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
 
     // Dispatcher enqueues via PgBoss
-    const dispatcher = readFileSync(join(outputDir, "server/webhooks/todoOutbound.js"), "utf8");
+    const dispatcher = readFileSync(
+      join(outputDir, "server/webhooks/todoOutbound.js"),
+      "utf8",
+    );
     expect(dispatcher).toContain("import { getBoss } from '../jobs/boss.");
     expect(dispatcher).toContain("boss.send(");
     expect(dispatcher).toContain("VASP_WEBHOOK_QUEUE");
@@ -3024,15 +3044,23 @@ describe("generate()", () => {
     expect(dispatcher).not.toContain("setTimeout");
 
     // Shared worker file is emitted
-    expect(existsSync(join(outputDir, "server/webhooks/webhookDispatch.js"))).toBe(true);
-    const worker = readFileSync(join(outputDir, "server/webhooks/webhookDispatch.js"), "utf8");
+    expect(
+      existsSync(join(outputDir, "server/webhooks/webhookDispatch.js")),
+    ).toBe(true);
+    const worker = readFileSync(
+      join(outputDir, "server/webhooks/webhookDispatch.js"),
+      "utf8",
+    );
     expect(worker).toContain("registerWebhookDispatchWorker");
     expect(worker).toContain("import { getBoss }");
     expect(worker).toContain("boss.work(");
     expect(worker).toContain("_deliverWebhook");
 
     // Server index imports and starts the worker
-    const serverIndex = readFileSync(join(outputDir, "server/index.js"), "utf8");
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
     expect(serverIndex).toContain("import { registerWebhookDispatchWorker }");
     expect(serverIndex).toContain("registerWebhookDispatchWorker().catch(");
   });
@@ -3059,10 +3087,18 @@ describe("generate()", () => {
     `;
     const ast = parse(source);
     const outputDir = join(TMP_DIR, "webhook-outbound-bullmq");
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
 
     // Dispatcher uses BullMQ queue
-    const dispatcher = readFileSync(join(outputDir, "server/webhooks/todoOutbound.js"), "utf8");
+    const dispatcher = readFileSync(
+      join(outputDir, "server/webhooks/todoOutbound.js"),
+      "utf8",
+    );
     expect(dispatcher).toContain("import { createQueue }");
     expect(dispatcher).toContain("_queue.add(");
     // attempts = retry + 1
@@ -3070,13 +3106,19 @@ describe("generate()", () => {
     expect(dispatcher).not.toContain("_sendWithRetry");
 
     // Worker file uses BullMQ worker
-    const worker = readFileSync(join(outputDir, "server/webhooks/webhookDispatch.js"), "utf8");
+    const worker = readFileSync(
+      join(outputDir, "server/webhooks/webhookDispatch.js"),
+      "utf8",
+    );
     expect(worker).toContain("import { createQueue, createWorker }");
     expect(worker).toContain("createWorker(");
     expect(worker).not.toContain("getBoss");
 
     // Server registers worker at startup
-    const serverIndex = readFileSync(join(outputDir, "server/index.js"), "utf8");
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
     expect(serverIndex).toContain("registerWebhookDispatchWorker");
   });
 
@@ -3096,10 +3138,18 @@ describe("generate()", () => {
     `;
     const ast = parse(source);
     const outputDir = join(TMP_DIR, "webhook-outbound-fallback");
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
 
     // Dispatcher uses simple fire-and-forget (no PgBoss/BullMQ import)
-    const dispatcher = readFileSync(join(outputDir, "server/webhooks/todoOutbound.js"), "utf8");
+    const dispatcher = readFileSync(
+      join(outputDir, "server/webhooks/todoOutbound.js"),
+      "utf8",
+    );
     expect(dispatcher).toContain("void Promise.allSettled(");
     expect(dispatcher).not.toContain("getBoss");
     expect(dispatcher).not.toContain("createQueue");
@@ -3107,10 +3157,15 @@ describe("generate()", () => {
     expect(dispatcher).not.toContain("setTimeout");
 
     // No shared worker file emitted
-    expect(existsSync(join(outputDir, "server/webhooks/webhookDispatch.js"))).toBe(false);
+    expect(
+      existsSync(join(outputDir, "server/webhooks/webhookDispatch.js")),
+    ).toBe(false);
 
     // Server does NOT import the worker
-    const serverIndex = readFileSync(join(outputDir, "server/index.js"), "utf8");
+    const serverIndex = readFileSync(
+      join(outputDir, "server/index.js"),
+      "utf8",
+    );
     expect(serverIndex).not.toContain("registerWebhookDispatchWorker");
   });
 
@@ -3141,14 +3196,25 @@ describe("generate()", () => {
     `;
     const ast = parse(source);
     const outputDir = join(TMP_DIR, "webhook-outbound-pgboss-priority");
-    generate(ast, { outputDir, templateDir: TEMPLATES_DIR, logLevel: "silent", engine: sharedEngine });
+    generate(ast, {
+      outputDir,
+      templateDir: TEMPLATES_DIR,
+      logLevel: "silent",
+      engine: sharedEngine,
+    });
 
     // PgBoss should win over BullMQ
-    const dispatcher = readFileSync(join(outputDir, "server/webhooks/todoOutbound.js"), "utf8");
+    const dispatcher = readFileSync(
+      join(outputDir, "server/webhooks/todoOutbound.js"),
+      "utf8",
+    );
     expect(dispatcher).toContain("getBoss");
     expect(dispatcher).not.toContain("createQueue");
 
-    const worker = readFileSync(join(outputDir, "server/webhooks/webhookDispatch.js"), "utf8");
+    const worker = readFileSync(
+      join(outputDir, "server/webhooks/webhookDispatch.js"),
+      "utf8",
+    );
     expect(worker).toContain("getBoss");
     expect(worker).not.toContain("createWorker");
   });
@@ -4011,7 +4077,9 @@ describe("incremental generation — generator dependency graph", () => {
     });
 
     // Second run: add a new query (queries block changed, entities unchanged)
-    const source2 = BASE_SOURCE + `
+    const source2 =
+      BASE_SOURCE +
+      `
       query getById { fn: import { getById } from "@src/queries.js" entities: [Todo] }
     `;
     const result2 = generate(parse(source2), {
@@ -4064,9 +4132,9 @@ describe("incremental generation — generator dependency graph", () => {
     // DrizzleSchemaGenerator regenerated the schema
     expect(result2.filesWritten.some((f) => f.includes("schema"))).toBe(true);
     // QueryActionGenerator was NOT run (no queries in either AST)
-    expect(
-      result2.filesWritten.some((f) => f.includes("routes/queries")),
-    ).toBe(false);
+    expect(result2.filesWritten.some((f) => f.includes("routes/queries"))).toBe(
+      false,
+    );
   });
 
   it("skipped generators' files remain on disk and in the manifest after incremental run", () => {
@@ -4080,7 +4148,9 @@ describe("incremental generation — generator dependency graph", () => {
     });
 
     // Second run — change only queries (schema generator skipped)
-    const source2 = BASE_SOURCE + `
+    const source2 =
+      BASE_SOURCE +
+      `
       query getById { fn: import { getById } from "@src/queries.js" entities: [Todo] }
     `;
     generate(parse(source2), {
@@ -4102,7 +4172,19 @@ describe("incremental generation — generator dependency graph", () => {
 // detectDestructiveSchemaChanges unit tests
 // ────────────────────────────────────────────────────────────────────────────
 
-const makeAst = (entities: { name: string; fields: Array<{ name: string; type: string; nullable?: boolean; isRelation?: boolean; isArray?: boolean; isManyToMany?: boolean }> }[]) =>
+const makeAst = (
+  entities: {
+    name: string;
+    fields: Array<{
+      name: string;
+      type: string;
+      nullable?: boolean;
+      isRelation?: boolean;
+      isArray?: boolean;
+      isManyToMany?: boolean;
+    }>;
+  }[],
+) =>
   parse(
     [
       `app TestApp { title: "T" db: Drizzle ssr: false typescript: false }`,
@@ -4120,7 +4202,9 @@ const makeAst = (entities: { name: string; fields: Array<{ name: string; type: s
 
 describe("detectDestructiveSchemaChanges", () => {
   it("returns no warnings when there is no previous snapshot", () => {
-    const ast = makeAst([{ name: "Todo", fields: [{ name: "title", type: "String" }] }]);
+    const ast = makeAst([
+      { name: "Todo", fields: [{ name: "title", type: "String" }] },
+    ]);
     // no previous snapshot → nothing to compare
     expect(detectDestructiveSchemaChanges({ entities: {} }, ast)).toEqual([]);
   });
@@ -4131,7 +4215,9 @@ describe("detectDestructiveSchemaChanges", () => {
         Todo: { fields: { title: { type: "String", nullable: false } } },
       },
     };
-    const ast = makeAst([{ name: "Todo", fields: [{ name: "title", type: "String" }] }]);
+    const ast = makeAst([
+      { name: "Todo", fields: [{ name: "title", type: "String" }] },
+    ]);
     expect(detectDestructiveSchemaChanges(previousSnapshot, ast)).toEqual([]);
   });
 
@@ -4159,7 +4245,9 @@ describe("detectDestructiveSchemaChanges", () => {
         },
       },
     };
-    const ast = makeAst([{ name: "Todo", fields: [{ name: "title", type: "String" }] }]);
+    const ast = makeAst([
+      { name: "Todo", fields: [{ name: "title", type: "String" }] },
+    ]);
     const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("description");
@@ -4173,7 +4261,9 @@ describe("detectDestructiveSchemaChanges", () => {
         Product: { fields: { price: { type: "Int", nullable: false } } },
       },
     };
-    const ast = makeAst([{ name: "Product", fields: [{ name: "price", type: "Float" }] }]);
+    const ast = makeAst([
+      { name: "Product", fields: [{ name: "price", type: "Float" }] },
+    ]);
     const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("price");
@@ -4188,7 +4278,9 @@ describe("detectDestructiveSchemaChanges", () => {
       },
     };
     // 'username' replaced by 'name' → looks like a drop to the snapshot
-    const ast = makeAst([{ name: "User", fields: [{ name: "name", type: "String" }] }]);
+    const ast = makeAst([
+      { name: "User", fields: [{ name: "name", type: "String" }] },
+    ]);
     const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("username");
@@ -4226,7 +4318,9 @@ describe("detectDestructiveSchemaChanges", () => {
       },
     };
     // Post.body dropped, Comment entity dropped
-    const ast = makeAst([{ name: "Post", fields: [{ name: "title", type: "String" }] }]);
+    const ast = makeAst([
+      { name: "Post", fields: [{ name: "title", type: "String" }] },
+    ]);
     const warnings = detectDestructiveSchemaChanges(previousSnapshot, ast);
     expect(warnings.length).toBeGreaterThanOrEqual(2);
     expect(warnings.some((w) => w.includes("Comment"))).toBe(true);
@@ -4258,8 +4352,14 @@ describe("detectDestructiveSchemaChanges", () => {
     const snap = loaded!.getSchemaSnapshot();
     expect(snap).toBeDefined();
     expect(snap!.entities["Todo"]).toBeDefined();
-    expect(snap!.entities["Todo"]!.fields["title"]).toEqual({ type: "String", nullable: false });
-    expect(snap!.entities["Todo"]!.fields["done"]).toEqual({ type: "Boolean", nullable: false });
+    expect(snap!.entities["Todo"]!.fields["title"]).toEqual({
+      type: "String",
+      nullable: false,
+    });
+    expect(snap!.entities["Todo"]!.fields["done"]).toEqual({
+      type: "Boolean",
+      nullable: false,
+    });
   });
 
   it("warns when a column changes from nullable to NOT NULL", () => {
@@ -4321,7 +4421,9 @@ entity Post {
   it("warns when a field gains a UNIQUE constraint", () => {
     const previousSnapshot = {
       entities: {
-        User: { fields: { email: { type: "String", nullable: false, unique: false } } },
+        User: {
+          fields: { email: { type: "String", nullable: false, unique: false } },
+        },
       },
     };
     const ast = parse(
@@ -4342,7 +4444,9 @@ entity User {
   it("does not warn when @unique is unchanged", () => {
     const previousSnapshot = {
       entities: {
-        User: { fields: { email: { type: "String", nullable: false, unique: true } } },
+        User: {
+          fields: { email: { type: "String", nullable: false, unique: true } },
+        },
       },
     };
     const ast = parse(
@@ -4809,7 +4913,9 @@ entity Article {
       });
 
       expect(result.success).toBe(false);
-      expect(result.errors.some((e) => e.includes("outside the output directory"))).toBe(true);
+      expect(
+        result.errors.some((e) => e.includes("outside the output directory")),
+      ).toBe(true);
     });
   });
 });

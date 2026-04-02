@@ -115,7 +115,7 @@ Vasp reads this file and generates a complete full-stack application. You only w
 
 ## Admin Panel
 
-Add an `admin` block to instantly generate a standalone **PrimeVue 4** admin panel wired to your CRUD endpoints:
+Add an `admin` block to instantly generate a **PrimeVue 4** admin panel wired to your CRUD endpoints:
 
 ```vasp
 admin {
@@ -123,20 +123,18 @@ admin {
 }
 ```
 
-Vasp generates an `admin/` directory containing a full Vite + Vue 3 application:
+The admin panel is generated as a **lazy-loaded route group at `/admin`** inside your main SPA or SSR application — no separate process or port required:
 
 - **Collapsible sidebar** with a route per entity and a dashboard overview
 - **Per-entity CRUD table** — server-paginated, sortable, with inline Delete confirmation
-- **Create / Edit modal** — form fields are automatically typed (`a-switch` for Boolean, `a-input-number` for Int/Float, `a-textarea` for Text, `a-input` for String, etc.)
-- **Axios API client** per entity, proxied to your Elysia backend at `/api/crud`
+- **Create / Edit modal** — form fields are automatically typed (toggle for Boolean, number input for Int/Float, textarea for Text, text input for String, etc.)
+- **Native `fetch` API client** per entity, hitting your Elysia backend at `/api/admin`
 - Supports both **JavaScript** and **TypeScript** (controlled by `app.typescript`)
 
-Run the admin panel independently:
+The admin panel starts automatically with the rest of your app:
 
 ```bash
-cd admin
-bun install
-bun run dev   # starts on port 5174
+vasp start   # admin panel is available at http://localhost:5173/admin
 ```
 
 ---
@@ -485,7 +483,15 @@ my-app/
 │   ├── queries.js/.ts      ← Your query implementations
 │   ├── actions.js/.ts      ← Your action implementations
 │   ├── jobs.js/.ts         ← Your background job handlers
-│   └── lib/
+│   ├── lib/
+│   └── admin/              ← Only when admin block is present
+│       ├── AdminLayout.vue
+│       ├── views/
+│       │   ├── Dashboard.vue
+│       │   └── {Entity}/
+│       │       ├── index.vue      ← Per-entity CRUD table
+│       │       └── FormModal.vue  ← Create / Edit modal
+│       └── api/            ← Per-entity fetch clients
 ├── server/                 ← Generated Elysia backend
 │   ├── index.{js|ts}
 │   ├── middleware/
@@ -500,17 +506,6 @@ my-app/
 │       └── jobs/
 ├── drizzle/
 │   └── schema.js/.ts       ← Auto-generated Drizzle schema
-├── admin/                  ← Only when admin block is present
-│   ├── package.json        ← Vue 3 + PrimeVue 4 + Pinia + Vite
-│   ├── index.html
-│   ├── vite.config.js/.ts
-│   └── src/
-│       ├── main.js/.ts
-│       ├── App.vue
-│       ├── router/
-│       ├── layouts/        ← AdminLayout (collapsible sidebar)
-│       ├── views/          ← Per-entity CRUD pages + FormModal
-│       └── api/            ← Per-entity axios clients
 ├── nuxt/                   ← Only when ssr/ssg enabled
 ├── bunfig.toml
 ├── vite.config.js          ← or nuxt.config.ts when SSR/SSG
@@ -727,7 +722,7 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
    - `StorageGenerator` → file upload endpoints (S3, R2, GCS, local)
    - `WebhookGenerator` → inbound webhook receivers + outbound CRUD event dispatchers
    - `FrontendGenerator` → Vue 3 SPA (Vite) **or** Nuxt 4 SSR/SSG
-   - `AdminGenerator` → standalone PrimeVue 4 admin panel (when `admin` block is present)
+   - `AdminGenerator` → PrimeVue 4 admin panel integrated at `/admin` as a lazy-loaded route group (when `admin` block is present)
 
    All output files are produced from [Handlebars](https://handlebarsjs.com) templates under `templates/`. There are four frontend template trees (SPA+JS, SPA+TS, SSR+JS, SSR+TS) plus a shared backend tree and an admin tree.
 

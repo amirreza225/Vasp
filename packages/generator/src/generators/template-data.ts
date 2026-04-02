@@ -15,7 +15,14 @@
  * generator can reference the same definition when building its data objects.
  */
 
-import type { AutoPageNode, EntityNode, FieldNode, ImportExpression, MiddlewareScope, SourceLocation } from "@vasp-framework/core";
+import type {
+  AutoPageNode,
+  EntityNode,
+  FieldNode,
+  ImportExpression,
+  MiddlewareScope,
+  SourceLocation,
+} from "@vasp-framework/core";
 
 // ── Drizzle schema types ─────────────────────────────────────────────────────
 

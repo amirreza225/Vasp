@@ -1,5 +1,9 @@
 import { BaseGenerator } from "./BaseGenerator.js";
-import { toCamelCase, toPascalCase, toPlural } from "../template/TemplateEngine.js";
+import {
+  toCamelCase,
+  toPascalCase,
+  toPlural,
+} from "../template/TemplateEngine.js";
 
 export class CrudGenerator extends BaseGenerator {
   run(): void {

@@ -139,9 +139,7 @@ class Scanner {
 
   private isIdentifier(tok: Token): boolean {
     // Identifiers and block keywords (e.g. "entity") can appear as names/values
-    return (
-      tok.type === TokenType.IDENTIFIER || KEYWORD_TO_KIND.has(tok.type)
-    );
+    return tok.type === TokenType.IDENTIFIER || KEYWORD_TO_KIND.has(tok.type);
   }
 
   // ── Block body helpers ─────────────────────────────────────────────────────

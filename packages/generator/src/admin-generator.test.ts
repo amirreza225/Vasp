@@ -117,9 +117,9 @@ admin {
     expect(existsSync(join(outputDir, "src/admin/views/Dashboard.vue"))).toBe(
       true,
     );
-    expect(
-      existsSync(join(outputDir, "src/admin/views/todo/index.vue")),
-    ).toBe(true);
+    expect(existsSync(join(outputDir, "src/admin/views/todo/index.vue"))).toBe(
+      true,
+    );
     expect(
       existsSync(join(outputDir, "src/admin/views/todo/FormModal.vue")),
     ).toBe(true);
@@ -204,10 +204,7 @@ admin {
       logLevel: "silent",
       engine: sharedEngine,
     });
-    const router = readFileSync(
-      join(outputDir, "src/router/index.js"),
-      "utf8",
-    );
+    const router = readFileSync(join(outputDir, "src/router/index.js"), "utf8");
     expect(router).toContain("path: '/admin'");
     expect(router).toContain("AdminLayout.vue");
     expect(router).toContain("path: 'todo'");
@@ -252,10 +249,7 @@ admin {
       logLevel: "silent",
       engine: sharedEngine,
     });
-    const router = readFileSync(
-      join(outputDir, "src/router/index.ts"),
-      "utf8",
-    );
+    const router = readFileSync(join(outputDir, "src/router/index.ts"), "utf8");
     expect(router).toContain("RouteRecordRaw");
     expect(router).toContain("path: '/admin'");
     expect(router).toContain("path: 'post'");

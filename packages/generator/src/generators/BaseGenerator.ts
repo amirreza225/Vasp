@@ -240,7 +240,9 @@ export abstract class BaseGenerator {
       hasOutboundWebhook: outboundWebhooks.length > 0,
       hasOutboundWebhookJobQueue:
         outboundWebhooks.length > 0 &&
-        ast.jobs.some((j) => j.executor === "PgBoss" || j.executor === "BullMQ"),
+        ast.jobs.some(
+          (j) => j.executor === "PgBoss" || j.executor === "BullMQ",
+        ),
       webhooks,
       inboundWebhooks,
       outboundWebhooks,
@@ -281,9 +283,7 @@ export abstract class BaseGenerator {
     };
   }
 
-  private resolveUIConfig(
-    uiConfig: AppUIConfig | undefined,
-  ): ResolvedUIConfig {
+  private resolveUIConfig(uiConfig: AppUIConfig | undefined): ResolvedUIConfig {
     const theme = uiConfig?.theme ?? "Aura";
     const primaryColor = uiConfig?.primaryColor ?? null;
     const darkModeSelector = uiConfig?.darkModeSelector ?? ".app-dark";

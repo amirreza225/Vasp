@@ -1,6 +1,14 @@
 import type { VaspAST } from "@vasp-framework/core";
-import type { EntitySnapshot, FieldSnapshot, SchemaSnapshot } from "../manifest/Manifest.js";
-import { toCamelCase, toPascalCase, toPlural } from "../template/TemplateEngine.js";
+import type {
+  EntitySnapshot,
+  FieldSnapshot,
+  SchemaSnapshot,
+} from "../manifest/Manifest.js";
+import {
+  toCamelCase,
+  toPascalCase,
+  toPlural,
+} from "../template/TemplateEngine.js";
 import { BaseGenerator } from "./BaseGenerator.js";
 import type { JunctionTable } from "./template-data.js";
 
@@ -260,10 +268,9 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
     const passwordFieldName = passwordField?.name ?? "passwordHash";
     // Convert camelCase field name to SQL snake_case column name.
     // e.g. "passwordHash" → "password_hash", "password" → "password"
-    const passwordSqlColumnName = passwordFieldName.replace(
-      /([A-Z])/g,
-      "_$1",
-    ).toLowerCase();
+    const passwordSqlColumnName = passwordFieldName
+      .replace(/([A-Z])/g, "_$1")
+      .toLowerCase();
 
     let authUserExtraFields: (typeof entitiesWithSchema)[0]["scalarFields"] =
       [];
@@ -411,7 +418,8 @@ function buildSchemaSnapshot(ast: VaspAST): SchemaSnapshot {
       } else {
         const snap: FieldSnapshot = { type: f.type, nullable: f.nullable };
         if (f.modifiers.includes("unique")) snap.unique = true;
-        if (f.type === "Enum" && f.enumValues?.length) snap.enumValues = [...f.enumValues];
+        if (f.type === "Enum" && f.enumValues?.length)
+          snap.enumValues = [...f.enumValues];
         fields[f.name] = snap;
       }
     }

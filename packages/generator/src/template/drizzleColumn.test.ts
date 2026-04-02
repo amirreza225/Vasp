@@ -123,7 +123,14 @@ describe("drizzleColumn — default values", () => {
 
 describe("drizzleColumn — updatedAt", () => {
   it("adds .$onUpdate() when isUpdatedAt=true", () => {
-    const col = drizzleColumn("updatedAt", "DateTime", [], false, undefined, true);
+    const col = drizzleColumn(
+      "updatedAt",
+      "DateTime",
+      [],
+      false,
+      undefined,
+      true,
+    );
     expect(col).toContain(".$onUpdate(() => new Date())");
   });
 
@@ -164,11 +171,10 @@ describe("drizzleColumn — combined modifiers", () => {
   });
 
   it("default_now + updatedAt combined", () => {
-    const col = drizzleColumn(
+    const col = drizzleColumn("updatedAt", "DateTime", [
+      "default_now",
       "updatedAt",
-      "DateTime",
-      ["default_now", "updatedAt"],
-    );
+    ]);
     expect(col).toContain(".defaultNow()");
     expect(col).toContain(".$onUpdate(() => new Date())");
   });

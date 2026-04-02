@@ -21,7 +21,8 @@ export class WebhookGenerator extends BaseGenerator {
     // can route through a job queue.
     const usesPgBoss = hasPgBossJobs;
     const usesBullMQ = !hasPgBossJobs && hasBullMQJobs;
-    const hasJobQueue = outboundWebhooks.length > 0 && (usesPgBoss || usesBullMQ);
+    const hasJobQueue =
+      outboundWebhooks.length > 0 && (usesPgBoss || usesBullMQ);
 
     if (hasJobQueue) {
       this.write(

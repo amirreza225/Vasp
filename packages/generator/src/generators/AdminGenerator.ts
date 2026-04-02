@@ -32,7 +32,9 @@ export class AdminGenerator extends BaseGenerator {
     const adminDirs = [
       "src/admin/views/dashboard",
       "src/admin/api",
-      ...adminEntities.map((e) => `src/admin/views/${this.toKebabCase(e.name)}`),
+      ...adminEntities.map(
+        (e) => `src/admin/views/${this.toKebabCase(e.name)}`,
+      ),
     ];
     for (const dir of adminDirs) {
       ensureDir(join(this.ctx.outputDir, dir));

@@ -1,4 +1,7 @@
-import type { FieldValidateConfig, FieldValidation } from "@vasp-framework/core";
+import type {
+  FieldValidateConfig,
+  FieldValidation,
+} from "@vasp-framework/core";
 
 /**
  * Effective validation shape used internally by `valibotSchema()`.
@@ -55,8 +58,10 @@ export function mergeFieldValidation(
   if (max != null) merged.max = max;
 
   // Properties that exist only in FieldValidateConfig
-  if (configValidate?.required !== undefined) merged.required = configValidate.required;
-  if (configValidate?.pattern !== undefined) merged.pattern = configValidate.pattern;
+  if (configValidate?.required !== undefined)
+    merged.required = configValidate.required;
+  if (configValidate?.pattern !== undefined)
+    merged.pattern = configValidate.pattern;
 
   return merged;
 }
