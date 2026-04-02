@@ -168,7 +168,8 @@ vasp-analysis-2.md
 packages/generator/src/__test_output__/
 
 #docs
-docs/*.md
 Vasp-prd-1-0.md
 VASP Framework.docx
 my notes.docx
+docs/.vitepress/dist
+docs/.vitepress/cache

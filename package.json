@@ -1,7 +1,9 @@
 {
   "name": "vasp-monorepo",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "bun run --filter '@vasp-framework/core' build && bun run --filter '@vasp-framework/parser' build && bun run --filter '@vasp-framework/generator' build && bun run --filter '@vasp-framework/runtime' build && bun run --filter 'vasp-cli' build && bun run --filter '@vasp-framework/language-server' build && bun run --filter 'vasp-vscode' build",
     "test": "vitest run",
@@ -21,7 +23,10 @@
     "lint": "eslint packages/*/src/**/*.ts",
     "typecheck": "tsc --noEmit -p tsconfig.base.json",
     "check:exhaustiveness": "bun scripts/check-exhaustiveness.ts",
-    "publish:all": "bun run build && cd packages/core && npm publish --access public && cd ../parser && npm publish --access public && cd ../generator && npm publish --access public && cd ../runtime && npm publish --access public && cd ../cli && npm publish"
+    "publish:all": "bun run build && cd packages/core && npm publish --access public && cd ../parser && npm publish --access public && cd ../generator && npm publish --access public && cd ../runtime && npm publish --access public && cd ../cli && npm publish",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -35,6 +40,7 @@
     "prettier": "^3.8.1",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.58.0",
+    "vitepress": "^1.6.4",
     "vitest": "^4.1.2"
   },
   "overrides": {
