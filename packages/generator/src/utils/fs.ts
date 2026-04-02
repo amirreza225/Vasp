@@ -1,10 +1,15 @@
 import {
+  closeSync,
+  constants,
   existsSync,
+  ftruncateSync,
   mkdirSync,
+  openSync,
   readFileSync,
   readdirSync,
   rmSync,
   writeFileSync,
+  writeSync,
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import type { Manifest } from "../manifest/Manifest.js";
@@ -106,13 +111,20 @@ function copyDirRecursive(
       // Skip files whose content is identical to avoid spurious mtime changes
       // (which would trigger Vite's HMR for unchanged generated files).
       const srcContent = readFileSync(srcPath, "utf8");
-      if (
-        existsSync(destPath) &&
-        computeHash(srcContent) === computeHash(readFileSync(destPath, "utf8"))
-      ) {
-        continue;
+      // Use a file descriptor throughout to avoid a TOCTOU race between the
+      // existence check and the subsequent write (CWE-367 / js/file-system-race).
+      let fd: number | undefined;
+      try {
+        fd = openSync(destPath, constants.O_CREAT | constants.O_RDWR);
+        const existing = readFileSync(fd, "utf8");
+        if (computeHash(srcContent) === computeHash(existing)) {
+          continue;
+        }
+        ftruncateSync(fd, 0);
+        writeSync(fd, srcContent, 0, "utf8");
+      } finally {
+        if (fd !== undefined) closeSync(fd);
       }
-      writeFileSync(destPath, srcContent, "utf8");
     }
   }
 }
