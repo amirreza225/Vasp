@@ -41,5 +41,6 @@ export function parseAll(
 export { Lexer } from "./lexer/Lexer.js";
 export { SemanticValidator } from "./validator/SemanticValidator.js";
 export { formatDiagnostics } from "./errors/DiagnosticFormatter.js";
+export { AstSerializer } from "./serializer/AstSerializer.js";
 export type { Token } from "./lexer/Token.js";
 export { TokenType } from "./lexer/TokenType.js";
