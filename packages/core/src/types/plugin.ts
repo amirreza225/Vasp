@@ -9,12 +9,6 @@ import type { VaspAST } from "./ast.js";
 export interface PluginGeneratorContext {
   /** Fully-parsed VaspAST for the current main.vasp */
   readonly ast: VaspAST;
-  /**
-   * Absolute path to the staging directory where files must be written.
-   * Always write through the provided `write` callback — do not write here
-   * directly so that the manifest and orphan-deletion logic stay consistent.
-   */
-  readonly outputDir: string;
   /** Absolute path to the real project output directory. */
   readonly projectDir: string;
   /** True when the app was declared with `typescript: true`. */
@@ -111,6 +105,12 @@ export interface VaspPlugin {
    * Keys become the helper name (e.g. `"shout"` → `{{shout name}}`).
    * Values are plain functions; the trailing Handlebars options object is
    * automatically stripped before your function is called.
+   *
+   * **Note**: Block helpers (`{{#myHelper}}…{{/myHelper}}`) are not supported
+   * via this API because the options object (which carries `fn`/`inverse` for
+   * block rendering) is stripped unconditionally. Register block helpers using
+   * a dedicated `TemplateEngine` instance passed through `GeneratorOptions.engine`
+   * if you need block-level control flow.
    */
   helpers?: Record<string, (...args: unknown[]) => unknown>;
 }

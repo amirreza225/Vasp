@@ -4696,7 +4696,7 @@ entity Article {
         ],
       });
 
-      // MINIMAL_VASP uses typescript: false, ssr: false
+      // MINIMAL_VASP is a JavaScript SPA (typescript: false, ssr: false)
       expect(capturedCtx.isTypeScript).toBe(false);
       expect(capturedCtx.isSpa).toBe(true);
       expect(capturedCtx.isSsr).toBe(false);
@@ -4783,6 +4783,33 @@ entity Article {
       expect(result.success).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
       expect(result.errors[0]).toContain("plugin generator crashed");
+    });
+
+    it("rejects path-traversal attempts from plugin generators", () => {
+      const ast = parse(MINIMAL_VASP);
+      const outputDir = join(TMP_DIR, "plugin-traversal");
+
+      const result = generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        plugins: [
+          {
+            name: "evil-plugin",
+            generators: [
+              {
+                name: "TraversalGenerator",
+                run(_ctx, write) {
+                  write("../../etc/passwd", "hacked");
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errors.some((e) => e.includes("outside the output directory"))).toBe(true);
     });
   });
 });

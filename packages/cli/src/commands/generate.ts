@@ -3,6 +3,7 @@ import { Manifest, computeHash } from "@vasp-framework/generator";
 import type { VaspPlugin } from "@vasp-framework/core";
 import { parse } from "@vasp-framework/parser";
 import { join, resolve, dirname } from "node:path";
+import { pathToFileURL } from "node:url";
 import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { log } from "../utils/logger.js";
 import { handleParseError } from "../utils/parse-error.js";
@@ -49,8 +50,8 @@ async function loadPlugins(projectDir: string): Promise<VaspPlugin[]> {
     if (!existsSync(configPath)) continue;
     try {
       // Dynamic import works in both Bun (which resolves .ts natively) and Node.
-      // Use a URL-format path so that Windows paths are handled correctly.
-      const mod = await import(`file://${configPath}`);
+      // pathToFileURL handles Windows backslashes and special characters correctly.
+      const mod = await import(pathToFileURL(configPath).href);
       const config = mod.default ?? mod;
       if (config && Array.isArray(config.plugins)) {
         return config.plugins as VaspPlugin[];

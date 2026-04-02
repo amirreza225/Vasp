@@ -29,7 +29,7 @@ import { computeHash, Manifest } from "./manifest/Manifest.js";
 import type { FieldSnapshot, SchemaSnapshot } from "./manifest/Manifest.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
 import { cleanupDir, commitStagedFiles, deleteOrphanedFiles, writeFile } from "./utils/fs.js";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve, normalize } from "node:path";
 import { mkdirSync, existsSync, rmSync } from "node:fs";
 
 // ---------------------------------------------------------------------------
@@ -266,7 +266,6 @@ export function generate(
     if (plugins.length > 0) {
       const pluginCtx = {
         ast,
-        outputDir: ctx.outputDir,
         projectDir: ctx.projectDir,
         isTypeScript: ctx.isTypeScript,
         isSsr: ctx.isSsr,
@@ -281,7 +280,14 @@ export function generate(
           const generatorLabel = `plugin:${plugin.name}/${gen.name}`;
           try {
             gen.run(pluginCtx, (relativePath, content) => {
-              const fullPath = join(ctx.outputDir, relativePath);
+              // Guard against path-traversal: the resolved path must stay inside
+              // the staging directory (ctx.outputDir).
+              const fullPath = resolve(ctx.outputDir, normalize(relativePath));
+              if (!fullPath.startsWith(ctx.outputDir + "/") && fullPath !== ctx.outputDir) {
+                throw new Error(
+                  `Plugin '${plugin.name}' tried to write outside the output directory: '${relativePath}'`,
+                );
+              }
               writeFile(fullPath, content);
               filesWritten.push(relativePath);
               manifest.record(relativePath, content, generatorLabel);
