@@ -611,7 +611,7 @@ vasp --version
 | `vasp migrate` — auto-upgrade v1 → v2 DSL syntax | Done |
 | Plugin system (`vasp.config.ts` — custom generators, template overrides, Handlebars helpers) | Done |
 | VS Code extension (syntax highlighting, snippets, diagnostics, completions, hover, go-to-definition) | Done |
-| Language server (`@vasp-framework/language-server` — Chevrotain, LSP, multi-file workspace) | Done |
+| Language server (`@vasp-framework/language-server` — real-Lexer-based LSP, multi-file workspace) | Done |
 
 ---
 
@@ -673,7 +673,7 @@ Vasp is a Bun monorepo with the following packages:
 | `@vasp-framework/generator` | Generates Elysia backend, Vue/Nuxt frontend, and client SDK from a parsed AST |
 | `@vasp-framework/core` | Shared types, AST definitions, and error classes |
 | `@vasp-framework/runtime` | Runtime composables (`useVasp`, `useQuery`, `useAction`, `useAuth`) shipped into generated apps |
-| `@vasp-framework/language-server` | Chevrotain-based LSP server — diagnostics, completions, hover, go-to-definition |
+| `@vasp-framework/language-server` | LSP server — diagnostics, completions, hover, go-to-definition |
 | `vasp-vscode` | VS Code extension — syntax highlighting, snippets, LSP client |
 
 ---
@@ -712,6 +712,7 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
    - `ScaffoldGenerator` → project skeleton and config files
    - `DrizzleSchemaGenerator` → Drizzle schema from entity declarations (typed columns, enums, relations)
    - `BackendGenerator` → Elysia server entry point, rate-limit/CSRF middleware, startup env validation
+   - `ObservabilityGenerator` → OpenTelemetry tracing, Prometheus/OTLP metrics, structured logging, error tracking
    - `AuthGenerator` → JWT auth middleware, login/register routes, Login/Register Vue components
    - `MiddlewareGenerator` → custom middleware blocks (global or route-scoped)
    - `CacheGenerator` → cache store setup (memory, Redis, Valkey)
@@ -719,12 +720,13 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
    - `ApiGenerator` → custom API endpoints
    - `CrudGenerator` → REST CRUD endpoints with pagination, sorting, filtering
    - `RealtimeGenerator` → WebSocket channels with auth and room broadcasting
-   - `JobGenerator` → PgBoss background job wiring and cron scheduling
+   - `AutoPageGenerator` → list/form/detail pages from `autoPage` blocks (PrimeVue 4)
+   - `JobGenerator` → PgBoss/BullMQ/RedisStreams/RabbitMQ/Kafka background job wiring and cron scheduling
    - `EmailGenerator` → email provider setup (Resend, SendGrid, SMTP)
    - `SeedGenerator` → database seed script
    - `StorageGenerator` → file upload endpoints (S3, R2, GCS, local)
+   - `WebhookGenerator` → inbound webhook receivers + outbound CRUD event dispatchers
    - `FrontendGenerator` → Vue 3 SPA (Vite) **or** Nuxt 4 SSR/SSG
-   - `AutoPageGenerator` → list/form/detail pages from `autoPage` blocks (PrimeVue 4)
    - `AdminGenerator` → standalone Ant Design Vue admin panel (when `admin` block is present)
 
    All output files are produced from [Handlebars](https://handlebarsjs.com) templates under `templates/`. There are four frontend template trees (SPA+JS, SPA+TS, SSR+JS, SSR+TS) plus a shared backend tree and an admin tree.

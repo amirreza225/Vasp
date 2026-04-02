@@ -53,7 +53,7 @@ A stop hook (`.claude/hooks/stop-check.sh`) runs automatically on session end: T
 ### Three-Phase Pipeline
 
 1. **Parse** — `.vasp` source → `Lexer` → `Parser` → AST → `SemanticValidator`
-2. **Generate** — AST walk → 16 generators in order → Handlebars template rendering → staging dir
+2. **Generate** — AST walk → 19 generators in order → Handlebars template rendering → staging dir
 3. **Commit** — Staged files committed to real output dir (preserves `.env`, removes stale files)
 
 ### Monorepo Packages
@@ -65,7 +65,7 @@ A stop hook (`.claude/hooks/stop-check.sh`) runs automatically on session end: T
 | `packages/generator` | `@vasp-framework/generator` | 19 generators + `TemplateEngine` (Handlebars) |
 | `packages/runtime` | `@vasp-framework/runtime` | `$vasp`/`useQuery`/`useAction`/`useAuth` composables shipped into generated apps |
 | `packages/cli` | `vasp-cli` | CLI commands (`vasp new`, `vasp generate`, `vasp migrate`, `vasp start`, etc.) |
-| `packages/language-server` | `@vasp-framework/language-server` | Chevrotain LSP — diagnostics, completions, hover, go-to-definition for `.vasp` files |
+| `packages/language-server` | `@vasp-framework/language-server` | Real-Lexer-based LSP server — diagnostics, completions, hover, go-to-definition for `.vasp` files |
 | `packages/vscode-extension` | `vasp-vscode` | VS Code extension — TextMate grammar, snippets, LSP client |
 
 ### Generator Execution Order
@@ -248,7 +248,7 @@ Every step is required — missing any causes TypeScript errors or silent runtim
 | Fix CLI command | `cli/src/commands/<command>.ts` | Same file |
 | Fix runtime composable | `runtime/src/client/composables/use<Name>.ts` | Same file |
 | Fix template helper | `generator/src/template/TemplateEngine.ts` | Same file |
-| Fix language server grammar | `language-server/src/grammar/VaspParser.ts` + `VaspLexer.ts` | Same files |
+| Fix language server grammar | `language-server/src/grammar/VaspDocScanner.ts` | Same file |
 | Fix language server completions | `language-server/src/features/completions.ts` | Same file |
 | Fix language server hover | `language-server/src/features/hover.ts` + `utils/vasp-docs.ts` | Same files |
 | Fix VS Code extension | `vscode-extension/src/extension.ts`, `client.ts` | Same files |
