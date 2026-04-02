@@ -6,7 +6,7 @@ The official VS Code extension for the [Vasp](https://github.com/amirreza225/Vas
 
 - **Syntax highlighting** — all 20 block types, field modifiers, primitive types, executors, providers
 - **Code snippets** — 22 scaffolds for every block type with tab-stops (including PgBoss/BullMQ and inbound/outbound webhook variants)
-- **Diagnostics** — real-time parse errors and semantic validation powered by the Chevrotain language server (undefined entity refs, realtime without CRUD, etc.) with 300 ms debounce
+- **Diagnostics** — real-time parse errors and semantic validation powered by the real-Lexer-based language server (undefined entity refs, realtime without CRUD, etc.) with 300 ms debounce
 - **Completions** — context-aware completions across 15 contexts: block keywords at top-level, sub-block keywords inside `crud {}` / `entity {}`, entity names after `entity:`, page names after `to:`, executor/provider enums with full auto-insert snippets
 - **Hover documentation** — inline Markdown docs for every keyword and block type
 - **Go-to-Definition** — jump to entity or page declarations across all `.vasp` files in the workspace (multi-file support)

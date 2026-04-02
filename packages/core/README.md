@@ -14,28 +14,31 @@ The `VaspAST` interface is the source of truth for what a parsed `.vasp` file lo
 
 ```typescript
 interface VaspAST {
-  app: AppNode
+  app?: AppNode
   auth?: AuthNode
   entities: EntityNode[]
   routes: RouteNode[]
   pages: PageNode[]
   queries: QueryNode[]
   actions: ActionNode[]
-  apis?: ApiNode[]
-  middlewares?: MiddlewareNode[]
+  apis: ApiNode[]
+  middlewares: MiddlewareNode[]
   cruds: CrudNode[]
   realtimes: RealtimeNode[]
   jobs: JobNode[]
   seed?: SeedNode
   admin?: AdminNode
-  storages?: StorageNode[]
-  emails?: EmailNode[]
-  caches?: CacheNode[]
+  storages: StorageNode[]
+  emails: EmailNode[]
+  caches: CacheNode[]
+  webhooks: WebhookNode[]
+  observability?: ObservabilityNode
+  autoPages: AutoPageNode[]
 }
 ```
 
-The `VaspNode` union covers all 17 concrete node types:
-`AppNode | AuthNode | EntityNode | RouteNode | PageNode | QueryNode | ActionNode | ApiNode | MiddlewareNode | CrudNode | RealtimeNode | JobNode | SeedNode | AdminNode | StorageNode | EmailNode | CacheNode`
+The `VaspNode` union covers all 20 concrete node types:
+`AppNode | AuthNode | EntityNode | RouteNode | PageNode | QueryNode | ActionNode | ApiNode | MiddlewareNode | CrudNode | RealtimeNode | JobNode | SeedNode | AdminNode | StorageNode | EmailNode | CacheNode | WebhookNode | ObservabilityNode | AutoPageNode`
 
 ### Entity Types
 

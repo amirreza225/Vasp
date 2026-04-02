@@ -28,27 +28,29 @@ console.log(result.errors)         // [] on success
 
 ## Generator Pipeline
 
-16 generators run in dependency order (defined in `generate.ts`):
+19 generators run in dependency order (defined in `generate.ts`):
 
 | # | Generator | Output |
 |---|---|---|
 | 1 | `ScaffoldGenerator` | `package.json`, `.gitignore`, `.env`, `.env.example`, `bunfig.toml`, `tsconfig.json` |
 | 2 | `DrizzleSchemaGenerator` | `drizzle/schema.{js\|ts}` — typed columns, enums, relations, indexes from `entity` blocks |
 | 3 | `BackendGenerator` | `server/index.{js\|ts}` (Elysia entry + `/api/health`), `server/middleware/` (rateLimit, CSRF, errorHandler, logger), DB client, startup env validation for `app.env` |
-| 4 | `AuthGenerator` | Auth routes, JWT middleware plugin, `Login.vue`, `Register.vue` |
-| 5 | `MiddlewareGenerator` | `server/middleware/custom/` — one file per `middleware` block |
-| 6 | `CacheGenerator` | `server/cache/` — cache store setup (memory / Redis / Valkey) |
-| 7 | `QueryActionGenerator` | `server/routes/queries/`, `server/routes/actions/` |
-| 8 | `ApiGenerator` | `server/routes/api/` — one file per `api` block |
-| 9 | `CrudGenerator` | `server/routes/crud/` + client CRUD helpers |
-| 10 | `RealtimeGenerator` | `server/routes/realtime/` + `useRealtime` composable |
-| 11 | `JobGenerator` | `server/jobs/` (PgBoss workers) + schedule endpoints |
-| 12 | `EmailGenerator` | `server/email/` — provider setup (Resend, SendGrid, SMTP) + mailer helpers |
-| 13 | `SeedGenerator` | `server/db/seed.{js\|ts}` — wraps the user-supplied seed function |
-| 14 | `StorageGenerator` | `server/routes/storage/` — file upload endpoints (S3, R2, GCS, local) |
-| 15 | `FrontendGenerator` | Vue 3 + Vite (SPA) **or** Nuxt 4 (SSR/SSG) frontend |
-| 16 | `AutoPageGenerator` | `pages/<path>.vue` — list/form/detail pages from `autoPage` blocks (PrimeVue 4) |
-| 17 | `AdminGenerator` | `admin/` — standalone Ant Design Vue admin panel (only when `admin` block present) |
+| 4 | `ObservabilityGenerator` | OpenTelemetry tracing, Prometheus/OTLP metrics, structured logging, error tracking (Sentry/Datadog) |
+| 5 | `AuthGenerator` | Auth routes, JWT middleware plugin, `Login.vue`, `Register.vue` |
+| 6 | `MiddlewareGenerator` | `server/middleware/custom/` — one file per `middleware` block |
+| 7 | `CacheGenerator` | `server/cache/` — cache store setup (memory / Redis / Valkey) |
+| 8 | `QueryActionGenerator` | `server/routes/queries/`, `server/routes/actions/` |
+| 9 | `ApiGenerator` | `server/routes/api/` — one file per `api` block |
+| 10 | `CrudGenerator` | `server/routes/crud/` + client CRUD helpers |
+| 11 | `RealtimeGenerator` | `server/routes/realtime/` + `useRealtime` composable |
+| 12 | `AutoPageGenerator` | `pages/<path>.vue` — list/form/detail pages from `autoPage` blocks (PrimeVue 4) |
+| 13 | `JobGenerator` | `server/jobs/` (PgBoss/BullMQ/RedisStreams/RabbitMQ/Kafka workers) + schedule endpoints |
+| 14 | `EmailGenerator` | `server/email/` — provider setup (Resend, SendGrid, SMTP) + mailer helpers |
+| 15 | `SeedGenerator` | `server/db/seed.{js\|ts}` — wraps the user-supplied seed function |
+| 16 | `StorageGenerator` | `server/routes/storage/` — file upload endpoints (S3, R2, GCS, local) |
+| 17 | `WebhookGenerator` | Inbound webhook receivers + outbound CRUD event dispatchers |
+| 18 | `FrontendGenerator` | Vue 3 + Vite (SPA) **or** Nuxt 4 (SSR/SSG) frontend |
+| 19 | `AdminGenerator` | `admin/` — standalone Ant Design Vue admin panel (only when `admin` block present) |
 
 A failure in any generator aborts the pipeline and leaves the real output directory untouched (see Safe Regeneration below).
 
@@ -108,7 +110,7 @@ const plugin: VaspPlugin = {
 const result = generate(ast, { outputDir, plugins: [plugin] })
 ```
 
-Plugin generators run **after** all 19 built-in generators. The `write(relativePath, content)` callback records every emitted file in the manifest so incremental generation and orphan-deletion stay consistent. A path-traversal guard rejects any path that escapes the output directory.
+Plugin generators run **after** all built-in generators. The `write(relativePath, content)` callback records every emitted file in the manifest so incremental generation and orphan-deletion stay consistent. A path-traversal guard rejects any path that escapes the output directory.
 
 ### Template overrides
 
