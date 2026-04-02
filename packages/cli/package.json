@@ -1,6 +1,6 @@
 {
   "name": "vasp-cli",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "The Vasp CLI — declarative full-stack framework for Vue developers",
   "license": "Apache-2.0",
   "type": "module",

@@ -1,6 +1,6 @@
 {
   "name": "@vasp-framework/language-server",
-  "version": "0.1.0",
+  "version": "1.5.3",
   "private": true,
   "description": "LSP language server for the Vasp DSL — diagnostics, completions, hover, and go-to-definition",
   "license": "Apache-2.0",

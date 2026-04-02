@@ -2,7 +2,7 @@
   "name": "vasp-vscode",
   "displayName": "Vasp",
   "description": "Full-stack framework for Vue — syntax highlighting, snippets, diagnostics, completions, and go-to-definition for .vasp files.",
-  "version": "0.1.0",
+  "version": "1.5.3",
   "publisher": "vasp-framework",
   "private": true,
   "license": "MIT",

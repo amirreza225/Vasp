@@ -1,6 +1,6 @@
 {
   "name": "@vasp-framework/parser",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Lexer, parser, and semantic validator for the .vasp DSL",
   "license": "Apache-2.0",
   "type": "module",
