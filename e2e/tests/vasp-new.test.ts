@@ -273,6 +273,20 @@ describe('vasp new', () => {
       const result = vasp(['new', appName, ...flags, '--no-install'])
       expect(result.status, `vasp new failed:\n${result.stderr}`).toBe(0)
 
+      const runtimeDir = join(MONOREPO_ROOT, 'packages', 'runtime')
+      const runtimeDts = join(runtimeDir, 'dist', 'index.d.ts')
+      if (!existsSync(runtimeDts)) {
+        const buildRuntimeResult = spawnSync('bun', ['run', 'build'], {
+          cwd: runtimeDir,
+          encoding: 'utf8',
+          timeout: 120_000,
+        })
+        expect(
+          buildRuntimeResult.status,
+          `runtime build failed:\n${buildRuntimeResult.stdout}\n${buildRuntimeResult.stderr}`,
+        ).toBe(0)
+      }
+
       const appDir = join(TMP_DIR, appName)
       const pkgPath = join(appDir, 'package.json')
       const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as {
