@@ -1,4 +1,75 @@
-import type { FieldValidation } from "@vasp-framework/core";
+import type { FieldValidateConfig, FieldValidation } from "@vasp-framework/core";
+
+/**
+ * Effective validation shape used internally by `valibotSchema()`.
+ * Combines properties from both `FieldValidation` (the `@validate()` modifier)
+ * and `FieldValidateConfig` (the nested `validate { }` config block).
+ */
+export interface MergedFieldValidation {
+  // From FieldValidation (@validate modifier)
+  email?: boolean;
+  url?: boolean;
+  uuid?: boolean;
+  // Shared — FieldValidateConfig takes precedence
+  minLength?: number;
+  maxLength?: number;
+  min?: number;
+  max?: number;
+  // From FieldValidateConfig only
+  /** When present, overrides the `optional` parameter: true → required, false → optional */
+  required?: boolean;
+  /** Regex pattern string — adds v.regex() for String/Text fields */
+  pattern?: string;
+}
+
+/**
+ * Merges `FieldValidation` (from `@validate()`) with `FieldValidateConfig`
+ * (from the nested `validate {}` config block). When both are present,
+ * `configValidate` takes precedence for overlapping numeric constraints
+ * (`minLength`, `maxLength`, `min`, `max`).
+ *
+ * @param validation    - from `field.validation` (@validate modifier)
+ * @param configValidate - from `field.config.validate` (v2 DSL config block)
+ */
+export function mergeFieldValidation(
+  validation?: FieldValidation,
+  configValidate?: FieldValidateConfig,
+): MergedFieldValidation | undefined {
+  if (!validation && !configValidate) return undefined;
+
+  const merged: MergedFieldValidation = {};
+
+  // Properties that exist only in FieldValidation
+  if (validation?.email) merged.email = validation.email;
+  if (validation?.url) merged.url = validation.url;
+  if (validation?.uuid) merged.uuid = validation.uuid;
+
+  // Overlapping numeric constraints — configValidate takes precedence
+  const minLength = configValidate?.minLength ?? validation?.minLength;
+  const maxLength = configValidate?.maxLength ?? validation?.maxLength;
+  const min = configValidate?.min ?? validation?.min;
+  const max = configValidate?.max ?? validation?.max;
+  if (minLength != null) merged.minLength = minLength;
+  if (maxLength != null) merged.maxLength = maxLength;
+  if (min != null) merged.min = min;
+  if (max != null) merged.max = max;
+
+  // Properties that exist only in FieldValidateConfig
+  if (configValidate?.required !== undefined) merged.required = configValidate.required;
+  if (configValidate?.pattern !== undefined) merged.pattern = configValidate.pattern;
+
+  return merged;
+}
+
+/** Returns true if the value looks like a Handlebars options object. */
+function isHandlebarsOptions(v: unknown): v is { hash: unknown } {
+  return (
+    v !== null &&
+    typeof v === "object" &&
+    !Array.isArray(v) &&
+    "hash" in (v as object)
+  );
+}
 
 /**
  * Maps a Vasp field type + nullability + validation rules to a Valibot schema
@@ -7,12 +78,14 @@ import type { FieldValidation } from "@vasp-framework/core";
  * Extracted from the `valibotSchema` Handlebars helper so that the mapping
  * logic can be unit-tested directly without going through template rendering.
  *
- * @param fieldType  - Vasp primitive type (String, Text, Int, Float, Boolean,
- *                     DateTime, Json, Enum, File) or a relation entity name.
- * @param nullable   - whether the field accepts null.
- * @param optional   - whether the field is optional (v.optional wrapper).
- * @param enumValues - array of string literals for Enum fields.
- * @param validation - field-level validation rules (@validate modifier).
+ * @param fieldType      - Vasp primitive type (String, Text, Int, Float, Boolean,
+ *                         DateTime, Json, Enum, File) or a relation entity name.
+ * @param nullable       - whether the field accepts null.
+ * @param optional       - whether the field is optional (v.optional wrapper).
+ * @param enumValues     - array of string literals for Enum fields.
+ * @param validation     - field-level validation rules from the @validate modifier.
+ * @param configValidate - field-level validation from the nested `validate {}` config block.
+ *                         Takes precedence over `validation` for overlapping constraints.
  */
 export function valibotSchema(
   fieldType: string,
@@ -20,18 +93,37 @@ export function valibotSchema(
   optional?: boolean | string,
   enumValues?: unknown,
   validation?: unknown,
+  configValidate?: unknown,
 ): string {
   const isNullable = nullable === true;
-  const isOptional = optional === true || optional === "true";
-  // Strip Handlebars options object (has a `hash` property) so callers from
-  // Handlebars helpers that forward the raw options object are handled safely.
-  const vld =
-    validation &&
+
+  // Strip Handlebars options objects passed as validation/configValidate
+  const rawValidation =
+    validation != null &&
     typeof validation === "object" &&
     !Array.isArray(validation) &&
-    !("hash" in (validation as object))
+    !isHandlebarsOptions(validation)
       ? (validation as FieldValidation)
       : undefined;
+
+  const rawConfigValidate =
+    configValidate != null &&
+    typeof configValidate === "object" &&
+    !Array.isArray(configValidate) &&
+    !isHandlebarsOptions(configValidate)
+      ? (configValidate as FieldValidateConfig)
+      : undefined;
+
+  // Merge both validation sources; config.validate takes precedence
+  const vld = mergeFieldValidation(rawValidation, rawConfigValidate);
+
+  // config.validate.required overrides the optional parameter when present
+  let isOptional: boolean;
+  if (vld?.required !== undefined) {
+    isOptional = !vld.required;
+  } else {
+    isOptional = optional === true || optional === "true";
+  }
 
   let base: string;
 
@@ -69,6 +161,13 @@ export function valibotSchema(
       parts.push("v.minLength(1)");
     }
     if (vld?.maxLength != null) parts.push(`v.maxLength(${vld.maxLength})`);
+
+    // Regex pattern constraint (from config.validate.pattern)
+    // Use new RegExp(string) instead of a /literal/ so that forward slashes, backslashes,
+    // and other special characters in the pattern are all safely handled by JSON.stringify().
+    if (vld?.pattern) {
+      parts.push(`v.regex(new RegExp(${JSON.stringify(vld.pattern)}))`);
+    }
 
     base = parts.length > 1 ? `v.pipe(${parts.join(", ")})` : parts[0]!;
   } else if (fieldType === "Int" || fieldType === "Float") {

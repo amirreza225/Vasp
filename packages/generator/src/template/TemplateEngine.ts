@@ -151,7 +151,8 @@ export class TemplateEngine {
         optional?: unknown,
         enumValues?: unknown,
         validation?: unknown,
-      ) => valibotSchema(fieldType, nullable, optional as boolean | string | undefined, enumValues, validation),
+        configValidate?: unknown,
+      ) => valibotSchema(fieldType, nullable, optional as boolean | string | undefined, enumValues, validation, configValidate),
     );
 
     /** lookup: returns obj[key] — mirrors Handlebars built-in for sandboxed create() instances */

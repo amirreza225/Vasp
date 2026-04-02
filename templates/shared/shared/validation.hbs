@@ -11,7 +11,7 @@ export const Create{{pascalCase name}}Schema = v.object({
 {{#unless (includes modifiers "id")}}
 {{#unless isUpdatedAt}}
 {{#unless (includes modifiers "default_now")}}
-  {{name}}: {{{valibotSchema type nullable nullable enumValues validation}}},
+  {{name}}: {{{valibotSchema type nullable nullable enumValues validation config.validate}}},
 {{/unless}}
 {{/unless}}
 {{/unless}}

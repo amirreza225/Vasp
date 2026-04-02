@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { valibotSchema } from "./valibotSchema.js";
+import { mergeFieldValidation, valibotSchema } from "./valibotSchema.js";
 
 // Reusable constant for the validated-date pipe expression
 const VALID_DATE =
@@ -252,4 +252,134 @@ describe("valibotSchema — Handlebars options guard", () => {
       "v.pipe(v.string(), v.minLength(1))",
     );
   });
+
+  it("ignores a Handlebars options object passed as configValidate", () => {
+    const handlebarsOptions = { hash: {}, fn: () => "" };
+    expect(valibotSchema("String", false, false, undefined, undefined, handlebarsOptions)).toBe(
+      "v.pipe(v.string(), v.minLength(1))",
+    );
+  });
 });
+
+// ---- mergeFieldValidation ----
+
+describe("mergeFieldValidation", () => {
+  it("returns undefined when both sources are absent", () => {
+    expect(mergeFieldValidation(undefined, undefined)).toBeUndefined();
+  });
+
+  it("returns FieldValidation properties when only @validate is present", () => {
+    const result = mergeFieldValidation({ email: true, minLength: 5 });
+    expect(result).toMatchObject({ email: true, minLength: 5 });
+    expect(result?.required).toBeUndefined();
+    expect(result?.pattern).toBeUndefined();
+  });
+
+  it("returns FieldValidateConfig properties when only config.validate is present", () => {
+    const result = mergeFieldValidation(undefined, { required: true, minLength: 3, pattern: "^\\w+$" });
+    expect(result).toMatchObject({ required: true, minLength: 3, pattern: "^\\w+$" });
+    expect(result?.email).toBeUndefined();
+  });
+
+  it("config.validate minLength takes precedence over @validate minLength", () => {
+    const result = mergeFieldValidation({ minLength: 1 }, { minLength: 5 });
+    expect(result?.minLength).toBe(5);
+  });
+
+  it("config.validate maxLength takes precedence over @validate maxLength", () => {
+    const result = mergeFieldValidation({ maxLength: 100 }, { maxLength: 50 });
+    expect(result?.maxLength).toBe(50);
+  });
+
+  it("config.validate min/max take precedence over @validate min/max", () => {
+    const result = mergeFieldValidation({ min: 0, max: 100 }, { min: 5, max: 50 });
+    expect(result?.min).toBe(5);
+    expect(result?.max).toBe(50);
+  });
+
+  it("falls back to @validate value when config.validate does not set the same field", () => {
+    const result = mergeFieldValidation({ minLength: 2, maxLength: 80 }, { required: true });
+    expect(result?.minLength).toBe(2);
+    expect(result?.maxLength).toBe(80);
+    expect(result?.required).toBe(true);
+  });
+
+  it("preserves email/url/uuid from @validate even when configValidate is present", () => {
+    const result = mergeFieldValidation({ email: true }, { required: true });
+    expect(result?.email).toBe(true);
+    expect(result?.required).toBe(true);
+  });
+});
+
+// ---- config.validate integration ----
+
+describe("valibotSchema — config.validate (FieldValidateConfig) integration", () => {
+  it("config.validate.required:false makes the field optional", () => {
+    // Without required, optional=false → not wrapped
+    expect(valibotSchema("String", false, false, undefined, undefined, { required: false })).toBe(
+      "v.optional(v.pipe(v.string(), v.minLength(1)))",
+    );
+  });
+
+  it("config.validate.required:true keeps the field required even when optional=true", () => {
+    expect(valibotSchema("String", false, true, undefined, undefined, { required: true })).toBe(
+      "v.pipe(v.string(), v.minLength(1))",
+    );
+  });
+
+  it("config.validate.minLength takes precedence over @validate.minLength", () => {
+    const result = valibotSchema("String", false, false, undefined, { minLength: 1 }, { minLength: 5 });
+    expect(result).toContain("v.minLength(5)");
+    expect(result).not.toContain("v.minLength(1)");
+  });
+
+  it("config.validate.maxLength takes precedence over @validate.maxLength", () => {
+    const result = valibotSchema("String", false, false, undefined, { maxLength: 100 }, { maxLength: 50 });
+    expect(result).toContain("v.maxLength(50)");
+    expect(result).not.toContain("v.maxLength(100)");
+  });
+
+  it("config.validate.min/max take precedence over @validate.min/max for Int", () => {
+    const result = valibotSchema("Int", false, false, undefined, { min: 0, max: 100 }, { min: 5, max: 50 });
+    expect(result).toBe("v.pipe(v.number(), v.minValue(5), v.maxValue(50))");
+  });
+
+  it("config.validate.pattern adds v.regex() for String fields", () => {
+    const result = valibotSchema("String", false, false, undefined, undefined, { pattern: "^\\d+$" });
+    expect(result).toContain('v.regex(new RegExp("^\\\\d+$"))');
+  });
+
+  it("config.validate.pattern adds v.regex() for Text fields", () => {
+    const result = valibotSchema("Text", false, false, undefined, undefined, { pattern: "^[a-z]+$" });
+    expect(result).toContain('v.regex(new RegExp("^[a-z]+$"))');
+  });
+
+  it("config.validate.pattern safely handles forward slashes via JSON.stringify", () => {
+    const result = valibotSchema("String", false, false, undefined, undefined, { pattern: "https?://example\\.com" });
+    expect(result).toContain('v.regex(new RegExp("https?://example\\\\.com"))');
+  });
+
+  it("config.validate.pattern is not applied to non-String/Text fields", () => {
+    // For Int, pattern has no effect (Int doesn't handle pattern)
+    const result = valibotSchema("Int", false, false, undefined, undefined, { pattern: "^\\d+$" });
+    expect(result).not.toContain("v.regex");
+  });
+
+  it("combines config.validate.minLength and pattern in one pipe", () => {
+    const result = valibotSchema("String", false, false, undefined, undefined, { minLength: 3, pattern: "^\\w+$" });
+    expect(result).toBe('v.pipe(v.string(), v.minLength(3), v.regex(new RegExp("^\\\\w+$")))');
+  });
+
+  it("@validate.email is preserved when config.validate only adds required", () => {
+    const result = valibotSchema("String", false, false, undefined, { email: true }, { required: true });
+    expect(result).toContain("v.email()");
+    // required:true means not optional
+    expect(result).not.toContain("v.optional");
+  });
+
+  it("config.validate alone with no @validate still generates correct schema", () => {
+    const result = valibotSchema("Int", false, false, undefined, undefined, { min: 1, max: 10 });
+    expect(result).toBe("v.pipe(v.number(), v.minValue(1), v.maxValue(10))");
+  });
+});
+
