@@ -31,6 +31,7 @@ import {
 import type { GeneratorContext } from "../GeneratorContext.js";
 import type { Manifest } from "../manifest/Manifest.js";
 import type { TemplateEngine } from "../template/TemplateEngine.js";
+import type { TemplateExtraData } from "./template-data.js";
 import { writeFile } from "../utils/fs.js";
 
 /** Resolved PrimeVue UI configuration exposed to every template via baseData(). */
@@ -161,7 +162,7 @@ export abstract class BaseGenerator {
 
   protected render(
     templateKey: string,
-    data: Partial<BaseTemplateData> & Record<string, unknown> = {},
+    data: Partial<BaseTemplateData & TemplateExtraData> = {},
   ): string {
     return this.engine.render(templateKey, { ...this.baseData(), ...data });
   }

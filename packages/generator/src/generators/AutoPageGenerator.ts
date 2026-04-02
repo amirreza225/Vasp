@@ -1,5 +1,10 @@
 import type { AutoPageNode, EntityNode, FieldNode } from "@vasp-framework/core";
 import { BaseGenerator } from "./BaseGenerator.js";
+import type {
+  AutoPageResolvedColumn,
+  AutoPageResolvedField,
+  TemplateExtraData,
+} from "./template-data.js";
 
 // @exhaustiveness-partial: field-type
 // AutoPageGenerator maps field types to PrimeVue component flags (isBoolean,
@@ -47,7 +52,32 @@ export class AutoPageGenerator extends BaseGenerator {
   private resolveAutoPageData(
     ap: AutoPageNode,
     entity: EntityNode,
-  ): Record<string, unknown> {
+  ): Pick<
+    TemplateExtraData,
+    | "resolvedColumns"
+    | "resolvedFields"
+    | "entityNameCamel"
+    | "entityNamePascal"
+    | "layout"
+    | "isTwoColumn"
+    | "hasColumns"
+    | "hasFields"
+    | "hasSortable"
+    | "hasFilterable"
+    | "hasSearchable"
+    | "hasRowActions"
+    | "hasTopActions"
+    | "hasCreate"
+    | "hasExport"
+    | "hasViewRow"
+    | "hasEditRow"
+    | "hasDeleteRow"
+    | "hasPaginate"
+    | "pageSize"
+    | "successRoute"
+    | "pageTitle"
+    | "fieldCount"
+  > {
     const fieldMap = new Map<string, FieldNode>(
       entity.fields.map((f) => [f.name, f]),
     );
@@ -57,7 +87,7 @@ export class AutoPageGenerator extends BaseGenerator {
       ? ap.columns
       : entity.fields.map((f) => f.name);
 
-    const resolvedColumns = columnKeys.map((key) => {
+    const resolvedColumns: AutoPageResolvedColumn[] = columnKeys.map((key) => {
       const field = fieldMap.get(key);
       return {
         key,
@@ -77,7 +107,7 @@ export class AutoPageGenerator extends BaseGenerator {
           .filter((f) => !f.modifiers?.includes("id"))
           .map((f) => f.name);
 
-    const resolvedFields = fieldKeys.map((key) => {
+    const resolvedFields: AutoPageResolvedField[] = fieldKeys.map((key) => {
       const field = fieldMap.get(key);
       return {
         key,

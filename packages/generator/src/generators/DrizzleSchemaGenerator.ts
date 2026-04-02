@@ -2,26 +2,7 @@ import type { VaspAST } from "@vasp-framework/core";
 import type { EntitySnapshot, FieldSnapshot, SchemaSnapshot } from "../manifest/Manifest.js";
 import { toCamelCase, toPascalCase, toPlural } from "../template/TemplateEngine.js";
 import { BaseGenerator } from "./BaseGenerator.js";
-
-/** Junction table descriptor for an implicit M:N relation */
-interface JunctionTable {
-  /** Drizzle const name, e.g. "projectsToUsers" */
-  tableConst: string;
-  /** SQL table name, e.g. "projects_to_users" */
-  tableName: string;
-  /** First entity name (alphabetically first) */
-  entityA: string;
-  /** Drizzle table const for entityA, e.g. "projects" */
-  entityATable: string;
-  /** FK column name for entityA's PK, e.g. "projectId" */
-  entityAIdField: string;
-  /** Second entity name */
-  entityB: string;
-  /** Drizzle table const for entityB, e.g. "users" */
-  entityBTable: string;
-  /** FK column name for entityB's PK, e.g. "userId" */
-  entityBIdField: string;
-}
+import type { JunctionTable } from "./template-data.js";
 
 export class DrizzleSchemaGenerator extends BaseGenerator {
   run(): void {

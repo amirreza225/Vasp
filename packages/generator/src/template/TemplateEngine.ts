@@ -38,7 +38,7 @@ export class TemplateEngine {
   /**
    * Render a template by its key (relative path from the template root).
    */
-  render(key: string, data: Record<string, unknown>): string {
+  render(key: string, data: object): string {
     const tmpl = this.cache.get(key);
     if (!tmpl) {
       throw new GeneratorError(
@@ -52,7 +52,7 @@ export class TemplateEngine {
   /**
    * Render an inline Handlebars string (used for testing helpers).
    */
-  renderString(source: string, data: Record<string, unknown>): string {
+  renderString(source: string, data: object): string {
     return this.hbs.compile(source)(data);
   }
 
