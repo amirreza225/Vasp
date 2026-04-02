@@ -35,7 +35,7 @@ import type { TemplateExtraData } from "./template-data.js";
 import { writeFile } from "../utils/fs.js";
 
 /** Resolved PrimeVue UI configuration exposed to every template via baseData(). */
-export interface ResolvedUIConfig {
+interface ResolvedUIConfig {
   theme: string;
   themeImportName: string;
   themeImportPath: string;
@@ -52,7 +52,7 @@ export interface ResolvedUIConfig {
  * TypeScript can catch incorrect / missing values at compile time instead of
  * letting them surface as silent Handlebars rendering failures.
  */
-export interface BaseTemplateData {
+interface BaseTemplateData {
   // ── App identity ────────────────────────────────────────────────────────
   appName: string;
   appTitle: string;

@@ -1,26 +1,19 @@
 {
   "workspaces": {
     ".": {
-      "entry": ["e2e/**/*.mts", "playwright.config.mts"],
-      "ignoreDependencies": ["prettier", "bun-types", "@types/handlebars"]
+      "entry": ["e2e/**/*.mts", "playwright*.config.mts"],
+      "ignoreDependencies": ["prettier"]
     },
     "packages/cli": {
-      "entry": ["src/index.ts", "bin/vasp.ts"],
-      "ignoreDependencies": [
-        "@vasp-framework/core",
-        "@vasp-framework/parser",
-        "@vasp-framework/generator",
-        "@vasp-framework/runtime"
-      ]
+      "entry": ["src/index.ts", "bin/vasp.ts"]
     },
     "packages/core": {},
     "packages/parser": {},
     "packages/generator": {
-      "entry": ["src/index.ts", "src/generate.ts"]
+      "entry": ["src/generate.ts"]
     },
     "packages/runtime": {
       "entry": [
-        "src/index.ts",
         "src/client/composables/*.ts",
         "src/client/ofetch.ts"
       ]

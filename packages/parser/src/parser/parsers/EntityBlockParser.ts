@@ -73,7 +73,7 @@ function parseValidateArgs(raw: string): FieldValidation {
  *     }
  *   }
  */
-export function parseFieldConfigBlock(
+function parseFieldConfigBlock(
   ctx: IParserContext,
   fieldName: string,
 ): EntityFieldConfig {

@@ -7,7 +7,7 @@ import { TokenType } from "../../lexer/TokenType.js";
 import type { IParserContext } from "../ParserContext.js";
 
 /** Parses: [Entity:operation, Entity:operation, ...] for invalidateOn arrays */
-export function parseInvalidateOnArray(ctx: IParserContext): string[] {
+function parseInvalidateOnArray(ctx: IParserContext): string[] {
   ctx.consume(TokenType.LBRACKET);
   const items: string[] = [];
 
@@ -26,7 +26,7 @@ export function parseInvalidateOnArray(ctx: IParserContext): string[] {
 }
 
 /** Parses the `cache: { store, ttl, key, invalidateOn }` sub-block inside a query */
-export function parseQueryCacheConfig(
+function parseQueryCacheConfig(
   ctx: IParserContext,
   loc: SourceLocation,
 ): QueryCacheConfig {
