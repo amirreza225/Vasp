@@ -21,7 +21,7 @@
     },
     "packages/cli": {
       "name": "vasp-cli",
-      "version": "1.5.2",
+      "version": "1.5.3",
       "bin": {
         "vasp": "dist/vasp",
       },
@@ -39,7 +39,7 @@
     },
     "packages/core": {
       "name": "@vasp-framework/core",
-      "version": "1.5.2",
+      "version": "1.5.3",
       "devDependencies": {
         "typescript": "^6.0.2",
         "vitest": "^4.1.2",
@@ -47,7 +47,7 @@
     },
     "packages/generator": {
       "name": "@vasp-framework/generator",
-      "version": "1.5.2",
+      "version": "1.5.3",
       "dependencies": {
         "@vasp-framework/core": "1.5.2",
         "@vasp-framework/parser": "1.5.2",
@@ -60,9 +60,8 @@
     },
     "packages/language-server": {
       "name": "@vasp-framework/language-server",
-      "version": "0.1.0",
+      "version": "1.5.3",
       "dependencies": {
-        "@vasp-framework/core": "workspace:*",
         "@vasp-framework/parser": "workspace:*",
         "vscode-languageserver": "^9.0.1",
         "vscode-languageserver-textdocument": "^1.0.12",
@@ -74,7 +73,7 @@
     },
     "packages/parser": {
       "name": "@vasp-framework/parser",
-      "version": "1.5.2",
+      "version": "1.5.3",
       "dependencies": {
         "@vasp-framework/core": "1.5.2",
       },
@@ -85,7 +84,7 @@
     },
     "packages/runtime": {
       "name": "@vasp-framework/runtime",
-      "version": "1.5.2",
+      "version": "1.5.3",
       "dependencies": {
         "ofetch": "^1.5.1",
         "vue": "^3.5.31",
@@ -100,7 +99,7 @@
     },
     "packages/vscode-extension": {
       "name": "vasp-vscode",
-      "version": "0.1.0",
+      "version": "1.5.3",
       "dependencies": {
         "vscode-languageclient": "^9.0.1",
       },
@@ -738,6 +737,12 @@
 
     "@typescript-eslint/eslint-plugin/ignore": ["ignore@7.0.5", "", {}, "sha512-Hs59xBNfUIunMFgWAbGX5cq6893IbWg4KnrjbYwX3tx0ztorVgTDA6B2sxf8ejHJ4wz8BqGUMYlnzNBer5NvGg=="],
 
+    "@vasp-framework/generator/@vasp-framework/core": ["@vasp-framework/core@1.5.2", "", {}, "sha512-bzSpKW9mHWAFRPHUwZGe/YVwgyTK7NXfaoLJ/vqUP7MlUeOeId6+M7YS77mGVmdAoLG1Oiqe99reGyTifhPcSg=="],
+
+    "@vasp-framework/generator/@vasp-framework/parser": ["@vasp-framework/parser@1.5.2", "", { "dependencies": { "@vasp-framework/core": "1.3.4" } }, "sha512-gUdYyX4h144TZ8QnSoMHWMqLr90EvPTGcMEUCtCdo+a8hyY4suNTtEnZ9W9PT/d3XfVkQXEf33rXBzhGNDoO3A=="],
+
+    "@vasp-framework/parser/@vasp-framework/core": ["@vasp-framework/core@1.5.2", "", {}, "sha512-bzSpKW9mHWAFRPHUwZGe/YVwgyTK7NXfaoLJ/vqUP7MlUeOeId6+M7YS77mGVmdAoLG1Oiqe99reGyTifhPcSg=="],
+
     "@vue/compiler-core/estree-walker": ["estree-walker@2.0.2", "", {}, "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w=="],
 
     "@vue/compiler-sfc/estree-walker": ["estree-walker@2.0.2", "", {}, "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w=="],
@@ -748,8 +753,22 @@
 
     "rollup/fsevents": ["fsevents@2.3.3", "", { "os": "darwin" }, "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw=="],
 
+    "vasp-cli/@vasp-framework/core": ["@vasp-framework/core@1.5.2", "", {}, "sha512-bzSpKW9mHWAFRPHUwZGe/YVwgyTK7NXfaoLJ/vqUP7MlUeOeId6+M7YS77mGVmdAoLG1Oiqe99reGyTifhPcSg=="],
+
+    "vasp-cli/@vasp-framework/generator": ["@vasp-framework/generator@1.5.2", "", { "dependencies": { "@vasp-framework/core": "1.3.4", "@vasp-framework/parser": "1.3.4", "handlebars": "^4.7.8" } }, "sha512-E4sPJG4JC6fGKoAWIT90MmfViVry6FDqWDLf3v6IgOme9yXbFQjchi43Tf+h+7lVOP9hL3TTRCJjAq5Xm0AvIw=="],
+
+    "vasp-cli/@vasp-framework/parser": ["@vasp-framework/parser@1.5.2", "", { "dependencies": { "@vasp-framework/core": "1.3.4" } }, "sha512-gUdYyX4h144TZ8QnSoMHWMqLr90EvPTGcMEUCtCdo+a8hyY4suNTtEnZ9W9PT/d3XfVkQXEf33rXBzhGNDoO3A=="],
+
     "vite/fsevents": ["fsevents@2.3.3", "", { "os": "darwin" }, "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw=="],
 
     "vscode-languageclient/minimatch": ["minimatch@5.1.9", "", { "dependencies": { "brace-expansion": "^2.0.1" } }, "sha512-7o1wEA2RyMP7Iu7GNba9vc0RWWGACJOCZBJX2GJWip0ikV+wcOsgVuY9uE8CPiyQhkGFSlhuSkZPavN7u1c2Fw=="],
+
+    "@vasp-framework/generator/@vasp-framework/parser/@vasp-framework/core": ["@vasp-framework/core@1.3.4", "", {}, "sha512-dAF3yHhcUfCwEuuoi7C7+Hqddx++tDqFUGYMS3dDEieXWBsjwXZOcJNBmEIC1ApJGONIyuwSh+HJEqxlFoiqZw=="],
+
+    "vasp-cli/@vasp-framework/generator/@vasp-framework/core": ["@vasp-framework/core@1.3.4", "", {}, "sha512-dAF3yHhcUfCwEuuoi7C7+Hqddx++tDqFUGYMS3dDEieXWBsjwXZOcJNBmEIC1ApJGONIyuwSh+HJEqxlFoiqZw=="],
+
+    "vasp-cli/@vasp-framework/generator/@vasp-framework/parser": ["@vasp-framework/parser@1.3.4", "", { "dependencies": { "@vasp-framework/core": "1.3.4" } }, "sha512-XBsrgm2g0QKSApqhbtEDTYIyxlOCJ4FeYXpd2vfa129NvOy6m82PxkF+DUeLsWTBXEZvFIAyJgDL16VHb282Xw=="],
+
+    "vasp-cli/@vasp-framework/parser/@vasp-framework/core": ["@vasp-framework/core@1.3.4", "", {}, "sha512-dAF3yHhcUfCwEuuoi7C7+Hqddx++tDqFUGYMS3dDEieXWBsjwXZOcJNBmEIC1ApJGONIyuwSh+HJEqxlFoiqZw=="],
   }
 }
