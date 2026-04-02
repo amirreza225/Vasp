@@ -1,22 +1,23 @@
-<script setup>
+<script setup{{#if isTypeScript}} lang="ts"{{/if}}>
 import { ref, onMounted } from 'vue'
+import Card from 'primevue/card'
 {{#each adminEntities}}
-import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{../ext}}'
+import { {{pascalCase name}}Api } from '../api/{{kebabCase name}}.js'
 {{/each}}
 
+const loading = ref(true)
 const counts = ref({
 {{#each adminEntities}}
   {{camelCase name}}: 0,
 {{/each}}
 })
-const loading = ref(true)
 
 async function fetchCounts() {
   loading.value = true
   try {
     const results = await Promise.allSettled([
 {{#each adminEntities}}
-      {{pascalCase name}}Api.list({ limit: 1, offset: 0 }).then((r) => ({ key: '{{camelCase name}}', total: r.total })),
+      {{pascalCase name}}Api.list({ limit: 1, offset: 0 }).then((r) => ({ key: '{{camelCase name}}', total: r?.total ?? 0 })),
 {{/each}}
     ])
     for (const result of results) {
@@ -34,21 +35,52 @@ onMounted(fetchCounts)
 
 <template>
   <div>
-    <a-row :gutter="[16, 16]" style="margin-bottom: 24px">
+    <h2 class="vasp-admin-page-title">Dashboard</h2>
+    <div class="vasp-admin-stats">
 {{#each adminEntities}}
-      <a-col :xs="24" :sm="12" :lg="6">
-        <a-card hoverable>
-          <a-statistic
-            title="{{pascalCase name}}"
-            :value="counts.{{camelCase name}}"
-            :loading="loading"
-          />
-        </a-card>
-      </a-col>
+      <Card class="vasp-admin-stat-card">
+        <template #title>{{pascalCase name}}</template>
+        <template #content>
+          <span class="vasp-admin-stat-value" v-if="!loading">\{{ counts.{{camelCase name}} }}</span>
+          <span class="vasp-admin-stat-loading" v-else>…</span>
+        </template>
+      </Card>
 {{/each}}
-    </a-row>
-    <a-card title="Welcome to {{appTitle}} Admin">
-      <p>Manage your application data using the sidebar navigation.</p>
-    </a-card>
+    </div>
+    <Card style="margin-top: 20px">
+      <template #title>Welcome to {{appTitle}} Admin</template>
+      <template #content>
+        <p>Manage your application data using the sidebar navigation.</p>
+      </template>
+    </Card>
   </div>
 </template>
+
+<style scoped>
+.vasp-admin-page-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 20px;
+}
+
+.vasp-admin-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.vasp-admin-stat-card {
+  text-align: center;
+}
+
+.vasp-admin-stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--p-primary-500, #6366f1);
+}
+
+.vasp-admin-stat-loading {
+  font-size: 24px;
+  color: var(--p-surface-400, #adb5bd);
+}
+</style>

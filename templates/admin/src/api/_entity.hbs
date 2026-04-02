@@ -1,31 +1,27 @@
-import axios from 'axios'
-
-const http = axios.create({
-  baseURL: '/api/admin',
-  withCredentials: true,
-})
-
-http.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const serverError = error?.response?.data?.error
-    if (serverError?.message) {
-      error.message = serverError.message
-    }
-    if (serverError?.code) {
-      error.errorCode = serverError.code
-    }
-    if (serverError?.stack) {
-      error.serverStack = serverError.stack
-    }
-    return Promise.reject(error)
-  },
-)
+async function apiFetch(url, options) {
+  const res = await fetch('/api/admin' + url, {
+    credentials: 'include',
+    ...options,
+    headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
+  })
+  const json = await res.json()
+  if (!res.ok) {
+    const err = Object.assign(new Error(json?.error?.message ?? 'HTTP ' + res.status), {
+      errorCode: json?.error?.code ?? 'ERROR',
+      serverStack: json?.error?.stack ?? null,
+    })
+    throw err
+  }
+  return json
+}
 
 export const {{pascalCase name}}Api = {
-  list: (params) => http.get('/{{camelCase name}}', { params }).then(r => r.data),
-  get: (id) => http.get(`/{{camelCase name}}/${id}`).then(r => r.data),
-  create: (data) => http.post('/{{camelCase name}}', data).then(r => r.data),
-  update: (id, data) => http.put(`/{{camelCase name}}/${id}`, data).then(r => r.data),
-  remove: (id) => http.delete(`/{{camelCase name}}/${id}`).then(r => r.data),
+  list: (params) => {
+    const qs = params ? '?' + new URLSearchParams(params).toString() : ''
+    return apiFetch('/{{camelCase name}}' + qs).then(r => r.data)
+  },
+  get: (id) => apiFetch('/{{camelCase name}}/' + id).then(r => r.data),
+  create: (data) => apiFetch('/{{camelCase name}}', { method: 'POST', body: JSON.stringify(data) }).then(r => r.data),
+  update: (id, data) => apiFetch('/{{camelCase name}}/' + id, { method: 'PUT', body: JSON.stringify(data) }).then(r => r.data),
+  remove: (id) => apiFetch('/{{camelCase name}}/' + id, { method: 'DELETE' }),
 }

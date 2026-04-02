@@ -1,8 +1,18 @@
-<script setup>
-import { h, ref, watch{{#if hasManyToOneRelations}}, onMounted{{/if}} } from 'vue'
-import { {{pascalCase name}}Api } from '@/api/{{kebabCase name}}.{{ext}}'
-{{#each uniqueRelatedEntities}}import { {{pascalCase this}}Api } from '@/api/{{kebabCase this}}.{{../ext}}'
-{{/each}}import { message, notification } from 'ant-design-vue'
+<script setup{{#if isTypeScript}} lang="ts"{{/if}}>
+import { ref, watch{{#if hasManyToOneRelations}}, onMounted{{/if}} } from 'vue'
+import Dialog from 'primevue/dialog'
+import Button from 'primevue/button'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
+import Textarea from 'primevue/textarea'
+import Select from 'primevue/select'
+import ToggleSwitch from 'primevue/toggleswitch'
+import Password from 'primevue/password'
+import { useToast } from 'primevue/usetoast'
+import { {{pascalCase name}}Api } from '../../api/{{kebabCase name}}.js'
+{{#each uniqueRelatedEntities}}
+import { {{pascalCase this}}Api } from '../../api/{{kebabCase this}}.js'
+{{/each}}
 
 const props = defineProps({
   visible: Boolean,
@@ -10,6 +20,8 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['close', 'saved'])
+
+const toast = useToast()
 
 // JSON fields need string ↔ object conversion
 const jsonFields = [{{#each fields}}{{#unless isRelation}}{{#if (eq type "Json")}}'{{name}}', {{/if}}{{/unless}}{{/each}}]
@@ -21,21 +33,6 @@ const nullableStringTextFields = [{{#each fields}}{{#unless isRelation}}{{#unles
 // Options for relation selects (loaded on mount)
 {{#each manyToOneRelations}}const {{name}}Options = ref([])
 {{/each}}
-function showApiError(err, fallbackMsg) {
-  const errCode = err?.errorCode ?? 'ERROR'
-  const errMsg = err instanceof Error ? err.message : fallbackMsg
-  const errStack = import.meta.env.DEV ? (err?.serverStack ?? null) : null
-  notification.error({
-    message: `[${errCode}] ${errMsg}`,
-    ...(errStack
-      ? {
-          description: h('pre', { style: 'font-size:11px;max-height:200px;overflow:auto;white-space:pre-wrap;margin:0' }, errStack),
-          duration: 0,
-        }
-      : {}),
-  })
-}
-
 function emptyForm() {
   return {
 {{#each fields}}
@@ -78,7 +75,7 @@ onMounted(async () => {
 {{#each manyToOneRelations}}  try {
     const res = await {{pascalCase relatedEntity}}Api.list({ limit: 100, offset: 0 })
     // Label uses common display fields in priority order; falls back to the record's id.
-    {{name}}Options.value = (res.data?.items ?? []).map((r) => ({
+    {{name}}Options.value = (res?.items ?? []).map((r) => ({
       label: String(r.name ?? r.title ?? r.username ?? r.email ?? r.id),
       value: r.id,
     }))
@@ -86,6 +83,7 @@ onMounted(async () => {
 {{/each}}
 })
 {{/if}}
+
 async function handleSubmit() {
   loading.value = true
   try {
@@ -93,7 +91,7 @@ async function handleSubmit() {
     for (const k of jsonFields) {
       if (payload[k] && typeof payload[k] === 'string') {
         try { payload[k] = JSON.parse(payload[k]) } catch {
-          message.error(`Field "${k}" must be valid JSON`)
+          toast.add({ severity: 'error', summary: 'Invalid JSON', detail: `Field "${k}" must be valid JSON`, life: 4000 })
           return
         }
       }
@@ -111,7 +109,7 @@ async function handleSubmit() {
     }
     emit('saved')
   } catch (err) {
-    showApiError(err, 'Save failed')
+    toast.add({ severity: 'error', summary: 'Save Failed', detail: err instanceof Error ? err.message : 'An error occurred', life: 4000 })
   } finally {
     loading.value = false
   }
@@ -119,69 +117,109 @@ async function handleSubmit() {
 </script>
 
 <template>
-  <a-modal
-    :open="visible"
-    :title="record?.id ? 'Edit {{pascalCase name}}' : 'Create {{pascalCase name}}'"
-    :confirm-loading="loading"
-    @ok="handleSubmit"
-    @cancel="emit('close')"
+  <Dialog
+    :visible="visible"
+    :header="record?.id ? 'Edit {{pascalCase name}}' : 'Create {{pascalCase name}}'"
+    :style="{ width: '560px' }"
+    modal
+    @update:visible="emit('close')"
   >
-    <a-form :model="form" layout="vertical" style="margin-top: 16px">
+    <div class="vasp-admin-form">
 {{#each fields}}
 {{#unless isRelation}}
 {{#unless (includes modifiers "id")}}
 {{#unless isUpdatedAt}}
 {{#unless (includes modifiers "default_now")}}
-      <a-form-item label="{{pascalCase name}}"{{#if nullable}} extra="Optional"{{/if}} name="{{name}}">
+      <div class="vasp-admin-form-field">
+        <label class="vasp-admin-form-label">{{pascalCase name}}{{#if nullable}} <span class="vasp-optional">(optional)</span>{{/if}}</label>
 {{#if (eq type "Boolean")}}
-        <a-switch v-model:checked="form.{{name}}" />
+        <ToggleSwitch v-model="form.{{name}}" />
 {{else if (eq type "Int")}}
-        <a-input-number v-model:value="form.{{name}}" style="width: 100%" />
+        <InputNumber v-model="form.{{name}}" :use-grouping="false" class="w-full" />
 {{else if (eq type "Float")}}
-        <a-input-number v-model:value="form.{{name}}" :step="0.01" style="width: 100%" />
+        <InputNumber v-model="form.{{name}}" :min-fraction-digits="1" :max-fraction-digits="4" class="w-full" />
 {{else if (eq type "DateTime")}}
-        <a-input v-model:value="form.{{name}}" placeholder="YYYY-MM-DD HH:MM:SS" />
+        <InputText v-model="form.{{name}}" placeholder="YYYY-MM-DD HH:MM:SS" class="w-full" />
 {{else if (eq type "Text")}}
-        <a-textarea v-model:value="form.{{name}}" :rows="4" />
+        <Textarea v-model="form.{{name}}" :rows="4" class="w-full" auto-resize />
 {{else if (eq type "Json")}}
-        <a-textarea v-model:value="form.{{name}}" :rows="4" placeholder="{}" style="font-family: monospace" />
+        <Textarea v-model="form.{{name}}" :rows="4" class="w-full vasp-monospace" placeholder="{}" />
 {{else if (eq type "Enum")}}
-        <a-select v-model:value="form.{{name}}" style="width: 100%">
-{{#each enumValues}}
-          <a-select-option value="{{this}}">{{this}}</a-select-option>
-{{/each}}
-        </a-select>
+        <Select
+          v-model="form.{{name}}"
+          :options="[{{#each enumValues}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]"
+          class="w-full"
+        />
 {{else}}
-        <a-input v-model:value="form.{{name}}" />
+        <InputText v-model="form.{{name}}" class="w-full" />
 {{/if}}
-      </a-form-item>
+      </div>
 {{/unless}}
 {{/unless}}
 {{/unless}}
 {{/unless}}
 {{/each}}
 {{#each manyToOneRelations}}
-      <a-form-item label="{{pascalCase name}}"{{#if nullable}} extra="Optional"{{/if}} name="{{fkName}}">
-        <a-select
-          v-model:value="form.{{fkName}}"
+      <div class="vasp-admin-form-field">
+        <label class="vasp-admin-form-label">{{pascalCase name}}{{#if nullable}} <span class="vasp-optional">(optional)</span>{{/if}}</label>
+        <Select
+          v-model="form.{{fkName}}"
           :options="{{name}}Options"
+          option-label="label"
+          option-value="value"
           placeholder="Select {{pascalCase relatedEntity}}"
-          show-search
-          :filter-option="(input, opt) => (opt?.label?.toString().toLowerCase() ?? '').includes(input.toLowerCase())"
-          {{#if nullable}}:allow-clear="true"{{/if}}
-          style="width: 100%"
+          filter
+          {{#if nullable}}:show-clear="true"{{/if}}
+          class="w-full"
         />
-      </a-form-item>
+      </div>
 {{/each}}
 {{#if hasAuth}}{{#if (eq name auth.userEntity)}}{{#if (includes auth.methods "usernameAndPassword")}}
-      <a-form-item
-        name="password"
-        :label="record?.id ? 'New Password' : 'Password'"
-        :extra="record?.id ? 'Optional — leave blank to keep current password' : 'Required, min. 8 characters'"
-      >
-        <a-input-password v-model:value="form.password" placeholder="Min. 8 characters" />
-      </a-form-item>
+      <div class="vasp-admin-form-field">
+        <label class="vasp-admin-form-label">\{{ record?.id ? 'New Password' : 'Password' }}</label>
+        <Password v-model="form.password" :feedback="false" placeholder="Min. 8 characters" class="w-full" />
+        <small class="vasp-field-hint">\{{ record?.id ? 'Leave blank to keep current password' : 'Required, min. 8 characters' }}</small>
+      </div>
 {{/if}}{{/if}}{{/if}}
-    </a-form>
-  </a-modal>
+    </div>
+    <template #footer>
+      <Button label="Cancel" severity="secondary" outlined @click="emit('close')" />
+      <Button label="Save" :loading="loading" @click="handleSubmit" />
+    </template>
+  </Dialog>
 </template>
+
+<style scoped>
+.vasp-admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 4px 0;
+}
+
+.vasp-admin-form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vasp-admin-form-label {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.vasp-optional {
+  font-weight: 400;
+  color: var(--p-surface-400, #adb5bd);
+  font-size: 12px;
+}
+
+.vasp-field-hint {
+  color: var(--p-surface-500, #868e96);
+  font-size: 12px;
+}
+
+.vasp-monospace {
+  font-family: monospace;
+}
+</style>

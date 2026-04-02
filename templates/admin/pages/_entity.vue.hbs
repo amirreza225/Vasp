@@ -1,0 +1,8 @@
+<script setup{{#if isTypeScript}} lang="ts"{{/if}}>
+import {{pascalCase entity}}Admin from '@src/admin/views/{{kebabCase entity}}/index.vue'
+definePageMeta({ layout: 'admin'{{#if hasAuth}}, middleware: 'auth'{{/if}} })
+</script>
+
+<template>
+  <{{pascalCase entity}}Admin />
+</template>

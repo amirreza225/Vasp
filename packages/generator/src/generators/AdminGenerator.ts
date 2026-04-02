@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { ensureDir } from "../utils/fs.js";
 import { BaseGenerator } from "./BaseGenerator.js";
-import { DEFAULT_ADMIN_PORT, DEFAULT_BACKEND_PORT } from "@vasp-framework/core";
+import { DEFAULT_BACKEND_PORT } from "@vasp-framework/core";
 import { toCamelCase } from "../template/TemplateEngine.js";
 
 export class AdminGenerator extends BaseGenerator {
@@ -26,20 +26,14 @@ export class AdminGenerator extends BaseGenerator {
       );
     });
 
-    // Create directory structure under admin/
+    // Create directory structure inside the main SPA/SSR src/ directory.
+    // The admin panel is integrated as a lazy-loaded /admin route group so it
+    // shares the same node_modules, Vite process, and deployment origin.
     const adminDirs = [
-      "admin/src/router",
-      "admin/src/layouts",
-      "admin/src/views/dashboard",
-      "admin/src/api",
-      "admin/src/composables",
-      ...adminEntities.map(
-        (e) => `admin/src/views/${this.toKebabCase(e.name)}`,
-      ),
+      "src/admin/views/dashboard",
+      "src/admin/api",
+      ...adminEntities.map((e) => `src/admin/views/${this.toKebabCase(e.name)}`),
     ];
-    if (ast.auth) {
-      adminDirs.push("admin/src/views/login");
-    }
     for (const dir of adminDirs) {
       ensureDir(join(this.ctx.outputDir, dir));
     }
@@ -50,70 +44,21 @@ export class AdminGenerator extends BaseGenerator {
     const commonData = {
       adminEntities,
       backendPort: DEFAULT_BACKEND_PORT,
-      adminPort: DEFAULT_ADMIN_PORT,
     };
 
-    // ── Frontend files ────────────────────────────────────────────────
+    // ── Frontend files (integrated into main SPA/SSR) ─────────────────
 
-    // admin/package.json
+    // Admin layout component — used as the /admin parent route (SPA) or Nuxt layout (SSR)
     this.write(
-      "admin/package.json",
-      this.render("admin/package.json.hbs", commonData),
-    );
-
-    // admin/index.html
-    this.write(
-      "admin/index.html",
-      this.render("admin/index.html.hbs", commonData),
-    );
-
-    // admin/vite.config.{ext}
-    this.write(
-      `admin/vite.config.${ext}`,
-      this.render("admin/vite.config.hbs", commonData),
-    );
-
-    // admin/src/main.{ext}
-    this.write(
-      `admin/src/main.${ext}`,
-      this.render("admin/src/main.hbs", commonData),
-    );
-
-    // admin/src/App.vue
-    this.write(
-      "admin/src/App.vue",
-      this.render("admin/src/App.vue.hbs", commonData),
-    );
-
-    // admin/src/router/index.{ext}
-    this.write(
-      `admin/src/router/index.${ext}`,
-      this.render("admin/src/router/index.hbs", commonData),
-    );
-
-    // admin/src/layouts/AdminLayout.vue
-    this.write(
-      "admin/src/layouts/AdminLayout.vue",
+      "src/admin/AdminLayout.vue",
       this.render("admin/src/layouts/AdminLayout.vue.hbs", commonData),
     );
 
-    // admin/src/views/dashboard/index.vue
+    // Dashboard view
     this.write(
-      "admin/src/views/dashboard/index.vue",
+      "src/admin/views/Dashboard.vue",
       this.render("admin/src/views/dashboard/index.vue.hbs", commonData),
     );
-
-    // auth composable + login page — only when an auth block is present
-    if (ast.auth) {
-      this.write(
-        `admin/src/composables/useAdminAuth.${ext}`,
-        this.render("admin/src/composables/useAdminAuth.hbs", commonData),
-      );
-      this.write(
-        "admin/src/views/login/index.vue",
-        this.render("admin/src/views/login/index.vue.hbs", commonData),
-      );
-    }
 
     // Per-entity: API client + list view + form modal
     for (const entity of adminEntities) {
@@ -144,19 +89,56 @@ export class AdminGenerator extends BaseGenerator {
       const kebabName = this.toKebabCase(entity.name);
 
       this.write(
-        `admin/src/api/${kebabName}.${ext}`,
+        `src/admin/api/${kebabName}.${ext}`,
         this.render("admin/src/api/_entity.hbs", entityData),
       );
 
       this.write(
-        `admin/src/views/${kebabName}/index.vue`,
+        `src/admin/views/${kebabName}/index.vue`,
         this.render("admin/src/views/_entity/index.vue.hbs", entityData),
       );
 
       this.write(
-        `admin/src/views/${kebabName}/FormModal.vue`,
+        `src/admin/views/${kebabName}/FormModal.vue`,
         this.render("admin/src/views/_entity/FormModal.vue.hbs", entityData),
       );
+    }
+
+    // ── SSR (Nuxt): generate admin layout + per-page wrappers ─────────
+    // For SSR the admin components above are imported into Nuxt pages so that
+    // Nuxt handles routing via the file-system, and the layout uses <slot />.
+    if (this.ctx.isSsr) {
+      ensureDir(join(this.ctx.outputDir, "layouts"));
+      ensureDir(join(this.ctx.outputDir, "pages/admin"));
+      for (const entity of adminEntities) {
+        ensureDir(
+          join(
+            this.ctx.outputDir,
+            `pages/admin/${this.toKebabCase(entity.name)}`,
+          ),
+        );
+      }
+
+      this.write(
+        "layouts/admin.vue",
+        this.render("admin/layouts/admin.vue.hbs", commonData),
+      );
+
+      this.write(
+        "pages/admin/index.vue",
+        this.render("admin/pages/dashboard.vue.hbs", commonData),
+      );
+
+      for (const entity of adminEntities) {
+        const kebabName = this.toKebabCase(entity.name);
+        this.write(
+          `pages/admin/${kebabName}/index.vue`,
+          this.render("admin/pages/_entity.vue.hbs", {
+            ...commonData,
+            entity: entity.name,
+          }),
+        );
+      }
     }
 
     // ── Backend admin routes ──────────────────────────────────────────

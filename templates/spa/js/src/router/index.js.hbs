@@ -19,6 +19,27 @@ const routes = [
     {{/if}}
   },
 {{/each}}
+{{#if hasAdmin}}
+  {
+    path: '/admin',
+    component: () => import('../admin/AdminLayout.vue'),
+    {{#if hasAuth}}
+    meta: { requiresAuth: true },
+    {{/if}}
+    children: [
+      {
+        path: '',
+        component: () => import('../admin/views/Dashboard.vue'),
+      },
+{{#each adminEntities}}
+      {
+        path: '{{kebabCase name}}',
+        component: () => import('../admin/views/{{kebabCase name}}/index.vue'),
+      },
+{{/each}}
+    ],
+  },
+{{/if}}
 {{#if hasAuth}}
   {
     path: '/login',

@@ -1,0 +1,8 @@
+<script setup{{#if isTypeScript}} lang="ts"{{/if}}>
+import AdminDashboard from '@src/admin/views/Dashboard.vue'
+definePageMeta({ layout: 'admin'{{#if hasAuth}}, middleware: 'auth'{{/if}} })
+</script>
+
+<template>
+  <AdminDashboard />
+</template>

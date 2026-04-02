@@ -3,8 +3,7 @@ import { useRouter } from 'vue-router'
 import PanelMenu from 'primevue/panelmenu'
 import Button from 'primevue/button'
 {{#if hasAuth}}
-import { useAuth } from '../vasp/auth.js'
-
+// useAuth is auto-imported by Nuxt's composables directory
 const { user, logout: authLogout } = useAuth()
 async function handleLogout() {
   await authLogout()
@@ -38,7 +37,7 @@ const menuItems = [
         {{/if}}
       </header>
       <main class="vasp-admin-content">
-        <RouterView />
+        <slot />
       </main>
     </div>
   </div>
