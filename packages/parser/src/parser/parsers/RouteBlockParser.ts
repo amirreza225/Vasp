@@ -3,7 +3,7 @@ import { TokenType } from "../../lexer/TokenType.js";
 import type { IParserContext } from "../ParserContext.js";
 
 /** Extract route params from a path string, e.g. "/users/:id" → ["id"] */
-export function extractRouteParams(path: string): string[] {
+function extractRouteParams(path: string): string[] {
   const matches = path.match(/:([^/]+)/g);
   return matches ? matches.map((m) => m.slice(1)) : [];
 }

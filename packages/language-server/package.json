@@ -21,7 +21,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@vasp-framework/core": "workspace:*",
     "@vasp-framework/parser": "workspace:*",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.12"

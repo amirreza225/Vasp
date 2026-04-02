@@ -8,7 +8,7 @@ import type {
  * Combines properties from both `FieldValidation` (the `@validate()` modifier)
  * and `FieldValidateConfig` (the nested `validate { }` config block).
  */
-export interface MergedFieldValidation {
+interface MergedFieldValidation {
   // From FieldValidation (@validate modifier)
   email?: boolean;
   url?: boolean;

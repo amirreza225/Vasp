@@ -13,7 +13,7 @@ import { TokenType } from "../../lexer/TokenType.js";
 import type { IParserContext } from "../ParserContext.js";
 import { parsePermissionName } from "./AuthBlockParser.js";
 
-export function parseCrudListConfig(ctx: IParserContext): CrudListConfig {
+function parseCrudListConfig(ctx: IParserContext): CrudListConfig {
   ctx.consume(TokenType.LBRACE);
 
   let paginate = false;
@@ -66,7 +66,7 @@ export function parseCrudListConfig(ctx: IParserContext): CrudListConfig {
  * Parses the `columns: { fieldName { … } … }` sub-block inside a `list:` config.
  * Each entry is `fieldName { label: "...", width: "...", sortable: bool, filterable: bool, hidden: bool }`.
  */
-export function parseCrudColumnConfigMap(
+function parseCrudColumnConfigMap(
   ctx: IParserContext,
 ): Record<string, CrudColumnConfig> {
   ctx.consume(TokenType.LBRACE);
@@ -125,7 +125,7 @@ export function parseCrudColumnConfigMap(
  * Steps (for wizard layout):
  *   steps: { stepName { label: "...", fields: [f1, f2] } ... }
  */
-export function parseCrudFormConfig(ctx: IParserContext): CrudFormConfig {
+function parseCrudFormConfig(ctx: IParserContext): CrudFormConfig {
   ctx.consume(TokenType.LBRACE);
   const formCfg: CrudFormConfig = {};
 
@@ -175,7 +175,7 @@ export function parseCrudFormConfig(ctx: IParserContext): CrudFormConfig {
  *
  * @param kind - "section" or "step" used in error messages
  */
-export function parseCrudFormSectionMap(
+function parseCrudFormSectionMap(
   ctx: IParserContext,
   kind: string,
 ): Record<string, CrudFormSection> {
@@ -224,7 +224,7 @@ export function parseCrudFormSectionMap(
  * Keys are simple operation names; values are permission names (may be
  * namespaced, e.g. "task:read").
  */
-export function parseCrudPermissionsMap(ctx: IParserContext): CrudPermissions {
+function parseCrudPermissionsMap(ctx: IParserContext): CrudPermissions {
   ctx.consume(TokenType.LBRACE);
   const result: CrudPermissions = {};
 

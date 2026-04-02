@@ -32,7 +32,7 @@ export function parsePermissionName(ctx: IParserContext): string {
  * Keys may be namespaced (task:create) or simple (read).
  * Values are arrays of role identifiers.
  */
-export function parseAuthPermissionsMap(ctx: IParserContext): PermissionMap {
+function parseAuthPermissionsMap(ctx: IParserContext): PermissionMap {
   ctx.consume(TokenType.LBRACE);
   const result: PermissionMap = {};
 
