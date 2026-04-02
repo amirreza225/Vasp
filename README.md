@@ -115,7 +115,7 @@ Vasp reads this file and generates a complete full-stack application. You only w
 
 ## Admin Panel
 
-Add an `admin` block to instantly generate a standalone **Ant Design Vue** admin panel wired to your CRUD endpoints:
+Add an `admin` block to instantly generate a standalone **PrimeVue 4** admin panel wired to your CRUD endpoints:
 
 ```vasp
 admin {
@@ -501,7 +501,7 @@ my-app/
 ├── drizzle/
 │   └── schema.js/.ts       ← Auto-generated Drizzle schema
 ├── admin/                  ← Only when admin block is present
-│   ├── package.json        ← Vue 3 + Ant Design Vue + Pinia + Vite
+│   ├── package.json        ← Vue 3 + PrimeVue 4 + Pinia + Vite
 │   ├── index.html
 │   ├── vite.config.js/.ts
 │   └── src/
@@ -571,7 +571,7 @@ vasp --version
 | Realtime (WebSocket with auth & rooms) | Done |
 | Background jobs (PgBoss, BullMQ with cron scheduling) | Done |
 | Auto-generated pages (`autoPage` block — list/form/detail powered by PrimeVue 4) | Done |
-| Admin panel generation (Ant Design Vue, per-entity CRUD UI) | Done |
+| Admin panel generation (PrimeVue 4, per-entity CRUD UI) | Done |
 | `vasp new` CLI command | Done |
 | `vasp new` interactive prompts (TypeScript / SSR / starter) | Done |
 | `vasp new --starter=<name>` | Done |
@@ -727,7 +727,7 @@ Tests are written with [Vitest](https://vitest.dev) and cover the parser, semant
    - `StorageGenerator` → file upload endpoints (S3, R2, GCS, local)
    - `WebhookGenerator` → inbound webhook receivers + outbound CRUD event dispatchers
    - `FrontendGenerator` → Vue 3 SPA (Vite) **or** Nuxt 4 SSR/SSG
-   - `AdminGenerator` → standalone Ant Design Vue admin panel (when `admin` block is present)
+   - `AdminGenerator` → standalone PrimeVue 4 admin panel (when `admin` block is present)
 
    All output files are produced from [Handlebars](https://handlebarsjs.com) templates under `templates/`. There are four frontend template trees (SPA+JS, SPA+TS, SSR+JS, SSR+TS) plus a shared backend tree and an admin tree.
 

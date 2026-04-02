@@ -90,7 +90,7 @@ Defined in `packages/generator/src/generate.ts`:
 16. `StorageGenerator` — file upload endpoints
 17. `WebhookGenerator` — inbound webhook receivers + outbound CRUD event dispatchers
 18. `FrontendGenerator` — Vue SPA (Vite) or Nuxt 4 SSR/SSG
-19. `AdminGenerator` — standalone Vue 3 + Ant Design admin panel
+19. `AdminGenerator` — standalone Vue 3 + PrimeVue 4 admin panel
 
 All generators extend `BaseGenerator`. `baseData()` exposes the following to every template: `appName`, `appTitle`, `isTypeScript`, `isSsr`, `isSsg`, `isSpa`, `ext`, `mode`, `hasAuth`, `hasAdmin`, `adminEntities`, `hasAnyRelations`, `hasRealtime`, `hasJobs`, `hasPgBossJobs`, `hasBullMQJobs`, `hasRedisStreamsJobs`, `hasRabbitMQJobs`, `hasKafkaJobs`, `hasRedisJobs`, `hasStorage`, `storages`, `hasEmail`, `hasEmailResend`, `hasEmailSendgrid`, `hasEmailSmtp`, `emails`, `hasCache`, `caches`, `hasCacheRedis`, `needsRedis`, `hasWebhook`, `hasInboundWebhook`, `hasOutboundWebhook`, `webhooks`, `inboundWebhooks`, `outboundWebhooks`, `routes`, `pages`, `queries`, `actions`, `apis`, `middlewares`, `cruds`, `hasCrudListConfig`, `hasCrudFormConfig`, `realtimes`, `jobs`, `seed`, `auth`, `multiTenant`, `hasMultiTenant`, `isRowLevelTenant`, `observability`, `hasObservability`, `hasObservabilityTracing`, `hasObservabilityMetrics`, `observabilityLogs`, `observabilityExporter`, `observabilityErrorTracking`, `hasObservabilityOtlp`, `hasObservabilityPrometheus`, `hasObservabilitySentry`, `hasObservabilityDatadog`, `hasStructuredLogs`, `autoPages`, `hasAutoPages`, `ui`. `GeneratorContext` carries `{ ast, outputDir, templateDir, isTypeScript, isSsr, isSsg, isSpa, mode, ext, logger }`.
 

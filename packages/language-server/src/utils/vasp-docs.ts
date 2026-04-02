@@ -211,7 +211,7 @@ seed main { fn: import { seedDatabase } from "@src/seed.ts" }
   admin: {
     detail: "Vue admin panel (standalone Vite app)",
     documentation: `## \`admin\`
-Generates a standalone Vue 3 + Ant Design admin panel for listed entities.
+Generates a standalone Vue 3 + PrimeVue 4 admin panel for listed entities.
 
 \`\`\`vasp
 admin AdminPanel { entities: [Todo, User] }

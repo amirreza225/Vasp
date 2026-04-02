@@ -50,7 +50,7 @@ console.log(result.errors)         // [] on success
 | 16 | `StorageGenerator` | `server/routes/storage/` — file upload endpoints (S3, R2, GCS, local) |
 | 17 | `WebhookGenerator` | Inbound webhook receivers + outbound CRUD event dispatchers |
 | 18 | `FrontendGenerator` | Vue 3 + Vite (SPA) **or** Nuxt 4 (SSR/SSG) frontend |
-| 19 | `AdminGenerator` | `admin/` — standalone Ant Design Vue admin panel (only when `admin` block present) |
+| 19 | `AdminGenerator` | `admin/` — standalone PrimeVue 4 admin panel (only when `admin` block present) |
 
 A failure in any generator aborts the pipeline and leaves the real output directory untouched (see Safe Regeneration below).
 
@@ -61,7 +61,7 @@ Six separate template trees — no unified template with `{{#if isSsr}}` blocks:
 ```
 templates/
 ├── shared/          # Backend, auth, CRUD, realtime, jobs, cache, storage, email (mode-agnostic)
-├── admin/           # Standalone Ant Design Vue admin panel
+├── admin/           # Standalone PrimeVue 4 admin panel
 ├── starters/        # Pre-built example .vasp files (minimal, todo, recipe, todo-auth-ssr)
 ├── spa/
 │   ├── js/          # Vue 3 + Vite, JavaScript
