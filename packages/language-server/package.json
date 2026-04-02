@@ -23,7 +23,6 @@
   "dependencies": {
     "@vasp-framework/core": "workspace:*",
     "@vasp-framework/parser": "workspace:*",
-    "chevrotain": "^12.0.0",
     "vscode-languageserver": "^9.0.1",
     "vscode-languageserver-textdocument": "^1.0.12"
   },

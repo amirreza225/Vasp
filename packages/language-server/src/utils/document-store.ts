@@ -8,7 +8,7 @@
 
 import type { TextDocuments } from "vscode-languageserver";
 import type { TextDocument } from "vscode-languageserver-textdocument";
-import { parseDocument, type DocumentAST } from "../grammar/VaspCstVisitor.js";
+import { parseDocument, type DocumentAST } from "../grammar/VaspDocScanner.js";
 
 export interface ParsedDocument {
   uri: string;
