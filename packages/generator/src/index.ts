@@ -4,3 +4,4 @@ export type { GeneratorContext } from "./GeneratorContext.js";
 export { Manifest, computeHash } from "./manifest/Manifest.js";
 export type { ManifestData, ManifestEntry, SchemaSnapshot, EntitySnapshot, FieldSnapshot } from "./manifest/Manifest.js";
 export { isPlaceholderValue, parseEnvFile } from "./utils/fs.js";
+export { TemplateEngine } from "./template/TemplateEngine.js";

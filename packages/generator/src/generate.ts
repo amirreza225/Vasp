@@ -2,6 +2,7 @@ import type {
   GeneratorOptions,
   GeneratorResult,
   VaspAST,
+  VaspPlugin,
 } from "@vasp-framework/core";
 import { VASP_VERSION } from "@vasp-framework/core";
 import { createConsoleLogger, createContext } from "./GeneratorContext.js";
@@ -27,7 +28,7 @@ import { WebhookGenerator } from "./generators/WebhookGenerator.js";
 import { computeHash, Manifest } from "./manifest/Manifest.js";
 import type { FieldSnapshot, SchemaSnapshot } from "./manifest/Manifest.js";
 import { TemplateEngine } from "./template/TemplateEngine.js";
-import { cleanupDir, commitStagedFiles, deleteOrphanedFiles } from "./utils/fs.js";
+import { cleanupDir, commitStagedFiles, deleteOrphanedFiles, writeFile } from "./utils/fs.js";
 import { dirname, join } from "node:path";
 import { mkdirSync, existsSync, rmSync } from "node:fs";
 
@@ -159,6 +160,25 @@ export function generate(
     engine.loadDirectory(ctx.templateDir);
   }
 
+  // Apply plugin contributions before any template is rendered.
+  // 1. Register custom helpers first so they are available in overridden templates.
+  // 2. Apply template overrides after directory load so they take precedence.
+  const plugins: VaspPlugin[] = opts.plugins ?? [];
+  for (const plugin of plugins) {
+    if (plugin.helpers) {
+      for (const [name, fn] of Object.entries(plugin.helpers)) {
+        engine.registerHelper(name, fn);
+        logger.verbose(`[plugin:${plugin.name}] registered helper '${name}'`);
+      }
+    }
+    if (plugin.templateOverrides) {
+      for (const [key, source] of Object.entries(plugin.templateOverrides)) {
+        engine.applyTemplateOverride(key, source);
+        logger.verbose(`[plugin:${plugin.name}] overrode template '${key}'`);
+      }
+    }
+  }
+
   const filesWritten: string[] = [];
   const warnings: string[] = [];
   const errors: string[] = [];
@@ -239,6 +259,43 @@ export function generate(
     runGenerator("WebhookGenerator", () => new WebhookGenerator(ctx, engine, filesWritten, manifest).run());
     runGenerator("FrontendGenerator", () => new FrontendGenerator(ctx, engine, filesWritten, manifest).run());
     runGenerator("AdminGenerator", () => new AdminGenerator(ctx, engine, filesWritten, manifest).run());
+
+    // Run plugin generators after all built-in generators have completed.
+    // Each plugin generator receives a read-only context subset and a write callback
+    // that records the file in the manifest so orphan-deletion stays consistent.
+    if (plugins.length > 0) {
+      const pluginCtx = {
+        ast,
+        outputDir: ctx.outputDir,
+        projectDir: ctx.projectDir,
+        isTypeScript: ctx.isTypeScript,
+        isSsr: ctx.isSsr,
+        isSsg: ctx.isSsg,
+        isSpa: ctx.isSpa,
+        ext: ctx.ext,
+      } as const;
+
+      for (const plugin of plugins) {
+        if (!plugin.generators?.length) continue;
+        for (const gen of plugin.generators) {
+          const generatorLabel = `plugin:${plugin.name}/${gen.name}`;
+          try {
+            gen.run(pluginCtx, (relativePath, content) => {
+              const fullPath = join(ctx.outputDir, relativePath);
+              writeFile(fullPath, content);
+              filesWritten.push(relativePath);
+              manifest.record(relativePath, content, generatorLabel);
+              logger.verbose(`  write ${relativePath}`);
+            });
+            logger.verbose(`✓ ${generatorLabel}`);
+          } catch (err) {
+            const message = `[${generatorLabel}] ${err instanceof Error ? err.message : String(err)}`;
+            logger.error(message);
+            errors.push(message);
+          }
+        }
+      }
+    }
 
     // If any generator reported an error, abort without touching the real output dir.
     if (errors.length > 0) {

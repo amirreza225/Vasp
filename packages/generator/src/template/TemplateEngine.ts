@@ -68,6 +68,48 @@ export class TemplateEngine {
     return [...this.cache.keys()];
   }
 
+  /**
+   * Register a custom Handlebars helper.
+   * The helper is available in all templates rendered by this engine instance.
+   * Calling this after `loadDirectory()` is fine — helpers are evaluated at
+   * render time, not at compile time.
+   *
+   * The trailing Handlebars options object is automatically stripped, so your
+   * function receives only the arguments you declared.
+   *
+   * @param name   Helper name as referenced in templates, e.g. `"shout"`
+   * @param fn     Helper implementation
+   */
+  registerHelper(name: string, fn: (...args: unknown[]) => unknown): void {
+    // Handlebars always appends an options object as the last argument.
+    // Wrap the user function to strip it so callers get clean signatures.
+    this.hbs.registerHelper(name, (...rawArgs: unknown[]) => {
+      rawArgs.pop(); // remove Handlebars options hash
+      return fn(...rawArgs);
+    });
+  }
+
+  /**
+   * Override a built-in template or add a new one.
+   * The key must match the relative path used in `render()` calls
+   * (e.g. `"shared/server/index.hbs"`).
+   * Call this **after** `loadDirectory()` so that the override takes precedence
+   * over any file loaded from disk.
+   *
+   * @param key     Template path relative to the templates root
+   * @param source  Raw Handlebars source string
+   */
+  applyTemplateOverride(key: string, source: string): void {
+    try {
+      this.cache.set(key, this.hbs.compile(source));
+    } catch (err) {
+      throw new GeneratorError(
+        `Failed to compile template override for '${key}': ${String(err)}`,
+        "TemplateEngine",
+      );
+    }
+  }
+
   // ---- Helpers ----
 
   private registerHelpers(): void {

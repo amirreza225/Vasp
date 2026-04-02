@@ -4628,4 +4628,161 @@ entity Article {
     expect(r2.warnings.some((w) => w.includes("name"))).toBe(true);
     expect(r2.warnings.some((w) => w.includes("quantity"))).toBe(true);
   });
+
+  // -------------------------------------------------------------------------
+  // Plugin system
+  // -------------------------------------------------------------------------
+
+  describe("plugin system", () => {
+    it("runs plugin generators after the built-in pipeline", () => {
+      const ast = parse(MINIMAL_VASP);
+      const outputDir = join(TMP_DIR, "plugin-generator");
+
+      const result = generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        plugins: [
+          {
+            name: "test-plugin",
+            generators: [
+              {
+                name: "HelloGenerator",
+                run(_ctx, write) {
+                  write("src/hello.txt", "hello from plugin");
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.filesWritten).toContain("src/hello.txt");
+      expect(readFileSync(join(outputDir, "src/hello.txt"), "utf8")).toBe(
+        "hello from plugin",
+      );
+    });
+
+    it("exposes correct ctx flags to plugin generators", () => {
+      const ast = parse(MINIMAL_VASP);
+      const outputDir = join(TMP_DIR, "plugin-ctx");
+
+      let capturedCtx: Record<string, unknown> = {};
+
+      generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        plugins: [
+          {
+            name: "ctx-spy",
+            generators: [
+              {
+                name: "CtxSpy",
+                run(ctx, write) {
+                  capturedCtx = {
+                    isTypeScript: ctx.isTypeScript,
+                    isSpa: ctx.isSpa,
+                    isSsr: ctx.isSsr,
+                    isSsg: ctx.isSsg,
+                    ext: ctx.ext,
+                  };
+                  write("src/.ctx-spy", JSON.stringify(capturedCtx));
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      // MINIMAL_VASP uses typescript: false, ssr: false
+      expect(capturedCtx.isTypeScript).toBe(false);
+      expect(capturedCtx.isSpa).toBe(true);
+      expect(capturedCtx.isSsr).toBe(false);
+      expect(capturedCtx.isSsg).toBe(false);
+      expect(capturedCtx.ext).toBe("js");
+    });
+
+    it("applies template overrides so the override takes precedence over built-in", () => {
+      const ast = parse(MINIMAL_VASP);
+      const outputDir = join(TMP_DIR, "plugin-override");
+
+      // Override the shared README template with a custom string.
+      // A fresh engine is created per call (no engine: option) to avoid
+      // contaminating the shared engine used by other tests.
+      const result = generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        plugins: [
+          {
+            name: "override-plugin",
+            templateOverrides: {
+              "shared/README.md.hbs": "# OVERRIDDEN by plugin\n",
+            },
+          },
+        ],
+      });
+
+      expect(result.success).toBe(true);
+      const readme = readFileSync(join(outputDir, "README.md"), "utf8");
+      expect(readme).toBe("# OVERRIDDEN by plugin\n");
+    });
+
+    it("registers custom Handlebars helpers that are usable in template overrides", () => {
+      const ast = parse(MINIMAL_VASP);
+      const outputDir = join(TMP_DIR, "plugin-helper");
+
+      const result = generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        plugins: [
+          {
+            name: "helper-plugin",
+            helpers: {
+              shout: (str: unknown) => String(str).toUpperCase() + "!!!",
+            },
+            templateOverrides: {
+              "shared/README.md.hbs": "# {{shout appName}}\n",
+            },
+          },
+        ],
+      });
+
+      expect(result.success).toBe(true);
+      const readme = readFileSync(join(outputDir, "README.md"), "utf8");
+      // appName comes from the app block; MINIMAL_VASP defines "app MinimalApp"
+      expect(readme).toContain("MINIMALAPP!!!");
+    });
+
+    it("collects errors from plugin generators without aborting the pipeline", () => {
+      const ast = parse(MINIMAL_VASP);
+      const outputDir = join(TMP_DIR, "plugin-error");
+
+      const result = generate(ast, {
+        outputDir,
+        templateDir: TEMPLATES_DIR,
+        logLevel: "silent",
+        plugins: [
+          {
+            name: "bad-plugin",
+            generators: [
+              {
+                name: "ThrowingGenerator",
+                run() {
+                  throw new Error("plugin generator crashed");
+                },
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0]).toContain("plugin generator crashed");
+    });
+  });
 });

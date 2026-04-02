@@ -1,8 +1,9 @@
 import { generate } from "@vasp-framework/generator";
 import { Manifest, computeHash } from "@vasp-framework/generator";
+import type { VaspPlugin } from "@vasp-framework/core";
 import { parse } from "@vasp-framework/parser";
 import { join, resolve, dirname } from "node:path";
-import { copyFileSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { log } from "../utils/logger.js";
 import { handleParseError } from "../utils/parse-error.js";
 import { resolveTemplateDir } from "../utils/template-dir.js";
@@ -30,6 +31,38 @@ export interface RegenerateResult {
   skipped: number;
   errors: string[];
   warnings: string[];
+}
+
+/**
+ * Attempt to load a `vasp.config.ts` or `vasp.config.js` file from the
+ * project root and extract the `plugins` array.
+ * Returns an empty array when no config file is found or when the file does
+ * not export a `plugins` property.
+ */
+async function loadPlugins(projectDir: string): Promise<VaspPlugin[]> {
+  const candidates = [
+    join(projectDir, "vasp.config.ts"),
+    join(projectDir, "vasp.config.js"),
+  ];
+
+  for (const configPath of candidates) {
+    if (!existsSync(configPath)) continue;
+    try {
+      // Dynamic import works in both Bun (which resolves .ts natively) and Node.
+      // Use a URL-format path so that Windows paths are handled correctly.
+      const mod = await import(`file://${configPath}`);
+      const config = mod.default ?? mod;
+      if (config && Array.isArray(config.plugins)) {
+        return config.plugins as VaspPlugin[];
+      }
+      return [];
+    } catch (err) {
+      log.warn(`Failed to load ${configPath}: ${err instanceof Error ? err.message : String(err)}`);
+      return [];
+    }
+  }
+
+  return [];
 }
 
 /**
@@ -73,11 +106,13 @@ export async function runRegenerate(
 
   const previousManifest = Manifest.load(projectDir);
   const templateDir = resolveTemplateDir(import.meta.dirname);
+  const plugins = await loadPlugins(projectDir);
 
   const result = generate(ast, {
     outputDir: projectDir,
     templateDir,
     logLevel: force ? "info" : "silent",
+    plugins,
   });
 
   if (!result.success) {
@@ -143,20 +178,26 @@ export async function generateCommand(args: string[]): Promise<void> {
     log.warn("Running full generation anyway...");
   }
 
+  // Load plugins from vasp.config.{ts,js} once; thread them through all sub-commands.
+  const plugins = await loadPlugins(projectDir);
+  if (plugins.length > 0) {
+    log.dim(`  Loaded ${plugins.length} plugin(s): ${plugins.map((p) => p.name).join(", ")}`);
+  }
+
   if (opts.dryRun) {
     log.step("[dry-run] vasp generate — showing what would change");
-    await runDryRun(ast, projectDir, previousManifest, opts);
+    await runDryRun(ast, projectDir, previousManifest, opts, plugins);
     return;
   }
 
   if (opts.diff) {
     log.step("[diff] vasp generate — showing changes as unified diff");
-    await runDiff(ast, projectDir, previousManifest);
+    await runDiff(ast, projectDir, previousManifest, plugins);
     return;
   }
 
   if (opts.only.length > 0) {
-    await runOnly(ast, projectDir, opts.only, previousManifest, opts.force);
+    await runOnly(ast, projectDir, opts.only, previousManifest, opts.force, plugins);
     return;
   }
 
@@ -249,12 +290,14 @@ async function runDryRun(
   projectDir: string,
   previousManifest: Manifest | null,
   _opts: GenerateOptions,
+  plugins: VaspPlugin[] = [],
 ): Promise<void> {
   const templateDir = resolveTemplateDir(import.meta.dirname);
   const result = generate(ast, {
     outputDir: join(projectDir, ".vasp", "dry-run"),
     templateDir,
     logLevel: "silent",
+    plugins,
   });
 
   if (!result.success) {
@@ -318,6 +361,7 @@ async function runDiff(
   ast: ReturnType<typeof parse>,
   projectDir: string,
   previousManifest: Manifest | null,
+  plugins: VaspPlugin[] = [],
 ): Promise<void> {
   const templateDir = resolveTemplateDir(import.meta.dirname);
   const diffDir = join(projectDir, ".vasp", "diff-staging");
@@ -329,6 +373,7 @@ async function runDiff(
     outputDir: diffDir,
     templateDir,
     logLevel: "silent",
+    plugins,
   });
 
   if (!result.success) {
@@ -406,6 +451,7 @@ async function runOnly(
   filters: OnlyFilter[],
   previousManifest: Manifest | null,
   force: boolean,
+  plugins: VaspPlugin[] = [],
 ): Promise<void> {
   const templateDir = resolveTemplateDir(import.meta.dirname);
   const stagingOutputDir = join(projectDir, ".vasp", "only-staging");
@@ -417,6 +463,7 @@ async function runOnly(
     outputDir: stagingOutputDir,
     templateDir,
     logLevel: "silent",
+    plugins,
   });
 
   if (!result.success) {
