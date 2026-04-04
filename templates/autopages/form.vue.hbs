@@ -31,7 +31,9 @@ onMounted(async () => {
     loading.value = true
     try {
       const res = await fetch('/api/crud/{{kebabCase entityNamePascal}}/' + route.params.id, { credentials: 'include' })
-      initialValues.value = await res.json()
+      const json = await res.json()
+      // Unwrap Vasp envelope { ok: true, data: {...} }
+      initialValues.value = json?.ok === true ? json.data : json
     } finally {
       loading.value = false
     }
@@ -60,10 +62,7 @@ async function onSubmit({ valid, values }) {
     <div class="{{#if isTwoColumn}}max-w-5xl{{else}}max-w-2xl{{/if}} mx-auto">
       <div class="flex items-center gap-4 mb-6">
         <Button icon="pi pi-arrow-left" severity="secondary" rounded outlined @click="router.back()" />
-        <h1 class="text-2xl font-semibold m-0">
-          <template v-if="isEdit">Edit {{pageTitle}}</template>
-          <template v-else>{{pageTitle}}</template>
-        </h1>
+        <h1 class="text-2xl font-semibold m-0">{{pageTitle}}</h1>
       </div>
 
       <div class="card p-6 border border-surface rounded-xl shadow-sm">
