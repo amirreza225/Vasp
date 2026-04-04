@@ -93,10 +93,7 @@ import InputText from 'primevue/inputtext'
 import Password from 'primevue/password'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
-{{#if (includes authMethods "google")}}
-import Divider from 'primevue/divider'
-{{/if}}
-{{#if (includes authMethods "github")}}
+{{#if (or (includes authMethods "google") (includes authMethods "github"))}}
 import Divider from 'primevue/divider'
 {{/if}}
 {{#if isSsr}}
