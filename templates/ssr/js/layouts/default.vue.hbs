@@ -65,8 +65,10 @@ import { useToast } from 'primevue/usetoast'
 {{/if}}
 
 {{#if hasAuth}}
-const { user, logout } = useAuth()
+const { user, checkAuth, logout } = useAuth()
 const toast = useToast()
+
+await callOnce(checkAuth)
 {{/if}}
 
 const isDark = ref(false)

@@ -66,8 +66,11 @@ import { useToast } from 'primevue/usetoast'
 {{/if}}
 
 {{#if hasAuth}}
-const { user, logout } = useAuth()
+const { user, checkAuth, logout } = useAuth()
 const toast = useToast()
+
+// Restore auth state on every page load (SSR + client-side navigation)
+await callOnce(checkAuth)
 {{/if}}
 
 // Dark mode — persisted to localStorage, synced with PrimeVue's darkModeSelector

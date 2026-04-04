@@ -27,7 +27,9 @@ async function load() {
   try {
     const res = await fetch('/api/crud/{{kebabCase entityNamePascal}}', { credentials: 'include' })
     const json = await res.json()
-    rows.value = json?.items ?? json ?? []
+    // Vasp wraps successful responses in { ok: true, data: { items, total } }
+    const payload = json?.ok === true ? json.data : json
+    rows.value = payload?.items ?? (Array.isArray(payload) ? payload : [])
   } finally {
     loading.value = false
   }
