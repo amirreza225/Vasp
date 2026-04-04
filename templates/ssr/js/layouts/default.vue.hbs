@@ -1,0 +1,126 @@
+<template>
+  <div class="vasp-app" :class="isDark ? '{{darkModeSelector}}' : ''">
+    <!-- Navigation Bar -->
+    <Menubar class="vasp-navbar border-0 border-b border-surface rounded-none px-4 sticky top-0 z-50 bg-surface-0 dark:bg-surface-900">
+      <template #start>
+        <NuxtLink to="/" class="flex items-center gap-2 text-primary font-bold text-lg no-underline">
+          <i class="pi pi-bolt" />
+          <span>{{appTitle}}</span>
+        </NuxtLink>
+      </template>
+      <template #item="{ item, props }">
+        <NuxtLink v-if="item.route" :to="item.route" v-bind="props.action" class="flex items-center gap-2 no-underline text-surface-700 dark:text-surface-200 hover:text-primary transition-colors">
+          <i v-if="item.icon" :class="item.icon" />
+          <span>{{ item.label }}</span>
+        </NuxtLink>
+        <a v-else v-bind="props.action" class="flex items-center gap-2 no-underline text-surface-700 dark:text-surface-200 hover:text-primary transition-colors cursor-pointer">
+          <i v-if="item.icon" :class="item.icon" />
+          <span>{{ item.label }}</span>
+        </a>
+      </template>
+      <template #end>
+        <div class="flex items-center gap-2">
+          <Button
+            :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'"
+            text
+            rounded
+            :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+            @click="toggleDark"
+          />
+          {{#if hasAuth}}
+          <template v-if="user">
+            <span class="text-sm text-surface-600 dark:text-surface-300 hidden sm:inline">
+              \{{ user.username }}
+            </span>
+            <Button
+              icon="pi pi-sign-out"
+              label="Logout"
+              text
+              size="small"
+              @click="handleLogout"
+            />
+          </template>
+          <template v-else>
+            <NuxtLink to="/login">
+              <Button label="Sign In" size="small" outlined />
+            </NuxtLink>
+          </template>
+          {{/if}}
+        </div>
+      </template>
+    </Menubar>
+
+    <!-- Page content -->
+    <main class="vasp-main">
+      <slot />
+    </main>
+  </div>
+</template>
+
+<script setup>
+import Menubar from 'primevue/menubar'
+import Button from 'primevue/button'
+{{#if hasAuth}}
+import { useToast } from 'primevue/usetoast'
+{{/if}}
+
+{{#if hasAuth}}
+const { user, logout } = useAuth()
+const toast = useToast()
+{{/if}}
+
+const isDark = ref(false)
+
+onMounted(() => {
+  isDark.value = localStorage.getItem('vasp-dark-mode') === 'true'
+  syncDarkClass()
+})
+
+function toggleDark() {
+  isDark.value = !isDark.value
+  localStorage.setItem('vasp-dark-mode', String(isDark.value))
+  syncDarkClass()
+}
+
+function syncDarkClass() {
+  const el = document.documentElement
+  if (isDark.value) {
+    el.classList.add('{{darkModeClass}}')
+  } else {
+    el.classList.remove('{{darkModeClass}}')
+  }
+}
+
+{{#if hasAuth}}
+async function handleLogout() {
+  await logout()
+  toast.add({ severity: 'info', summary: 'Logged out', life: 2000 })
+  await navigateTo('/login')
+}
+{{/if}}
+
+const navItems = [
+{{#each navRoutes}}
+  { label: '{{label}}', route: '{{path}}'{{#if icon}}, icon: '{{icon}}'{{/if}} },
+{{/each}}
+]
+
+useHead({ titleTemplate: '%s | {{appTitle}}' })
+</script>
+
+<style scoped>
+.vasp-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.vasp-main {
+  flex: 1;
+  padding: 1.5rem;
+}
+@media (max-width: 768px) {
+  .vasp-main {
+    padding: 1rem;
+  }
+}
+</style>

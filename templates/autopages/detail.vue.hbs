@@ -16,7 +16,7 @@ const record = ref(null)
 const loading = ref(true)
 
 onMounted(async () => {
-  const res = await fetch('/api/{{kebabCase entityNamePascal}}/' + route.params.id)
+  const res = await fetch('/api/crud/{{kebabCase entityNamePascal}}/' + route.params.id, { credentials: 'include' })
   record.value = await res.json()
   loading.value = false
 })
@@ -29,7 +29,7 @@ function confirmDelete() {
     rejectProps: { label: 'Cancel', severity: 'secondary', outlined: true },
     acceptProps: { label: 'Delete', severity: 'danger' },
     accept: async () => {
-      await fetch('/api/{{kebabCase entityNamePascal}}/' + route.params.id, { method: 'DELETE' })
+      await fetch('/api/crud/{{kebabCase entityNamePascal}}/' + route.params.id, { method: 'DELETE', credentials: 'include' })
       toast.add({ severity: 'success', summary: 'Deleted', life: 3000 })
       router.back()
     }

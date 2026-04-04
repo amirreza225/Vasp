@@ -81,10 +81,26 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
     // Build per-entity schema data: scalar columns + FK stubs + relation metadata
     const entitiesWithSchema = ast.entities.map((entity) => {
       // Scalar columns: primitive fields (not virtual array relations, not M:N array fields)
+
+      // Build a set of FK column names that will be generated from relation fields.
+      // If a user declares both `categoryId: Int` AND `category: Category`, the relation
+      // field already produces a `categoryId` FK column. The explicit scalar is redundant
+      // and would generate a duplicate column, causing a TypeScript compile error.
+      const relationFkNames = new Set(
+        entity.fields
+          .filter((f) => f.isRelation && !f.isArray)
+          .map((f) => `${f.name}Id`),
+      );
+
       const scalarFields = entity.fields
         .filter(
           (f) => !reservedFields.has(f.name) && !(f.isRelation && f.isArray),
         )
+        .filter((f) => {
+          // Skip explicit scalar FK columns that duplicate a relation-generated FK.
+          if (!f.isRelation && relationFkNames.has(f.name)) return false;
+          return true;
+        })
         .map((f) => {
           if (!f.isRelation) {
             const isEnum = f.type === "Enum";

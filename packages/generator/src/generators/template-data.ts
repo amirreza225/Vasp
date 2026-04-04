@@ -260,8 +260,9 @@ export interface TemplateExtraData {
   frontendPort?: number;
   /** Auth method names from the auth block (e.g. ["usernameAndPassword", "google"]) */
   authMethods?: string[];
-  /** Full set of entity AST nodes (used for types.ts / validation.ts scaffolding) */
-  entities?: EntityNode[];
+  /** Full set of entity AST nodes (used for types.ts / validation.ts scaffolding).
+   *  May be annotated with extra flags (e.g. `isExplicitFkDuplicate`) before rendering. */
+  entities?: EntityNode[] | Record<string, unknown>[];
 
   // ── Seed ─────────────────────────────────────────────────────────────────
   /** Import kind: "named" or "default" */
@@ -446,6 +447,11 @@ export interface TemplateExtraData {
   componentName?: string;
   componentSource?: string;
   isProtected?: boolean;
+  noLayout?: boolean;
+  navRoutes?: Array<{ label: string; path: string; icon?: string }>;
+  darkModeSelector?: string;
+  darkModeClass?: string;
+  appTitle?: string;
 
   // ── AutoPage ─────────────────────────────────────────────────────────────
   autoPage?: AutoPageNode;
@@ -470,4 +476,7 @@ export interface TemplateExtraData {
   successRoute?: string;
   pageTitle?: string;
   fieldCount?: number;
+  createPath?: string;
+  editPath?: string;
+  viewPath?: string;
 }

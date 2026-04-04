@@ -30,7 +30,7 @@ onMounted(async () => {
   if (isEdit) {
     loading.value = true
     try {
-      const res = await fetch('/api/{{kebabCase entityNamePascal}}/' + route.params.id)
+      const res = await fetch('/api/crud/{{kebabCase entityNamePascal}}/' + route.params.id, { credentials: 'include' })
       initialValues.value = await res.json()
     } finally {
       loading.value = false
@@ -41,12 +41,13 @@ onMounted(async () => {
 async function onSubmit({ valid, values }) {
   if (!valid) return
   const url = isEdit
-    ? '/api/{{kebabCase entityNamePascal}}/' + route.params.id
-    : '/api/{{kebabCase entityNamePascal}}'
+    ? '/api/crud/{{kebabCase entityNamePascal}}/' + route.params.id
+    : '/api/crud/{{kebabCase entityNamePascal}}'
   const method = isEdit ? 'PUT' : 'POST'
   await fetch(url, {
     method,
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify(values),
   })
   toast.add({ severity: 'success', summary: isEdit ? 'Updated!' : 'Created!', life: 3000 })

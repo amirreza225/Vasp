@@ -127,6 +127,16 @@ export class FrontendGenerator extends BaseGenerator {
         this.write(relativePath, this.scaffoldVuePage(pageName));
       }
     }
+
+    // Warn if auth is enabled and no route has `protected: false` in SPA mode.
+    if (ast.auth && ast.routes.length > 0) {
+      const hasPublicRoute = ast.routes.some((r) => r.protected === false);
+      if (!hasPublicRoute) {
+        this.ctx.logger.warn(
+          "All declared routes are auth-protected. Add `protected: false` to routes that should be publicly accessible (e.g. landing page).",
+        );
+      }
+    }
   }
 
   private generateSsr(): void {
@@ -179,10 +189,44 @@ export class FrontendGenerator extends BaseGenerator {
       );
     }
 
+    // Default layout with navigation bar and dark mode toggle.
+    // Build nav routes: public routes (not /login, /register) shown in the nav bar.
+    const navRoutes = ast.routes
+      .filter((r) => r.path !== "/login" && r.path !== "/register")
+      .map((r) => ({
+        label: this.routeLabel(r.path, r.name),
+        path: r.path,
+      }));
+    const darkModeSelector = ast.app?.ui?.darkModeSelector ?? ".app-dark";
+    const darkModeClass = darkModeSelector.replace(/^\./, "");
+    const appTitle = ast.app?.title ?? ast.app?.name ?? "Vasp App";
+    this.write(
+      `layouts/default.vue`,
+      this.render(`ssr/${ext}/layouts/default.vue.hbs`, {
+        navRoutes,
+        darkModeSelector,
+        darkModeClass,
+        appTitle,
+        hasAuth: !!ast.auth,
+      }),
+    );
+
     // Generate Nuxt pages from Vasp routes.
     // Routes are protected by default when an auth block exists unless explicitly
     // overridden with `protected: false` in the route DSL block.
     const pagesMap = this.buildPagesMap();
+    // Warn if auth is enabled and no route has `protected: false`.
+    // This is a common footgun: every declared route (including the landing page)
+    // is protected by default. Add `protected: false` to public routes.
+    if (ast.auth && ast.routes.length > 0) {
+      const hasPublicRoute = ast.routes.some((r) => r.protected === false);
+      if (!hasPublicRoute) {
+        this.ctx.logger.warn(
+          "All declared routes are auth-protected. Add `protected: false` to routes that should be publicly accessible (e.g. landing page).",
+        );
+      }
+    }
+
     for (const route of ast.routes) {
       const pageFile = this.routePathToNuxtFile(route.path);
       const componentSource = pagesMap[route.to];
@@ -202,7 +246,7 @@ export class FrontendGenerator extends BaseGenerator {
       );
     }
 
-    // Auth login/register pages — always public (never require auth middleware)
+    // Auth login/register pages — always public, use no layout (full-screen centered card design)
     if (ast.auth) {
       this.write(
         `pages/login.vue`,
@@ -210,6 +254,7 @@ export class FrontendGenerator extends BaseGenerator {
           componentName: "LoginPage",
           componentSource: "@src/pages/Login.vue",
           isProtected: false,
+          noLayout: true,
         }),
       );
       this.write(
@@ -218,6 +263,7 @@ export class FrontendGenerator extends BaseGenerator {
           componentName: "RegisterPage",
           componentSource: "@src/pages/Register.vue",
           isProtected: false,
+          noLayout: true,
         }),
       );
     }
@@ -264,6 +310,19 @@ export class FrontendGenerator extends BaseGenerator {
     // "@src/pages/Home.vue" → "Home"
     const basename = source.split("/").pop() ?? source;
     return basename.replace(/\.vue$/, "");
+  }
+
+  /** Convert a route path and name to a human-readable nav label.
+   *  "/todos" → "Todos", "/user-profile" → "User Profile", "/" → "Home" */
+  private routeLabel(path: string, name: string): string {
+    if (path === "/") return "Home";
+    // Try to derive from path segment first for readability
+    const last = path.split("/").filter(Boolean).pop() ?? name;
+    return last
+      .replace(/-/g, " ")
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^\w/, (c) => c.toUpperCase())
+      .trim();
   }
 
   private scaffoldVuePage(name: string): string {

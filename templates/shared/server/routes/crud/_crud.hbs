@@ -45,19 +45,54 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{/if}}
 
 {{#if hasRelations}}
+    const table = {{plural (camelCase entity)}}
+
+{{#if hasSortable}}
+    // Allowlisted sort fields
+    const SORTABLE_FIELDS = [{{#each sortableFields}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]
+    const sortBy = SORTABLE_FIELDS.includes(query.sortBy ?? '') ? (query.sortBy as string) : 'id'
+    const dirFn = query.dir === 'desc' ? desc : asc
+{{/if}}
+
+    // Build WHERE conditions
+    const relConditions = []
+{{#if applyTenantFilter}}
+    relConditions.push(eq(table.{{tenantField}}, _tenantId))
+{{/if}}
+{{#if hasOwnership}}
+    relConditions.push(eq(table.{{ownershipField}}, _ownerId))
+{{/if}}
+{{#if hasFilterable}}
+    const REL_FILTERABLE_FIELDS = [{{#each filterableFields}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]
+    for (const field of REL_FILTERABLE_FIELDS) {
+      const value = (query as Record<string, string | undefined>)[`filter.${field}`]
+      if (value !== undefined && table[field]) {
+        relConditions.push(eq(table[field], value))
+      }
+    }
+{{/if}}
+{{#if hasSearch}}
+    if (query.search) {
+      const pattern = `%${query.search}%`
+      relConditions.push(or({{#each searchFields}}ilike(table.{{this}}, pattern){{#unless @last}}, {{/unless}}{{/each}})!)
+    }
+{{/if}}
+    const relWhere = relConditions.length > 0 ? and(...relConditions) : undefined
+
     const items = await db.query.{{plural (camelCase entity)}}.findMany({
       with: {
 {{#each withRelations}}
         {{camelCase name}}: true,
 {{/each}}
       },
-{{#if hasAnyRecordFilter}}
-      where: (t, { eq, and }) => {{#if applyTenantFilter}}{{#if hasOwnership}}and(eq(t.{{tenantField}}, _tenantId), eq(t.{{ownershipField}}, _ownerId)){{else}}eq(t.{{tenantField}}, _tenantId){{/if}}{{else}}eq(t.{{ownershipField}}, _ownerId){{/if}},
+      ...(relWhere ? { where: relWhere } : {}),
+{{#if hasSortable}}
+      orderBy: [dirFn(table[sortBy] ?? table.id)],
 {{/if}}
       limit,
       offset,
     })
-    const [countResult] = await db.select({ count: sql`count(*)::int` }).from({{plural (camelCase entity)}}){{#if hasAnyRecordFilter}}.where({{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId), eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId)){{else}}eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId){{/if}}{{else}}eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId){{/if}}){{/if}}
+    const [countResult] = await db.select({ count: sql`count(*)::int` }).from({{plural (camelCase entity)}}){{#if hasAnyRecordFilter}}.where(relWhere){{/if}}
 {{#if paginate}}
     return { items, total: countResult?.count ?? 0, page, limit, offset }
 {{else}}

@@ -25,11 +25,27 @@ export class AutoPageGenerator extends BaseGenerator {
     const { ast, isSpa } = this.ctx;
     if (!ast.autoPages.length) return;
 
+    // Build a lookup: entity name → companion autoPage paths for form and detail
+    // Used by the list template to route "New" / "Edit" / "View" buttons correctly.
+    const companionPaths = new Map<
+      string,
+      { formPath?: string; detailPath?: string }
+    >();
+    for (const ap of ast.autoPages) {
+      if (ap.pageType === "form" || ap.pageType === "detail") {
+        const existing = companionPaths.get(ap.entity) ?? {};
+        if (ap.pageType === "form") existing.formPath = ap.path;
+        if (ap.pageType === "detail") existing.detailPath = ap.path;
+        companionPaths.set(ap.entity, existing);
+      }
+    }
+
     for (const ap of ast.autoPages) {
       const entity = this.resolveEntity(ap.entity);
       if (!entity) continue; // SemanticValidator already reported this error
 
-      const resolvedData = this.resolveAutoPageData(ap, entity);
+      const companions = companionPaths.get(ap.entity) ?? {};
+      const resolvedData = this.resolveAutoPageData(ap, entity, companions);
       const templateKey = `autopages/${ap.pageType}.vue.hbs`;
       const content = this.render(templateKey, {
         autoPage: ap,
@@ -52,6 +68,7 @@ export class AutoPageGenerator extends BaseGenerator {
   private resolveAutoPageData(
     ap: AutoPageNode,
     entity: EntityNode,
+    companions: { formPath?: string; detailPath?: string } = {},
   ): Pick<
     TemplateExtraData,
     | "resolvedColumns"
@@ -77,6 +94,9 @@ export class AutoPageGenerator extends BaseGenerator {
     | "successRoute"
     | "pageTitle"
     | "fieldCount"
+    | "createPath"
+    | "editPath"
+    | "viewPath"
   > {
     const fieldMap = new Map<string, FieldNode>(
       entity.fields.map((f) => [f.name, f]),
@@ -132,6 +152,28 @@ export class AutoPageGenerator extends BaseGenerator {
     const entityNameCamel =
       ap.entity.charAt(0).toLowerCase() + ap.entity.slice(1);
 
+    // Companion page paths for navigation buttons.
+    // Prefer explicitly declared companion autoPages; fall back to conventional
+    // sub-paths of the current page (e.g., list at /todos → /todos/create).
+    const createPath =
+      companions.formPath ?? `${ap.path}/create`;
+    const editPath =
+      companions.formPath
+        ? `${companions.formPath}/:id`
+        : `${ap.path}/:id/edit`;
+    const viewPath =
+      companions.detailPath ?? `${ap.path}/:id`;
+
+    // Only expose action buttons when a routable companion page exists
+    // (i.e., the formPath or detailPath was explicitly declared or
+    //  the conventional sub-path would still route correctly).
+    const hasCreate =
+      (ap.topActions?.includes("create") ?? false) && !!createPath;
+    const hasViewRow =
+      (ap.rowActions?.includes("view") ?? false) && !!viewPath;
+    const hasEditRow =
+      (ap.rowActions?.includes("edit") ?? false) && !!editPath;
+
     return {
       resolvedColumns,
       resolvedFields,
@@ -146,16 +188,19 @@ export class AutoPageGenerator extends BaseGenerator {
       hasSearchable: (ap.searchable?.length ?? 0) > 0,
       hasRowActions: (ap.rowActions?.length ?? 0) > 0,
       hasTopActions: (ap.topActions?.length ?? 0) > 0,
-      hasCreate: ap.topActions?.includes("create") ?? false,
+      hasCreate,
       hasExport: ap.topActions?.includes("export") ?? false,
-      hasViewRow: ap.rowActions?.includes("view") ?? false,
-      hasEditRow: ap.rowActions?.includes("edit") ?? false,
+      hasViewRow,
+      hasEditRow,
       hasDeleteRow: ap.rowActions?.includes("delete") ?? false,
       hasPaginate: ap.paginate ?? true,
       pageSize: ap.pageSize ?? 20,
       successRoute: ap.successRoute ?? "/",
       pageTitle: ap.title ?? ap.name,
       fieldCount: resolvedFields.length,
+      createPath,
+      editPath,
+      viewPath,
     };
   }
 
