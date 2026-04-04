@@ -189,7 +189,7 @@ Despite configuring `darkModeSelector: ".app-dark"`, the generated app has no bu
 
 **Impact**: Dark mode is configured but permanently disabled (or permanently enabled depending on the selector).
 
-**Fix**: Generate a dark mode toggle button in the default layout that calls `document.documentElement.classList.toggle('.app-dark')` and persists the preference to `localStorage`.
+**Fix**: Generate a dark mode toggle button in the default layout that calls `document.documentElement.classList.toggle('app-dark')` and persists the preference to `localStorage`.
 
 ---
 
