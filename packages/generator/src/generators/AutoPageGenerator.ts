@@ -25,19 +25,36 @@ export class AutoPageGenerator extends BaseGenerator {
     const { ast, isSpa } = this.ctx;
     if (!ast.autoPages.length) return;
 
-    // Build a lookup: entity name → companion autoPage paths for form and detail
-    // Used by the list template to route "New" / "Edit" / "View" buttons correctly.
+    // Build a lookup: entity name → companion autoPage paths for form and detail.
+    // When multiple `form` autoPages exist for the same entity we distinguish:
+    //   - createFormPath: the form page whose path contains NO dynamic `:param` segment
+    //     (e.g. `/todos/create`)  — used for the "New" button
+    //   - editFormPath:   the form page whose path contains a `:param` segment
+    //     (e.g. `/todos/:id/edit`) — used for the "Edit" button
+    // If only one form page is present, it is used for both (conventional fall-back).
     const companionPaths = new Map<
       string,
-      { formPath?: string; detailPath?: string }
+      { createFormPath?: string; editFormPath?: string; detailPath?: string }
     >();
     for (const ap of ast.autoPages) {
-      if (ap.pageType === "form" || ap.pageType === "detail") {
-        const existing = companionPaths.get(ap.entity) ?? {};
-        if (ap.pageType === "form") existing.formPath = ap.path;
-        if (ap.pageType === "detail") existing.detailPath = ap.path;
-        companionPaths.set(ap.entity, existing);
+      const existing = companionPaths.get(ap.entity) ?? {};
+      if (ap.pageType === "form") {
+        const hasDynamicSegment = ap.path.includes(":");
+        if (hasDynamicSegment) {
+          existing.editFormPath = ap.path;
+        } else {
+          existing.createFormPath = ap.path;
+        }
+        // When only one form page exists (no split), populate both slots so
+        // resolveAutoPageData can build sensible fallbacks.
+        if (!existing.createFormPath && !hasDynamicSegment)
+          existing.createFormPath = ap.path;
+        if (!existing.editFormPath && hasDynamicSegment)
+          existing.editFormPath = ap.path;
+      } else if (ap.pageType === "detail") {
+        existing.detailPath = ap.path;
       }
+      companionPaths.set(ap.entity, existing);
     }
 
     for (const ap of ast.autoPages) {
@@ -68,7 +85,11 @@ export class AutoPageGenerator extends BaseGenerator {
   private resolveAutoPageData(
     ap: AutoPageNode,
     entity: EntityNode,
-    companions: { formPath?: string; detailPath?: string } = {},
+    companions: {
+      createFormPath?: string;
+      editFormPath?: string;
+      detailPath?: string;
+    } = {},
   ): Pick<
     TemplateExtraData,
     | "resolvedColumns"
@@ -153,16 +174,23 @@ export class AutoPageGenerator extends BaseGenerator {
       ap.entity.charAt(0).toLowerCase() + ap.entity.slice(1);
 
     // Companion page paths for navigation buttons.
-    // Prefer explicitly declared companion autoPages; fall back to conventional
-    // sub-paths of the current page (e.g., list at /todos → /todos/create).
+    // createPath: the companion form page that creates a new record (no :id param)
+    // editPath:   the companion form page for editing an existing record (has :id param)
+    // viewPath:   the companion detail page (has :id param)
+    // Prefer explicitly declared companion autoPages; fall back to conventional sub-paths.
     const createPath =
-      companions.formPath ?? `${ap.path}/create`;
+      companions.createFormPath ??
+      // Single form page without dynamic segment is the create path
+      (companions.editFormPath == null && companions.createFormPath == null
+        ? `${ap.path}/create`
+        : companions.createFormPath ?? `${ap.path}/create`);
     const editPath =
-      companions.formPath
-        ? `${companions.formPath}/:id`
-        : `${ap.path}/:id/edit`;
-    const viewPath =
-      companions.detailPath ?? `${ap.path}/:id`;
+      companions.editFormPath ??
+      // Single form page with dynamic segment already is the edit path
+      (companions.createFormPath
+        ? `${companions.createFormPath}/:id`
+        : `${ap.path}/:id/edit`);
+    const viewPath = companions.detailPath ?? `${ap.path}/:id`;
 
     // Only expose action buttons when a routable companion page exists
     // (i.e., the formPath or detailPath was explicitly declared or

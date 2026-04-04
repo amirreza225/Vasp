@@ -11,11 +11,11 @@
       <template #item="{ item, props }">
         <NuxtLink v-if="item.route" :to="item.route" v-bind="props.action" class="flex items-center gap-2 no-underline text-surface-700 dark:text-surface-200 hover:text-primary transition-colors">
           <i v-if="item.icon" :class="item.icon" />
-          <span>{{ item.label }}</span>
+          <span>\{{ item.label }}</span>
         </NuxtLink>
         <a v-else v-bind="props.action" class="flex items-center gap-2 no-underline text-surface-700 dark:text-surface-200 hover:text-primary transition-colors cursor-pointer">
           <i v-if="item.icon" :class="item.icon" />
-          <span>{{ item.label }}</span>
+          <span>\{{ item.label }}</span>
         </a>
       </template>
       <template #end>
