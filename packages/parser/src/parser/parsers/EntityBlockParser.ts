@@ -183,6 +183,7 @@ export function parseEntity(ctx: IParserContext): EntityNode {
   const fields: FieldNode[] = [];
   const indexes: EntityIndex[] = [];
   const uniqueConstraints: EntityUniqueConstraint[] = [];
+  let versioned = false;
 
   while (!ctx.check(TokenType.RBRACE)) {
     // Table-level directives: @@index([fields]), @@index([fields], type: fulltext), @@unique([fields])
@@ -256,11 +257,15 @@ export function parseEntity(ctx: IParserContext): EntityNode {
         ctx.consume(TokenType.RPAREN);
         uniqueConstraints.push({ fields: uniqueFields });
         continue;
+      } else if (directive.value === "versioned") {
+        // @@versioned — no arguments, just a flag
+        versioned = true;
+        continue;
       } else {
         throw ctx.error(
           "E169_UNKNOWN_TABLE_DIRECTIVE",
           `Unknown table directive '@@${directive.value}'`,
-          "Valid table directives: @@index, @@unique",
+          "Valid table directives: @@index, @@unique, @@versioned",
           directive.loc,
         );
       }
@@ -392,5 +397,6 @@ export function parseEntity(ctx: IParserContext): EntityNode {
     fields,
     ...(indexes.length > 0 ? { indexes } : {}),
     ...(uniqueConstraints.length > 0 ? { uniqueConstraints } : {}),
+    ...(versioned ? { versioned: true } : {}),
   };
 }

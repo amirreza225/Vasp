@@ -256,6 +256,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
         tableIndexes,
         tableUniqueConstraints,
         hasTableIndexes,
+        versioned: entity.versioned ?? false,
       };
     });
 
@@ -343,6 +344,7 @@ export class DrizzleSchemaGenerator extends BaseGenerator {
           tableIndexes: [],
           tableUniqueConstraints: [],
           hasTableIndexes: false,
+          versioned: false,
         });
       }
     }

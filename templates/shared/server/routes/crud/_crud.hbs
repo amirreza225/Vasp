@@ -2,7 +2,7 @@ import { Elysia, t } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
 import { safeParse } from 'valibot'
 import { eq, sql, asc, desc, and, ilike, or } from 'drizzle-orm'
-import { {{plural (camelCase entity)}} } from '../../../drizzle/schema.{{ext}}'
+import { {{plural (camelCase entity)}}{{#if isVersioned}}, {{camelCase entity}}Versions{{/if}} } from '../../../drizzle/schema.{{ext}}'
 import { Create{{pascalCase entity}}Schema, Update{{pascalCase entity}}Schema } from '../../../shared/validation.{{ext}}'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 {{#if needsAuth}}
@@ -353,5 +353,39 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
       }
     },
   }{{/if}})
+{{/if}}
+{{#if isVersioned}}
+  // ── Version history endpoints (@@versioned) ────────────────────────────────
+  // GET /api/crud/<entity>/:id/versions — list all recorded versions
+  .get('/:id/versions', async ({ params: { id } }) => {
+    const numId = Number(id)
+    if (!Number.isFinite(numId)) throw new VaspError('INVALID_INPUT', 'Invalid id', 400)
+    const versions = await db
+      .select()
+      .from({{camelCase entity}}Versions)
+      .where(eq({{camelCase entity}}Versions.entityId, numId))
+      .orderBy(desc({{camelCase entity}}Versions.version))
+    return { ok: true, data: versions }
+  })
+  // POST /api/crud/<entity>/:id/restore/:version — restore a specific version
+  .post('/:id/restore/:version', async ({ params: { id, version }{{#if needsAuth}}, user{{/if}} }) => {
+    const numId = Number(id)
+    const numVersion = Number(version)
+    if (!Number.isFinite(numId) || !Number.isFinite(numVersion)) {
+      throw new VaspError('INVALID_INPUT', 'Invalid id or version', 400)
+    }
+    const [versionRow] = await db
+      .select()
+      .from({{camelCase entity}}Versions)
+      .where(and(eq({{camelCase entity}}Versions.entityId, numId), eq({{camelCase entity}}Versions.version, numVersion)))
+    if (!versionRow) throw new VaspError('NOT_FOUND', 'Version not found', 404)
+    const [restored] = await db
+      .update({{plural (camelCase entity)}})
+      .set({ ...versionRow.data as object, updatedAt: new Date() })
+      .where(eq({{plural (camelCase entity)}}.id, numId))
+      .returning()
+    if (!restored) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
+    return { ok: true, data: restored }
+  })
 {{/if}}
 

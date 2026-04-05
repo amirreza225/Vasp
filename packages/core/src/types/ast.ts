@@ -575,6 +575,12 @@ export interface EntityNode extends BaseNode {
   indexes?: EntityIndex[];
   /** Table-level composite unique constraints declared with @@unique */
   uniqueConstraints?: EntityUniqueConstraint[];
+  /**
+   * When true (`@@versioned` directive), Vasp generates a shadow `<EntityName>Versions`
+   * table that tracks every insert/update to the entity. A `GET /api/crud/<entity>/:id/versions`
+   * endpoint and a `POST /api/crud/<entity>/:id/restore/:version` endpoint are also generated.
+   */
+  versioned?: boolean;
 }
 
 export interface AdminNode {

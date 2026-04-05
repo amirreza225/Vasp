@@ -40,6 +40,10 @@ describe("drizzleColumn — field-type mapping", () => {
     expect(drizzleColumn("avatar", "File", [])).toMatch(/^text\('avatar'\)/);
   });
 
+  it("maps RichText to text()", () => {
+    expect(drizzleColumn("body", "RichText", [])).toMatch(/^text\('body'\)/);
+  });
+
   it("falls back to text() for unknown type", () => {
     expect(drizzleColumn("x", "Unknown", [])).toMatch(/^text\('x'\)/);
   });

@@ -486,4 +486,5 @@ export interface TemplateExtraData {
   editPath?: string;
   viewPath?: string;
   hasRichTextFields?: boolean;
+  isVersioned?: boolean;
 }
