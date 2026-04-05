@@ -3,6 +3,12 @@
 // and auto-hydration to the client. Cookies are forwarded server-side via useRequestHeaders.
 import { $fetch } from 'ofetch'
 
+function getCsrfToken() {
+  if (import.meta.server) return undefined
+  const match = document.cookie.match(/(?:^|;\s*)vasp-csrf=([^;]*)/)
+  return match?.[1] !== undefined ? decodeURIComponent(match[1]) : undefined
+}
+
 export function useAuth() {
   // useState() is per-request on the server and auto-hydrated to the client —
   // eliminates cross-request contamination from module-level singletons.
@@ -26,9 +32,11 @@ export function useAuth() {
   }
 
   async function login(username, password) {
+    const csrfToken = getCsrfToken()
     user.value = await $fetch(`${baseURL}/auth/login`, {
       method: 'POST',
       body: { username, password },
+      headers: { ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
       credentials: 'include',
     })
     checked.value = true
@@ -36,9 +44,11 @@ export function useAuth() {
   }
 
   async function register(username, password, email) {
+    const csrfToken = getCsrfToken()
     user.value = await $fetch(`${baseURL}/auth/register`, {
       method: 'POST',
       body: { username, password, email },
+      headers: { ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
       credentials: 'include',
     })
     checked.value = true
@@ -46,7 +56,12 @@ export function useAuth() {
   }
 
   async function logout() {
-    await $fetch(`${baseURL}/auth/logout`, { method: 'POST', credentials: 'include' })
+    const csrfToken = getCsrfToken()
+    await $fetch(`${baseURL}/auth/logout`, {
+      method: 'POST',
+      headers: { ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
+      credentials: 'include',
+    })
     user.value = null
     checked.value = false
   }
