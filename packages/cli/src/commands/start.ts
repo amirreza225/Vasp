@@ -54,6 +54,11 @@ export async function startCommand(): Promise<void> {
     process.exit(1);
   }
 
+  // Determine if the admin directory actually exists (generation may have failed
+  // or the user may be running `vasp start` before the first `vasp generate`).
+  const adminDir = join(projectDir, "admin");
+  const adminDirExists = !!adminScript && existsSync(adminDir);
+
   // Pre-flight checks
   const envFile = join(projectDir, ".env");
   const exampleFile = join(projectDir, ".env.example");
