@@ -144,16 +144,11 @@ export async function startCommand(): Promise<void> {
   log.step("Starting Vasp dev servers...");
   log.dim(`  server: ${serverScript}`);
   log.dim(`  client: ${clientScript}`);
-  if (adminScript) log.dim(`  admin:  ${adminScript}`);
+  if (adminDirExists) log.dim(`  admin:  ${adminScript}`);
   console.log();
 
   // Install admin dependencies if admin panel exists but node_modules is missing
-  const adminDir = join(projectDir, "admin");
-  if (
-    adminScript &&
-    existsSync(adminDir) &&
-    !existsSync(join(adminDir, "node_modules"))
-  ) {
+  if (adminDirExists && !existsSync(join(adminDir, "node_modules"))) {
     log.warn("admin/node_modules not found. Running bun install in admin/...");
     const adminInstall = Bun.spawn(["bun", "install"], {
       cwd: adminDir,
@@ -171,7 +166,7 @@ export async function startCommand(): Promise<void> {
   const procs = await Promise.all([
     spawnPrefixed("server", pc.cyan, "dev:server", projectDir),
     spawnPrefixed("client", pc.magenta, "dev:client", projectDir),
-    ...(adminScript
+    ...(adminDirExists
       ? [spawnPrefixed("admin", pc.yellow, "dev:admin", projectDir)]
       : []),
   ]);
