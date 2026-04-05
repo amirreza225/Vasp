@@ -25,11 +25,44 @@ export class AutoPageGenerator extends BaseGenerator {
     const { ast, isSpa } = this.ctx;
     if (!ast.autoPages.length) return;
 
+    // Build a lookup: entity name → companion autoPage paths for form and detail.
+    // When multiple `form` autoPages exist for the same entity we distinguish:
+    //   - createFormPath: the form page whose path contains NO dynamic `:param` segment
+    //     (e.g. `/todos/create`)  — used for the "New" button
+    //   - editFormPath:   the form page whose path contains a `:param` segment
+    //     (e.g. `/todos/:id/edit`) — used for the "Edit" button
+    // If only one form page is present, it is used for both (conventional fall-back).
+    const companionPaths = new Map<
+      string,
+      { createFormPath?: string; editFormPath?: string; detailPath?: string }
+    >();
+    for (const ap of ast.autoPages) {
+      const existing = companionPaths.get(ap.entity) ?? {};
+      if (ap.pageType === "form") {
+        const hasDynamicSegment = ap.path.includes(":");
+        if (hasDynamicSegment) {
+          existing.editFormPath = ap.path;
+        } else {
+          existing.createFormPath = ap.path;
+        }
+        // When only one form page exists (no split), populate both slots so
+        // resolveAutoPageData can build sensible fallbacks.
+        if (!existing.createFormPath && !hasDynamicSegment)
+          existing.createFormPath = ap.path;
+        if (!existing.editFormPath && hasDynamicSegment)
+          existing.editFormPath = ap.path;
+      } else if (ap.pageType === "detail") {
+        existing.detailPath = ap.path;
+      }
+      companionPaths.set(ap.entity, existing);
+    }
+
     for (const ap of ast.autoPages) {
       const entity = this.resolveEntity(ap.entity);
       if (!entity) continue; // SemanticValidator already reported this error
 
-      const resolvedData = this.resolveAutoPageData(ap, entity);
+      const companions = companionPaths.get(ap.entity) ?? {};
+      const resolvedData = this.resolveAutoPageData(ap, entity, companions);
       const templateKey = `autopages/${ap.pageType}.vue.hbs`;
       const content = this.render(templateKey, {
         autoPage: ap,
@@ -52,6 +85,11 @@ export class AutoPageGenerator extends BaseGenerator {
   private resolveAutoPageData(
     ap: AutoPageNode,
     entity: EntityNode,
+    companions: {
+      createFormPath?: string;
+      editFormPath?: string;
+      detailPath?: string;
+    } = {},
   ): Pick<
     TemplateExtraData,
     | "resolvedColumns"
@@ -77,6 +115,10 @@ export class AutoPageGenerator extends BaseGenerator {
     | "successRoute"
     | "pageTitle"
     | "fieldCount"
+    | "createPath"
+    | "editPath"
+    | "viewPath"
+    | "hasRichTextFields"
   > {
     const fieldMap = new Map<string, FieldNode>(
       entity.fields.map((f) => [f.name, f]),
@@ -109,7 +151,7 @@ export class AutoPageGenerator extends BaseGenerator {
 
     const resolvedFields: AutoPageResolvedField[] = fieldKeys.map((key) => {
       const field = fieldMap.get(key);
-      return {
+      const base: AutoPageResolvedField = {
         key,
         label: this.humanLabel(key),
         primevueComponent: field
@@ -122,15 +164,49 @@ export class AutoPageGenerator extends BaseGenerator {
         isBoolean: field?.type === "Boolean",
         isDateTime: field?.type === "DateTime",
         isFile: field?.type === "File",
+        isRichText: field?.type === "RichText",
         isText: field?.type === "Text" || field?.type === "Json",
         isNumber: field?.type === "Int" || field?.type === "Float",
+        isManyToMany: field?.isManyToMany ?? false,
         columnType: field ? this.primevueColumnTypeFor(field) : "text",
         fieldType: field?.type ?? "String",
       };
+      if (field?.relatedEntity) base.relatedEntity = field.relatedEntity;
+      if (field?.storageBlock) base.storageBlock = field.storageBlock;
+      return base;
     });
 
     const entityNameCamel =
       ap.entity.charAt(0).toLowerCase() + ap.entity.slice(1);
+
+    // Companion page paths for navigation buttons.
+    // createPath: the companion form page that creates a new record (no :id param)
+    // editPath:   the companion form page for editing an existing record (has :id param)
+    // viewPath:   the companion detail page (has :id param)
+    // Prefer explicitly declared companion autoPages; fall back to conventional sub-paths.
+    const createPath =
+      companions.createFormPath ??
+      // Single form page without dynamic segment is the create path
+      (companions.editFormPath == null && companions.createFormPath == null
+        ? `${ap.path}/create`
+        : companions.createFormPath ?? `${ap.path}/create`);
+    const editPath =
+      companions.editFormPath ??
+      // Single form page with dynamic segment already is the edit path
+      (companions.createFormPath
+        ? `${companions.createFormPath}/:id`
+        : `${ap.path}/:id/edit`);
+    const viewPath = companions.detailPath ?? `${ap.path}/:id`;
+
+    // Only expose action buttons when a routable companion page exists
+    // (i.e., the formPath or detailPath was explicitly declared or
+    //  the conventional sub-path would still route correctly).
+    const hasCreate =
+      (ap.topActions?.includes("create") ?? false) && !!createPath;
+    const hasViewRow =
+      (ap.rowActions?.includes("view") ?? false) && !!viewPath;
+    const hasEditRow =
+      (ap.rowActions?.includes("edit") ?? false) && !!editPath;
 
     return {
       resolvedColumns,
@@ -146,16 +222,20 @@ export class AutoPageGenerator extends BaseGenerator {
       hasSearchable: (ap.searchable?.length ?? 0) > 0,
       hasRowActions: (ap.rowActions?.length ?? 0) > 0,
       hasTopActions: (ap.topActions?.length ?? 0) > 0,
-      hasCreate: ap.topActions?.includes("create") ?? false,
+      hasCreate,
       hasExport: ap.topActions?.includes("export") ?? false,
-      hasViewRow: ap.rowActions?.includes("view") ?? false,
-      hasEditRow: ap.rowActions?.includes("edit") ?? false,
+      hasViewRow,
+      hasEditRow,
       hasDeleteRow: ap.rowActions?.includes("delete") ?? false,
       hasPaginate: ap.paginate ?? true,
       pageSize: ap.pageSize ?? 20,
       successRoute: ap.successRoute ?? "/",
       pageTitle: ap.title ?? ap.name,
       fieldCount: resolvedFields.length,
+      createPath,
+      editPath,
+      viewPath,
+      hasRichTextFields: resolvedFields.some((f) => f.isRichText),
     };
   }
 

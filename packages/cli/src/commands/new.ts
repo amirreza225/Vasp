@@ -135,7 +135,17 @@ export async function newCommand(args: string[]): Promise<void> {
 }
 
 function parseOptions(args: string[]): NewOptions {
-  const starter = args.find((a) => a.startsWith("--starter="))?.split("=")[1];
+  // Support both `--starter=todo` (equals form) and `--starter todo` (space form)
+  const equalsForm = args.find((a) => a.startsWith("--starter="))?.split("=")[1];
+  const spaceFormIdx = args.indexOf("--starter");
+  const spaceForm =
+    spaceFormIdx !== -1 && spaceFormIdx + 1 < args.length
+      ? args[spaceFormIdx + 1]
+      : undefined;
+  // Equals form takes precedence; space form is used if the next arg is not another flag
+  const starter =
+    equalsForm ??
+    (spaceForm && !spaceForm.startsWith("--") ? spaceForm : undefined);
   return {
     typescript: args.includes("--typescript") || args.includes("--ts"),
     ssr: args.includes("--ssr"),

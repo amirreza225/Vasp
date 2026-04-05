@@ -50,6 +50,7 @@ const routes = [
     component: () => import('@src/pages/Register.vue'),
   },
 {{/if}}
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../pages/NotFound.vue') },
 ]
 
 const router = createRouter({

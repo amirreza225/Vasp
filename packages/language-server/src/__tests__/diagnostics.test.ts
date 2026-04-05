@@ -106,17 +106,25 @@ describe("validateDocument — CRUD operation errors", () => {
 });
 
 // ---------------------------------------------------------------------------
-// E104 — realtime entity not covered by crud
+// E104 — realtime entity not found
 // ---------------------------------------------------------------------------
 
-describe("validateDocument — E104 realtime without crud", () => {
-  it("reports E104_REALTIME_ENTITY_NOT_CRUD when realtime entity has no crud block", () => {
+describe("validateDocument — E104 realtime without entity block", () => {
+  it("reports E104_REALTIME_ENTITY_NOT_FOUND when realtime entity has no entity block", () => {
+    const src = `
+      app A { title: "A" db: Drizzle ssr: false typescript: false }
+      realtime TodoChannel { entity: Todo events: [created] }
+    `;
+    expect(codes(src)).toContain("E104_REALTIME_ENTITY_NOT_FOUND");
+  });
+
+  it("does not report E104 when realtime entity exists (no crud required)", () => {
     const src = `
       app A { title: "A" db: Drizzle ssr: false typescript: false }
       entity Todo { id: Int @id title: String }
       realtime TodoChannel { entity: Todo events: [created] }
     `;
-    expect(codes(src)).toContain("E104_REALTIME_ENTITY_NOT_CRUD");
+    expect(codes(src)).not.toContain("E104_REALTIME_ENTITY_NOT_FOUND");
   });
 });
 

@@ -25,8 +25,15 @@ const filters = ref({
 async function load() {
   loading.value = true
   try {
-    const res = await fetch('/api/{{kebabCase entityNamePascal}}')
-    rows.value = await res.json()
+    const res = await fetch('/api/crud/{{kebabCase entityNamePascal}}', { credentials: 'include' })
+    const json = await res.json()
+    if (!res.ok) {
+      toast.add({ severity: 'error', summary: 'Failed to load', detail: json?.error?.message ?? 'Unknown error', life: 4000 })
+      return
+    }
+    // Vasp wraps successful responses in { ok: true, data: { items, total } }
+    const payload = json?.ok === true ? json.data : json
+    rows.value = payload?.items ?? (Array.isArray(payload) ? payload : [])
   } finally {
     loading.value = false
   }
@@ -43,7 +50,7 @@ function confirmDelete(id) {
     rejectProps: { label: 'Cancel', severity: 'secondary', outlined: true },
     acceptProps: { label: 'Delete', severity: 'danger' },
     accept: async () => {
-      await fetch('/api/{{kebabCase entityNamePascal}}/' + id, { method: 'DELETE' })
+      await fetch('/api/crud/{{kebabCase entityNamePascal}}/' + id, { method: 'DELETE', credentials: 'include' })
       toast.add({ severity: 'success', summary: 'Deleted', life: 3000 })
       await load()
     }
@@ -86,7 +93,7 @@ function confirmDelete(id) {
             <Button
               label="New {{entityNamePascal}}"
               icon="pi pi-plus"
-              @click="router.push('{{autoPage.path}}/create')"
+              @click="router.push('{{createPath}}')"
             />
             {{/if}}
             {{#if hasExport}}
@@ -141,7 +148,7 @@ function confirmDelete(id) {
               rounded
               outlined
               size="small"
-              @click="router.push('{{autoPage.path}}/' + data.id)"
+              @click="router.push('{{viewPath}}'.replace(':id', data.id))"
             />
             {{/if}}
             {{#if hasEditRow}}
@@ -150,7 +157,7 @@ function confirmDelete(id) {
               rounded
               outlined
               size="small"
-              @click="router.push('{{autoPage.path}}/' + data.id + '/edit')"
+              @click="router.push('{{editPath}}'.replace(':id', data.id))"
             />
             {{/if}}
             {{#if hasDeleteRow}}

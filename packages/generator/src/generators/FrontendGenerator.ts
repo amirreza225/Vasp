@@ -39,7 +39,20 @@ export class FrontendGenerator extends BaseGenerator {
       `src/main.${ext}`,
       this.render(`spa/${ext}/src/main.${ext}.hbs`),
     );
-    this.write(`src/App.vue`, this.render(`spa/${ext}/src/App.vue.hbs`));
+    this.write(`src/App.vue`, this.render(`spa/${ext}/src/App.vue.hbs`, {
+      navRoutes: ast.routes
+        .filter((r) => r.path !== "/login" && r.path !== "/register")
+        .filter((r) => !r.hideFromNav)
+        .map((r) => ({
+          label: r.navLabel ?? this.routeLabel(r.path, r.name),
+          path: r.path,
+          roles: r.roles,
+        })),
+      hasAuth: !!ast.auth,
+      appTitle: ast.app?.title ?? ast.app?.name ?? "Vasp App",
+      darkModeSelector: ast.app?.ui?.darkModeSelector ?? ".app-dark",
+      darkModeClass: (ast.app?.ui?.darkModeSelector ?? ".app-dark").replace(/^\./, ""),
+    }));
     this.write(
       `src/components/VaspErrorBoundary.vue`,
       this.render(`spa/${ext}/src/components/VaspErrorBoundary.vue.hbs`),
@@ -52,12 +65,23 @@ export class FrontendGenerator extends BaseGenerator {
       `src/vasp/useVaspNotifications.${ext}`,
       this.render(`spa/${ext}/src/vasp/useVaspNotifications.${ext}.hbs`),
     );
+    // Shared rich-text editor component (always emitted — lightweight, tree-shakeable)
+    this.write(
+      `src/components/TiptapEditor.vue`,
+      this.render(`shared/components/TiptapEditor.vue.hbs`),
+    );
+    // 404 Not Found page (always emitted — catchall route)
+    this.write(
+      `src/pages/NotFound.vue`,
+      this.render(`spa/shared/NotFound.vue.hbs`),
+    );
 
     // Router — build page component source map
     const pagesMap = this.buildPagesMap();
+    const hasRolesOnRoutes = ast.routes.some((r) => r.roles?.length);
     this.write(
       `src/router/index.${ext}`,
-      this.render(`spa/${ext}/src/router/index.${ext}.hbs`, { pagesMap }),
+      this.render(`spa/${ext}/src/router/index.${ext}.hbs`, { pagesMap, hasRolesOnRoutes }),
     );
 
     // Vasp plugin
@@ -127,6 +151,16 @@ export class FrontendGenerator extends BaseGenerator {
         this.write(relativePath, this.scaffoldVuePage(pageName));
       }
     }
+
+    // Warn if auth is enabled and no route has `protected: false` in SPA mode.
+    if (ast.auth && ast.routes.length > 0) {
+      const hasPublicRoute = ast.routes.some((r) => r.protected === false);
+      if (!hasPublicRoute) {
+        this.ctx.logger.warn(
+          "All declared routes are auth-protected. Add `protected: false` to routes that should be publicly accessible (e.g. landing page).",
+        );
+      }
+    }
   }
 
   private generateSsr(): void {
@@ -179,10 +213,51 @@ export class FrontendGenerator extends BaseGenerator {
       );
     }
 
+    // Default layout with navigation bar and dark mode toggle.
+    // Build nav routes: public routes (not /login, /register) shown in the nav bar.
+    const navRoutes = ast.routes
+      .filter((r) => r.path !== "/login" && r.path !== "/register")
+      .filter((r) => !r.hideFromNav)
+      .map((r) => ({
+        label: r.navLabel ?? this.routeLabel(r.path, r.name),
+        path: r.path,
+        roles: r.roles,
+      }));
+    // Shared rich-text editor component — auto-imported by Nuxt
+    this.write(
+      `components/TiptapEditor.vue`,
+      this.render(`shared/components/TiptapEditor.vue.hbs`),
+    );
+    const darkModeSelector = ast.app?.ui?.darkModeSelector ?? ".app-dark";
+    const darkModeClass = darkModeSelector.replace(/^\./, "");
+    const appTitle = ast.app?.title ?? ast.app?.name ?? "Vasp App";
+    this.write(
+      `layouts/default.vue`,
+      this.render(`ssr/${ext}/layouts/default.vue.hbs`, {
+        navRoutes,
+        darkModeSelector,
+        darkModeClass,
+        appTitle,
+        hasAuth: !!ast.auth,
+      }),
+    );
+
     // Generate Nuxt pages from Vasp routes.
     // Routes are protected by default when an auth block exists unless explicitly
     // overridden with `protected: false` in the route DSL block.
     const pagesMap = this.buildPagesMap();
+    // Warn if auth is enabled and no route has `protected: false`.
+    // This is a common footgun: every declared route (including the landing page)
+    // is protected by default. Add `protected: false` to public routes.
+    if (ast.auth && ast.routes.length > 0) {
+      const hasPublicRoute = ast.routes.some((r) => r.protected === false);
+      if (!hasPublicRoute) {
+        this.ctx.logger.warn(
+          "All declared routes are auth-protected. Add `protected: false` to routes that should be publicly accessible (e.g. landing page).",
+        );
+      }
+    }
+
     for (const route of ast.routes) {
       const pageFile = this.routePathToNuxtFile(route.path);
       const componentSource = pagesMap[route.to];
@@ -202,7 +277,7 @@ export class FrontendGenerator extends BaseGenerator {
       );
     }
 
-    // Auth login/register pages — always public (never require auth middleware)
+    // Auth login/register pages — always public, use no layout (full-screen centered card design)
     if (ast.auth) {
       this.write(
         `pages/login.vue`,
@@ -210,6 +285,7 @@ export class FrontendGenerator extends BaseGenerator {
           componentName: "LoginPage",
           componentSource: "@src/pages/Login.vue",
           isProtected: false,
+          noLayout: true,
         }),
       );
       this.write(
@@ -218,6 +294,7 @@ export class FrontendGenerator extends BaseGenerator {
           componentName: "RegisterPage",
           componentSource: "@src/pages/Register.vue",
           isProtected: false,
+          noLayout: true,
         }),
       );
     }
@@ -266,11 +343,44 @@ export class FrontendGenerator extends BaseGenerator {
     return basename.replace(/\.vue$/, "");
   }
 
+  /** Convert a route path and name to a human-readable nav label.
+   *  "/todos" → "Todos", "/user-profile" → "User Profile", "/" → "Home" */
+  private routeLabel(path: string, name: string): string {
+    if (path === "/") return "Home";
+    // Try to derive from path segment first for readability
+    const last = path.split("/").filter(Boolean).pop() ?? name;
+    return last
+      .replace(/-/g, " ")
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^\w/, (c) => c.toUpperCase())
+      .trim();
+  }
+
   private scaffoldVuePage(name: string): string {
-    return `<template>
-  <div>
-    <h1>${name}</h1>
-    <p>Edit this page in src/pages/</p>
+    const title = name
+      .replace(/Page$/, "")
+      .replace(/([A-Z])/g, " $1")
+      .replace(/\s+/g, " ")
+      .replace(/^\w/, (c) => c.toUpperCase())
+      .trim();
+    return `<script setup>
+// ${name} — auto-scaffolded by Vasp. Customize freely.
+// This file is NOT overwritten on subsequent \`vasp generate\` runs.
+</script>
+
+<template>
+  <div class="p-6 max-w-4xl mx-auto">
+    <div class="flex items-center gap-4 mb-8">
+      <h1 class="text-3xl font-bold m-0">${title}</h1>
+    </div>
+
+    <div class="card p-8 border border-surface rounded-xl shadow-sm text-center">
+      <i class="pi pi-file-edit text-5xl text-primary mb-4 block" />
+      <p class="text-surface-500 mb-2 font-medium">This page was scaffolded by Vasp.</p>
+      <p class="text-surface-400 text-sm">
+        Edit <code class="bg-surface-100 dark:bg-surface-800 px-1.5 py-0.5 rounded font-mono text-xs">src/pages/${name}.vue</code> to build your UI.
+      </p>
+    </div>
   </div>
 </template>
 `;

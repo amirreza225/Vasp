@@ -37,10 +37,12 @@ function emptyForm() {
   return {
 {{#each fields}}
 {{#unless isRelation}}
+{{#unless isExplicitFkDuplicate}}
 {{#unless (includes modifiers "id")}}
 {{#unless isUpdatedAt}}
 {{#unless (includes modifiers "default_now")}}
     {{name}}: {{#if (eq type "Boolean")}}false{{else if (eq type "Int")}}0{{else if (eq type "Float")}}0{{else if (eq type "Enum")}}{{#if enumValues}}'{{enumValues.[0]}}'{{else}}''{{/if}}{{else if (eq type "DateTime")}}{{#if nullable}}null{{else}}''{{/if}}{{else if (eq type "Json")}}'{}'{{else if nullable}}null{{else}}''{{/if}},
+{{/unless}}
 {{/unless}}
 {{/unless}}
 {{/unless}}

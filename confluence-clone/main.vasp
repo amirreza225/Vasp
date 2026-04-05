@@ -1,0 +1,703 @@
+// ============================================================
+// Confluence Clone — main.vasp
+//
+// A Confluence-like collaborative wiki built with Vasp.
+// Spaces → Pages (hierarchical) → Comments → Attachments
+// Rich text bodies use the native RichText field type (added in this PR).
+// The generated autoPage forms render Tiptap editors automatically.
+//
+// Note: Parts marked "MANUAL" require hand-written Vue/TS code
+// because the current Vasp DSL cannot express them fully.
+// See VASP_GAPS.md for the complete list of limitations.
+// ============================================================
+
+app ConfluenceClone {
+  title: "Confluence Clone"
+  db: Drizzle
+  ssr: true
+  typescript: true
+
+  env: {
+    DATABASE_URL:            required String @minLength(20)
+    JWT_SECRET:              required String @minLength(32)
+    NODE_ENV:                required Enum(development, staging, production) @default(development)
+    PORT:                    optional Int @min(1024) @max(65535) @default(3001)
+    S3_BUCKET:               optional String
+    S3_REGION:               optional String @default(us-east-1)
+    AWS_ACCESS_KEY_ID:       optional String
+    AWS_SECRET_ACCESS_KEY:   optional String
+    RESEND_API_KEY:          optional String
+    FROM_EMAIL:              optional String
+    REDIS_URL:               optional String
+  }
+
+  ui: {
+    theme: Aura
+    primaryColor: blue
+    darkModeSelector: ".app-dark"
+    ripple: true
+  }
+}
+
+// ─── Authentication ──────────────────────────────────────────────────────────
+
+auth Auth {
+  userEntity: User
+  methods: [ usernameAndPassword ]
+  roles: [ admin, editor, viewer ]
+  permissions: {
+    space:create:      [ admin ]
+    space:read:        [ admin, editor, viewer ]
+    space:update:      [ admin, editor ]
+    space:delete:      [ admin ]
+    page:create:       [ admin, editor ]
+    page:read:         [ admin, editor, viewer ]
+    page:update:       [ admin, editor ]
+    page:delete:       [ admin, editor ]
+    comment:create:    [ admin, editor, viewer ]
+    comment:delete:    [ admin, editor ]
+    attachment:upload: [ admin, editor ]
+    label:manage:      [ admin, editor ]
+    admin:access:      [ admin ]
+  }
+}
+
+// ─── Entities ────────────────────────────────────────────────────────────────
+
+entity User {
+  id:          Int      @id
+  username:    String   @unique @validate(minLength: 2, maxLength: 50)
+  email:       String   @unique @validate(email)
+  role:        Enum(admin, editor, viewer) @default(editor)
+  displayName: String   @nullable @validate(maxLength: 100)
+  bio:         Text     @nullable
+  avatar:      File     @storage(AvatarStorage) @nullable
+  isActive:    Boolean
+  createdAt:   DateTime @default(now)
+  updatedAt:   DateTime @updatedAt
+  pages:       Page[]
+  comments:    Comment[]
+  spaces:      Space[]
+}
+
+entity Space {
+  id:          Int      @id
+  name:        String   @validate(minLength: 1, maxLength: 120)
+  key:         String   @unique @validate(minLength: 2, maxLength: 10)
+  description: Text     @nullable
+  iconUrl:     String   @nullable
+  isPublic:    Boolean
+  createdAt:   DateTime @default(now)
+  updatedAt:   DateTime @updatedAt
+  owner:       User     @onDelete(restrict)
+  pages:       Page[]
+
+  @@index([key])
+  @@unique([name])
+}
+
+// Page body now uses the native RichText type added in this PR.
+// The generated autoPage form will render a Tiptap editor automatically.
+entity Page {
+  id:              Int      @id
+  title:           String   @validate(minLength: 1, maxLength: 255)
+  body:            RichText @nullable
+  status:          Enum(draft, published, archived) @default(draft)
+  version:         Int
+  excerpt:         Text     @nullable
+  slug:            String   @nullable @validate(maxLength: 255)
+  isFeatured:      Boolean
+  viewCount:       Int
+  createdAt:       DateTime @default(now)
+  updatedAt:       DateTime @updatedAt
+  space:           Space    @onDelete(cascade)
+  author:          User     @onDelete(restrict)
+  // Self-referential parent for hierarchical pages.
+  // LIMITATION: Drizzle schema generator may not handle self-referential
+  // FK correctly. MANUAL workaround may be needed in schema.ts.
+  parent:          Page     @nullable @onDelete(cascade)
+  children:        Page[]
+  comments:        Comment[]
+  attachments:     Attachment[]
+  labels:          Label[]  @manyToMany
+  versions:        PageVersion[]
+
+  @@index([status])
+  @@index([spaceId])
+}
+
+// Snapshot of a page at a specific version number — for revision history.
+// MANUAL: Content diffing and restore logic must be hand-written.
+entity PageVersion {
+  id:          Int      @id
+  version:     Int
+  title:       String   @validate(minLength: 1, maxLength: 255)
+  body:        RichText @nullable
+  changeNote:  String   @nullable @validate(maxLength: 255)
+  createdAt:   DateTime @default(now)
+  page:        Page     @onDelete(cascade)
+  author:      User     @onDelete(restrict)
+
+  @@index([pageId, version])
+}
+
+entity Comment {
+  id:        Int      @id
+  content:   Text     @validate(minLength: 1, maxLength: 5000)
+  isEdited:  Boolean
+  editedAt:  DateTime @nullable
+  createdAt: DateTime @default(now)
+  updatedAt: DateTime @updatedAt
+  page:      Page     @onDelete(cascade)
+  author:    User     @onDelete(cascade)
+  // Threaded comments (reply to a comment).
+  // LIMITATION: Same self-referential issue as Page.parent.
+  parent:    Comment  @nullable @onDelete(cascade)
+  replies:   Comment[]
+}
+
+entity Label {
+  id:     Int    @id
+  name:   String @unique @validate(minLength: 1, maxLength: 50)
+  color:  String @nullable @validate(maxLength: 7)
+  pages:  Page[] @manyToMany
+}
+
+entity Attachment {
+  id:          Int      @id
+  filename:    String   @validate(minLength: 1, maxLength: 255)
+  mimeType:    String   @validate(maxLength: 127)
+  sizeBytes:   Int
+  url:         String   @validate(minLength: 1)
+  createdAt:   DateTime @default(now)
+  page:        Page     @onDelete(cascade)
+  uploadedBy:  User     @onDelete(restrict)
+}
+
+// Tracks which users are watching which pages (for notifications).
+entity PageWatch {
+  id:        Int      @id
+  createdAt: DateTime @default(now)
+  user:      User     @onDelete(cascade)
+  page:      Page     @onDelete(cascade)
+
+  @@unique([userId, pageId])
+}
+
+// ─── Storage ─────────────────────────────────────────────────────────────────
+
+storage AvatarStorage {
+  provider: local
+  maxSize: "2mb"
+  allowedTypes: ["image/jpeg", "image/png", "image/webp"]
+  publicPath: "/uploads/avatars"
+}
+
+storage AttachmentStorage {
+  provider: local
+  maxSize: "50mb"
+  allowedTypes: [
+    "image/jpeg", "image/png", "image/gif", "image/webp",
+    "application/pdf",
+    "application/zip",
+    "text/plain", "text/markdown",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  ]
+  publicPath: "/uploads/attachments"
+}
+
+// ─── Cache ───────────────────────────────────────────────────────────────────
+
+cache PageCache {
+  provider: memory
+  ttl: 300
+}
+
+// ─── Email ───────────────────────────────────────────────────────────────────
+
+email NotificationEmail {
+  provider: resend
+  from: "no-reply@confluence-clone.com"
+  templates: {
+    pageComment: import { pageCommentEmail } from "@src/emails/pageComment.js"
+    pageUpdated: import { pageUpdatedEmail } from "@src/emails/pageUpdated.js"
+    welcome:     import { welcomeEmail }     from "@src/emails/welcome.js"
+  }
+}
+
+// ─── Background Jobs ─────────────────────────────────────────────────────────
+
+job sendCommentNotifications {
+  executor: PgBoss
+  priority: 10
+  retries: {
+    limit: 3
+    backoff: exponential
+    delay: 2000
+    multiplier: 2
+  }
+  deadLetter: {
+    queue: "failed-notifications"
+  }
+  perform: {
+    fn: import { sendCommentNotifications } from "@src/jobs/notifications.js"
+  }
+}
+
+job indexPageForSearch {
+  executor: PgBoss
+  priority: 5
+  retries: {
+    limit: 3
+    backoff: fixed
+    delay: 1000
+  }
+  deadLetter: {
+    queue: "failed-search-index"
+  }
+  perform: {
+    fn: import { indexPageForSearch } from "@src/jobs/search.js"
+  }
+}
+
+// ─── Custom Queries ───────────────────────────────────────────────────────────
+// MANUAL: All functions referenced here must be hand-written in @src/*.
+
+query getSpaces {
+  fn: import { getSpaces } from "@src/queries/spaces.js"
+  entities: [Space, User]
+  auth: true
+}
+
+query getSpace {
+  fn: import { getSpace } from "@src/queries/spaces.js"
+  entities: [Space, Page]
+  auth: true
+  cache: {
+    store: PageCache
+    ttl: 60
+  }
+}
+
+query getPageTree {
+  fn: import { getPageTree } from "@src/queries/pages.js"
+  entities: [Page]
+  auth: true
+  cache: {
+    store: PageCache
+    ttl: 30
+  }
+}
+
+query getPage {
+  fn: import { getPage } from "@src/queries/pages.js"
+  entities: [Page, Comment, Attachment, Label, User]
+  auth: true
+  cache: {
+    store: PageCache
+    ttl: 60
+  }
+}
+
+query getPageVersions {
+  fn: import { getPageVersions } from "@src/queries/pages.js"
+  entities: [PageVersion, User]
+  auth: true
+}
+
+query searchPages {
+  fn: import { searchPages } from "@src/queries/search.js"
+  entities: [Page, Space]
+  auth: true
+}
+
+query getRecentlyUpdatedPages {
+  fn: import { getRecentlyUpdatedPages } from "@src/queries/pages.js"
+  entities: [Page, Space, User]
+  auth: true
+  cache: {
+    store: PageCache
+    ttl: 60
+  }
+}
+
+query getPageComments {
+  fn: import { getPageComments } from "@src/queries/comments.js"
+  entities: [Comment, User]
+  auth: true
+}
+
+// ─── Custom Actions ───────────────────────────────────────────────────────────
+
+action createSpace {
+  fn: import { createSpace } from "@src/actions/spaces.js"
+  entities: [Space, User]
+  auth: true
+  roles: [ admin ]
+}
+
+action updateSpace {
+  fn: import { updateSpace } from "@src/actions/spaces.js"
+  entities: [Space]
+  auth: true
+  roles: [ admin, editor ]
+}
+
+action createPage {
+  fn: import { createPage } from "@src/actions/pages.js"
+  entities: [Page, PageVersion, Space]
+  auth: true
+  roles: [ admin, editor ]
+}
+
+action updatePage {
+  fn: import { updatePage } from "@src/actions/pages.js"
+  entities: [Page, PageVersion]
+  auth: true
+  roles: [ admin, editor ]
+  onSuccess: { sendEmail: pageUpdated }
+}
+
+action publishPage {
+  fn: import { publishPage } from "@src/actions/pages.js"
+  entities: [Page]
+  auth: true
+  roles: [ admin, editor ]
+}
+
+action movePage {
+  fn: import { movePage } from "@src/actions/pages.js"
+  entities: [Page]
+  auth: true
+  roles: [ admin, editor ]
+}
+
+action restorePageVersion {
+  fn: import { restorePageVersion } from "@src/actions/pages.js"
+  entities: [Page, PageVersion]
+  auth: true
+  roles: [ admin, editor ]
+}
+
+action deletePage {
+  fn: import { deletePage } from "@src/actions/pages.js"
+  entities: [Page, PageVersion, Comment, Attachment]
+  auth: true
+  roles: [ admin, editor ]
+}
+
+action createComment {
+  fn: import { createComment } from "@src/actions/comments.js"
+  entities: [Comment, PageWatch]
+  auth: true
+  onSuccess: { sendEmail: pageComment }
+}
+
+action deleteComment {
+  fn: import { deleteComment } from "@src/actions/comments.js"
+  entities: [Comment]
+  auth: true
+  roles: [ admin, editor ]
+}
+
+action addLabel {
+  fn: import { addLabel } from "@src/actions/labels.js"
+  entities: [Label, Page]
+  auth: true
+  roles: [ admin, editor ]
+}
+
+action removeLabel {
+  fn: import { removeLabel } from "@src/actions/labels.js"
+  entities: [Label, Page]
+  auth: true
+  roles: [ admin, editor ]
+}
+
+action watchPage {
+  fn: import { watchPage } from "@src/actions/watches.js"
+  entities: [PageWatch]
+  auth: true
+}
+
+action unwatchPage {
+  fn: import { unwatchPage } from "@src/actions/watches.js"
+  entities: [PageWatch]
+  auth: true
+}
+
+// ─── Custom API Endpoints ─────────────────────────────────────────────────────
+// MANUAL: Functions must be hand-written.
+
+api searchApi {
+  method: GET
+  path: "/api/search"
+  fn: import { searchHandler } from "@src/api/search.js"
+  auth: true
+}
+
+api pageExportApi {
+  method: GET
+  path: "/api/pages/:id/export"
+  fn: import { exportPageHandler } from "@src/api/export.js"
+  auth: true
+}
+
+api pageMoveApi {
+  method: POST
+  path: "/api/pages/:id/move"
+  fn: import { movePageHandler } from "@src/api/pages.js"
+  auth: true
+  roles: [ admin, editor ]
+}
+
+api spaceStatsApi {
+  method: GET
+  path: "/api/spaces/:id/stats"
+  fn: import { spaceStatsHandler } from "@src/api/spaces.js"
+  auth: true
+}
+
+// ─── CRUD (for simple admin/management operations) ────────────────────────────
+
+crud Label {
+  entity: Label
+  operations: [list, create, update, delete]
+  list: {
+    paginate: true
+    sortable: [name]
+    filterable: []
+    search: [name]
+  }
+  permissions: {
+    list:   space:read
+    create: label:manage
+    update: label:manage
+    delete: label:manage
+  }
+}
+
+crud User {
+  entity: User
+  operations: [list, update]
+  list: {
+    paginate: true
+    sortable: [username, email, createdAt]
+    filterable: [role, isActive]
+    search: [username, email, displayName]
+  }
+  permissions: {
+    list:   admin:access
+    update: admin:access
+  }
+}
+
+// Page CRUD is needed so that realtime PageChannel works.
+// The actual page CRUD UI uses custom Vue pages (not autoPage)
+// because pages have rich text bodies (Json).
+crud Page {
+  entity: Page
+  operations: [list, create, update, delete]
+  list: {
+    paginate: true
+    sortable: [title, createdAt, updatedAt, status]
+    filterable: [status]
+    search: [title]
+  }
+  permissions: {
+    list:   page:read
+    create: page:create
+    update: page:update
+    delete: page:delete
+  }
+}
+
+// ─── Realtime ─────────────────────────────────────────────────────────────────
+
+realtime PageChannel {
+  entity: Page
+  events: [created, updated, deleted]
+}
+
+// ─── Routes ──────────────────────────────────────────────────────────────────
+// All pages with complex UI (rich text, tree nav) are custom Vue components.
+// MANUAL: Create all @src/pages/*.vue files by hand.
+
+route HomeRoute {
+  path: "/"
+  to: HomePage
+}
+
+route DashboardRoute {
+  path: "/dashboard"
+  to: DashboardPage
+}
+
+route SpacesRoute {
+  path: "/spaces"
+  to: SpacesPage
+}
+
+route SpaceRoute {
+  path: "/spaces/:spaceKey"
+  to: SpacePage
+}
+
+route PageViewRoute {
+  path: "/spaces/:spaceKey/pages/:pageId"
+  to: PageViewPage
+}
+
+route PageEditRoute {
+  path: "/spaces/:spaceKey/pages/:pageId/edit"
+  to: PageEditPage
+}
+
+route PageCreateRoute {
+  path: "/spaces/:spaceKey/pages/create"
+  to: PageCreatePage
+}
+
+route PageHistoryRoute {
+  path: "/spaces/:spaceKey/pages/:pageId/history"
+  to: PageHistoryPage
+}
+
+route SearchRoute {
+  path: "/search"
+  to: SearchPage
+}
+
+route ProfileRoute {
+  path: "/profile"
+  to: ProfilePage
+}
+
+route AdminUsersRoute {
+  path: "/admin/users"
+  to: AdminUsersPage
+}
+
+route AdminLabelsRoute {
+  path: "/admin/labels"
+  to: AdminLabelsPage
+}
+
+// ─── Pages (Vue component declarations) ──────────────────────────────────────
+// MANUAL: Every .vue file below must be hand-written.
+// Vasp does NOT scaffold the component source — it only wires up the router.
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+page DashboardPage {
+  component: import Dashboard from "@src/pages/Dashboard.vue"
+}
+
+page SpacesPage {
+  component: import Spaces from "@src/pages/Spaces.vue"
+}
+
+page SpacePage {
+  component: import SpaceView from "@src/pages/SpaceView.vue"
+}
+
+page PageViewPage {
+  component: import PageView from "@src/pages/PageView.vue"
+}
+
+page PageEditPage {
+  component: import PageEdit from "@src/pages/PageEdit.vue"
+}
+
+page PageCreatePage {
+  component: import PageCreate from "@src/pages/PageCreate.vue"
+}
+
+page PageHistoryPage {
+  component: import PageHistory from "@src/pages/PageHistory.vue"
+}
+
+page SearchPage {
+  component: import Search from "@src/pages/Search.vue"
+}
+
+page ProfilePage {
+  component: import Profile from "@src/pages/Profile.vue"
+}
+
+page AdminUsersPage {
+  component: import AdminUsers from "@src/pages/admin/Users.vue"
+}
+
+page AdminLabelsPage {
+  component: import AdminLabels from "@src/pages/admin/Labels.vue"
+}
+
+// ─── Admin Panel ──────────────────────────────────────────────────────────────
+
+admin WikiAdmin {
+  entities: [User, Space, Page, Label, PageVersion, Comment, Attachment]
+}
+
+// ─── autoPage (for label and user management — simpler entities) ──────────────
+// LIMITATION: Can't use autoPage for Page because body is rich text (Json)
+// and there's no Tiptap integration in autoPage forms.
+
+autoPage LabelList {
+  entity: Label
+  path: "/admin/labels-list"
+  type: list
+  title: "Labels"
+  columns: [id, name, color]
+  sortable: [name]
+  searchable: [name]
+  rowActions: [edit, delete]
+  topActions: [create]
+  paginate: true
+  pageSize: 50
+  auth: true
+  roles: [ admin, editor ]
+}
+
+autoPage LabelCreate {
+  entity: Label
+  path: "/admin/labels/create"
+  type: form
+  title: "Create Label"
+  fields: [name, color]
+  layout: "1-column"
+  successRoute: "/admin/labels-list"
+  auth: true
+  roles: [ admin, editor ]
+}
+
+autoPage LabelEdit {
+  entity: Label
+  path: "/admin/labels/:id/edit"
+  type: form
+  title: "Edit Label"
+  fields: [name, color]
+  layout: "1-column"
+  successRoute: "/admin/labels-list"
+  auth: true
+  roles: [ admin, editor ]
+}
+
+// ─── Seed ─────────────────────────────────────────────────────────────────────
+
+seed {
+  fn: import { seed } from "@src/seed.js"
+}
+
+// ─── Observability ────────────────────────────────────────────────────────────
+
+observability {
+  tracing: true
+  metrics: true
+  logs: structured
+  exporter: console
+  errorTracking: none
+}

@@ -1,7 +1,7 @@
 import { ensureDir } from "../utils/fs.js";
 import { join } from "node:path";
 import { BaseGenerator } from "./BaseGenerator.js";
-import { VASP_VERSION } from "@vasp-framework/core";
+import { VASP_VERSION, type EntityNode } from "@vasp-framework/core";
 import {
   DEFAULT_BACKEND_PORT,
   DEFAULT_SPA_PORT,
@@ -93,7 +93,7 @@ export class ScaffoldGenerator extends BaseGenerator {
       this.write(
         `shared/validation.${this.ctx.ext}`,
         this.render("shared/shared/validation.hbs", {
-          entities: this.ctx.ast.entities,
+          entities: this.annotateEntitiesForDuplicateFk(this.ctx.ast.entities),
         }),
       );
     }
@@ -648,5 +648,28 @@ export class ScaffoldGenerator extends BaseGenerator {
     }
 
     return lines.join("\n");
+  }
+
+  /**
+   * Annotates entity fields with `isExplicitFkDuplicate: true` when a scalar field
+   * (e.g. `categoryId: Int`) has the same name as the FK column implied by a
+   * relation field (e.g. `category: Category` → implies `categoryId`).
+   *
+   * This prevents duplicate keys in generated code such as Valibot schemas where
+   * both the scalar and the relation would otherwise emit the same field name.
+   */
+  private annotateEntitiesForDuplicateFk(entities: EntityNode[]): Record<string, unknown>[] {
+    return entities.map((entity) => {
+      const relationFkNames = new Set(
+        entity.fields
+          .filter((f) => f.isRelation && !f.isArray)
+          .map((f) => `${f.name}Id`),
+      );
+      const fields = entity.fields.map((f) => ({
+        ...f,
+        isExplicitFkDuplicate: !f.isRelation && relationFkNames.has(f.name),
+      }));
+      return { ...entity, fields };
+    });
   }
 }

@@ -8,6 +8,9 @@ const routes: RouteRecordRaw[] = [
   {
     path: '{{path}}',
     component: () => import('{{lookup ../pagesMap to}}'),
+    {{#if roles}}
+    meta: { roles: [{{#each roles}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}] },
+    {{/if}}
   },
 {{/each}}
 {{#each autoPages}}
@@ -50,6 +53,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@src/pages/Register.vue'),
   },
 {{/if}}
+  { path: '/:pathMatch(.*)*', name: 'NotFound', component: () => import('../pages/NotFound.vue') },
 ]
 
 const router = createRouter({
@@ -65,6 +69,15 @@ router.beforeEach(async (to) => {
   if (!user.value && !publicPaths.includes(to.path)) {
     return '/login'
   }
+  {{#if hasRolesOnRoutes}}
+  const routeMeta = to.meta as { requiresAuth?: boolean; roles?: string[] }
+  if (routeMeta.roles?.length && user.value) {
+    const userRole = (user.value as { role?: string }).role
+    if (!userRole || !routeMeta.roles.includes(userRole)) {
+      return '/'
+    }
+  }
+  {{/if}}
 })
 {{/if}}
 

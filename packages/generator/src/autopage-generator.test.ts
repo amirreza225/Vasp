@@ -252,7 +252,9 @@ describe("AutoPageGenerator", () => {
       f.startsWith("src/pages/"),
     );
     // No autoPage files (scaffolded pages would be in @src, not src/pages here)
-    expect(generated.filter((f) => f.endsWith(".vue"))).toHaveLength(0);
+    // NotFound.vue is always emitted as part of the SPA router setup
+    const autoPageFiles = generated.filter((f) => f.endsWith(".vue") && !f.includes("NotFound"));
+    expect(autoPageFiles).toHaveLength(0);
   });
 
   it("uses 1-column layout by default for form pages", () => {

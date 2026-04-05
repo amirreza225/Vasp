@@ -25,11 +25,19 @@ export class RealtimeGenerator extends BaseGenerator {
       this.render("shared/server/routes/realtime/index.hbs"),
     );
 
-    // Client: useRealtime composable — SPA only (SSR realtime via WebSocket is handled client-side natively)
+    // Client: useRealtime composable
+    // SPA: emitted into src/vasp/client/realtime.{ext}
+    // SSR: emitted as a Nuxt auto-imported composable at composables/useRealtime.{ext}
     if (this.ctx.isSpa) {
       this.write(
         `src/vasp/client/realtime.${ext}`,
         this.render(`spa/${ext}/src/vasp/client/realtime.${ext}.hbs`),
+      );
+    } else {
+      // SSR — Nuxt auto-imports composables; the file is SSR-safe (browser guard inside)
+      this.write(
+        `composables/useRealtime.${ext}`,
+        this.render(`ssr/${ext}/composables/useRealtime.${ext}.hbs`),
       );
     }
   }

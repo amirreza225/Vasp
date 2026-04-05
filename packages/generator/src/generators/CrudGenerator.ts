@@ -240,6 +240,7 @@ export class CrudGenerator extends BaseGenerator {
           deleteCacheInvalidations,
           hasOutboundWebhooks,
           outboundWebhookDispatchers,
+          isVersioned: entity?.versioned ?? false,
         }),
       );
     }

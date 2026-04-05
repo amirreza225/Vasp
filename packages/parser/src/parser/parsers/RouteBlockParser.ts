@@ -16,6 +16,9 @@ export function parseRoute(ctx: IParserContext): RouteNode {
   let path = "";
   let to = "";
   let routeProtected: boolean | undefined = undefined;
+  let roles: string[] | undefined = undefined;
+  let navLabel: string | undefined = undefined;
+  let hideFromNav: boolean | undefined = undefined;
 
   while (!ctx.check(TokenType.RBRACE)) {
     const key = ctx.consumeIdentifier();
@@ -31,11 +34,28 @@ export function parseRoute(ctx: IParserContext): RouteNode {
       case "protected":
         routeProtected = ctx.consume(TokenType.BOOLEAN).value === "true";
         break;
+      case "roles": {
+        // roles: [ admin, editor ]
+        ctx.consume(TokenType.LBRACKET);
+        roles = [];
+        while (!ctx.check(TokenType.RBRACKET)) {
+          roles.push(ctx.consumeIdentifier().value);
+          if (ctx.check(TokenType.COMMA)) ctx.consume(TokenType.COMMA);
+        }
+        ctx.consume(TokenType.RBRACKET);
+        break;
+      }
+      case "navLabel":
+        navLabel = ctx.consumeString();
+        break;
+      case "hideFromNav":
+        hideFromNav = ctx.consume(TokenType.BOOLEAN).value === "true";
+        break;
       default:
         throw ctx.error(
           "E014_UNKNOWN_PROP",
           `Unknown route property '${key.value}'`,
-          "Valid properties: path, to, protected",
+          "Valid properties: path, to, protected, roles, navLabel, hideFromNav",
           key.loc,
         );
     }
@@ -52,5 +72,8 @@ export function parseRoute(ctx: IParserContext): RouteNode {
     params,
   };
   if (routeProtected !== undefined) node.protected = routeProtected;
+  if (roles !== undefined) node.roles = roles;
+  if (navLabel !== undefined) node.navLabel = navLabel;
+  if (hideFromNav !== undefined) node.hideFromNav = hideFromNav;
   return node;
 }

@@ -1,6 +1,6 @@
 import { Elysia } from 'elysia'
 import { db } from '../db/client.{{ext}}'
-import { users } from '../../drizzle/schema.{{ext}}'
+import { {{userTableName}} } from '../../drizzle/schema.{{ext}}'
 import { eq } from 'drizzle-orm'
 import { authPlugin } from './plugin.{{ext}}'
 import { VaspError } from '../middleware/errorHandler.{{ext}}'
@@ -33,11 +33,11 @@ export const authRoutes = new Elysia({ prefix: '/api/auth' })
     if (!payload || typeof payload.userId !== 'number') {
       throw new VaspError('AUTH_REQUIRED', 'Unauthorized', 401)
     }
-    const [user] = await db.select().from(users).where(eq(users.id, payload.userId)).limit(1)
+    const [user] = await db.select().from({{userTableName}}).where(eq({{userTableName}}.id, payload.userId)).limit(1)
     if (!user) {
       throw new VaspError('USER_NOT_FOUND', 'User not found', 401)
     }
-    const { passwordHash: _ph{{#each hiddenFields}}, {{name}}: _{{name}}{{/each}}, ...safeUser } = user
+    const { {{passwordFieldName}}: _ph{{#each hiddenFields}}, {{name}}: _{{name}}{{/each}}, ...safeUser } = user
     return safeUser
   })
   .post('/logout', ({ cookie: { token } }) => {

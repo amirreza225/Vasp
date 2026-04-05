@@ -118,7 +118,8 @@ export type PrimitiveFieldType =
   | "Text"
   | "Json"
   | "Enum"
-  | "File";
+  | "File"
+  | "RichText";
 
 /** Kept for backward compatibility — alias for PrimitiveFieldType */
 export type FieldType = PrimitiveFieldType;
@@ -448,6 +449,12 @@ export interface RouteNode extends BaseNode {
   params: string[]; // extracted route params, e.g. [":id"] → ["id"]
   /** Whether this route requires authentication. Defaults to true when an auth block exists. */
   protected?: boolean;
+  /** Required roles to access this route (guards + nav visibility). */
+  roles?: string[];
+  /** Custom nav label (defaults to path-derived label). */
+  navLabel?: string;
+  /** When true, the route is not shown in the generated navigation bar. */
+  hideFromNav?: boolean;
 }
 
 export interface PageNode extends BaseNode {
@@ -568,6 +575,12 @@ export interface EntityNode extends BaseNode {
   indexes?: EntityIndex[];
   /** Table-level composite unique constraints declared with @@unique */
   uniqueConstraints?: EntityUniqueConstraint[];
+  /**
+   * When true (`@@versioned` directive), Vasp generates a shadow `<EntityName>Versions`
+   * table that tracks every insert/update to the entity. A `GET /api/crud/<entity>/:id/versions`
+   * endpoint and a `POST /api/crud/<entity>/:id/restore/:version` endpoint are also generated.
+   */
+  versioned?: boolean;
 }
 
 export interface AdminNode {

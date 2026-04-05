@@ -38,6 +38,10 @@ const AppTheme = definePreset({{ui.themeImportName}}, {
     ignore: ['**'],
     scanDirs: [],
   },
+  // Proxy /api/* → Elysia backend in development (avoids CORS + cross-origin cookie issues)
+  routeRules: {
+    '/api/**': { proxy: 'http://localhost:{{backendPort}}/api/**' },
+  },
   runtimeConfig: {
     backendUrl: process.env.BACKEND_URL || 'http://localhost:{{backendPort}}',
     public: {
