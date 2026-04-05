@@ -46,12 +46,17 @@ async function onSubmit({ valid, values }) {
     ? '/api/crud/{{kebabCase entityNamePascal}}/' + route.params.id
     : '/api/crud/{{kebabCase entityNamePascal}}'
   const method = isEdit ? 'PUT' : 'POST'
-  await fetch(url, {
+  const res = await fetch(url, {
     method,
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify(values),
   })
+  if (!res.ok) {
+    const err = await res.json()
+    toast.add({ severity: 'error', summary: 'Save failed', detail: err?.error?.message ?? 'Unknown error', life: 4000 })
+    return
+  }
   toast.add({ severity: 'success', summary: isEdit ? 'Updated!' : 'Created!', life: 3000 })
   router.push('{{successRoute}}')
 }

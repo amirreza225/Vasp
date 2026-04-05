@@ -18,6 +18,7 @@ export function useRealtime(channelName) {
   const handlers = new Map()
   let ws = null
   let reconnectTimer = null
+  let intentionallyClosed = false
 
   function connect() {
     if (typeof window === 'undefined') return // SSR guard
@@ -26,7 +27,9 @@ export function useRealtime(channelName) {
     ws.onopen = () => { connected.value = true }
     ws.onclose = () => {
       connected.value = false
-      reconnectTimer = setTimeout(connect, 3000)
+      if (!intentionallyClosed) {
+        reconnectTimer = setTimeout(connect, 3000)
+      }
     }
     ws.onerror = () => ws?.close()
     ws.onmessage = ({ data }) => {
@@ -44,6 +47,7 @@ export function useRealtime(channelName) {
   }
 
   function disconnect() {
+    intentionallyClosed = true
     if (reconnectTimer) clearTimeout(reconnectTimer)
     ws?.close()
   }

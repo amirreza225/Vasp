@@ -30,6 +30,7 @@ export function useRealtime(channelName: string): UseRealtimeResult {
   const handlers = new Map<string, (data: unknown) => void>()
   let ws: WebSocket | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  let intentionallyClosed = false
 
   function connect() {
     if (typeof window === 'undefined') return // SSR guard
@@ -38,7 +39,9 @@ export function useRealtime(channelName: string): UseRealtimeResult {
     ws.onopen = () => { connected.value = true }
     ws.onclose = () => {
       connected.value = false
-      reconnectTimer = setTimeout(connect, 3000)
+      if (!intentionallyClosed) {
+        reconnectTimer = setTimeout(connect, 3000)
+      }
     }
     ws.onerror = () => ws?.close()
     ws.onmessage = ({ data }: MessageEvent<string>) => {
@@ -56,6 +59,7 @@ export function useRealtime(channelName: string): UseRealtimeResult {
   }
 
   function disconnect() {
+    intentionallyClosed = true
     if (reconnectTimer) clearTimeout(reconnectTimer)
     ws?.close()
   }
