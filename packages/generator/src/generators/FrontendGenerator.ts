@@ -360,6 +360,7 @@ export class FrontendGenerator extends BaseGenerator {
     const title = name
       .replace(/Page$/, "")
       .replace(/([A-Z])/g, " $1")
+      .replace(/\s+/g, " ")
       .replace(/^\w/, (c) => c.toUpperCase())
       .trim();
     return `<script setup>

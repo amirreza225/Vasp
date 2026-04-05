@@ -379,9 +379,11 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
       .from({{camelCase entity}}Versions)
       .where(and(eq({{camelCase entity}}Versions.entityId, numId), eq({{camelCase entity}}Versions.version, numVersion)))
     if (!versionRow) throw new VaspError('NOT_FOUND', 'Version not found', 404)
+    // Only restore fields from the snapshot — strip system columns (id, entityId, version, changedBy, createdAt, updatedAt)
+    const { id: _id, createdAt: _ca, updatedAt: _ua, ...safeSnapshot } = versionRow.data as Record<string, unknown>
     const [restored] = await db
       .update({{plural (camelCase entity)}})
-      .set({ ...versionRow.data as object, updatedAt: new Date() })
+      .set({ ...safeSnapshot, updatedAt: new Date() })
       .where(eq({{plural (camelCase entity)}}.id, numId))
       .returning()
     if (!restored) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)

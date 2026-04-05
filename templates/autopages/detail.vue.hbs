@@ -7,10 +7,18 @@ import Skeleton from 'primevue/skeleton'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 {{#if hasRichTextFields}}
-// Minimal ProseMirror-JSON → HTML serializer (no external deps)
+// Minimal ProseMirror-JSON → safe HTML serializer (no external deps)
+// Text content is HTML-escaped to prevent XSS. Only structural tags are generated.
+function _escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
 function richTextToHtml(doc) {
   if (!doc) return ''
-  if (typeof doc === 'string') return doc
+  if (typeof doc === 'string') return _escHtml(doc)
   function node(n) {
     if (!n) return ''
     const marks = (n.marks ?? []).reduce((s, m) => {
@@ -28,10 +36,11 @@ function richTextToHtml(doc) {
       return s
     }, '')
     const inner = (n.content ?? []).map(node).join('')
+    const level = Math.max(1, Math.min(6, Number(n.attrs?.level) || 1))
     switch (n.type) {
-      case 'text': return (marks !== null ? marks + (n.text ?? '') + close : n.text ?? '')
+      case 'text': return marks !== null ? marks + _escHtml(n.text ?? '') + close : _escHtml(n.text ?? '')
       case 'paragraph': return '<p>' + inner + '</p>'
-      case 'heading': return '<h' + n.attrs.level + '>' + inner + '</h' + n.attrs.level + '>'
+      case 'heading': return '<h' + level + '>' + inner + '</h' + level + '>'
       case 'bulletList': return '<ul>' + inner + '</ul>'
       case 'orderedList': return '<ol>' + inner + '</ol>'
       case 'listItem': return '<li>' + inner + '</li>'

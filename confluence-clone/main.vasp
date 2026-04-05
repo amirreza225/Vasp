@@ -3,8 +3,8 @@
 //
 // A Confluence-like collaborative wiki built with Vasp.
 // Spaces → Pages (hierarchical) → Comments → Attachments
-// Rich text bodies stored as JSON (Tiptap ProseMirror format)
-// because Vasp has no native RichText field type yet.
+// Rich text bodies use the native RichText field type (added in this PR).
+// The generated autoPage forms render Tiptap editors automatically.
 //
 // Note: Parts marked "MANUAL" require hand-written Vue/TS code
 // because the current Vasp DSL cannot express them fully.
@@ -96,13 +96,12 @@ entity Space {
   @@unique([name])
 }
 
-// Page body is stored as JSON (Tiptap/ProseMirror document format)
-// because Vasp has no native RichText type.
-// MANUAL: The frontend must render this with Tiptap's <EditorContent>.
+// Page body now uses the native RichText type added in this PR.
+// The generated autoPage form will render a Tiptap editor automatically.
 entity Page {
   id:              Int      @id
   title:           String   @validate(minLength: 1, maxLength: 255)
-  body:            Json     @nullable
+  body:            RichText @nullable
   status:          Enum(draft, published, archived) @default(draft)
   version:         Int
   excerpt:         Text     @nullable
@@ -133,7 +132,7 @@ entity PageVersion {
   id:          Int      @id
   version:     Int
   title:       String   @validate(minLength: 1, maxLength: 255)
-  body:        Json     @nullable
+  body:        RichText @nullable
   changeNote:  String   @nullable @validate(maxLength: 255)
   createdAt:   DateTime @default(now)
   page:        Page     @onDelete(cascade)
