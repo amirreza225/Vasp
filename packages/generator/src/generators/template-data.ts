@@ -240,8 +240,14 @@ export interface AutoPageResolvedField {
   isBoolean: boolean;
   isDateTime: boolean;
   isFile: boolean;
+  isRichText: boolean;
   isText: boolean;
   isNumber: boolean;
+  isManyToMany: boolean;
+  /** Related entity name — set for relation/manyToMany fields */
+  relatedEntity?: string;
+  /** Storage block name — set for File fields */
+  storageBlock?: string;
   columnType: string;
   fieldType: string;
 }
@@ -479,4 +485,5 @@ export interface TemplateExtraData {
   createPath?: string;
   editPath?: string;
   viewPath?: string;
+  hasRichTextFields?: boolean;
 }

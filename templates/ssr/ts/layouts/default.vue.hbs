@@ -104,12 +104,21 @@ async function handleLogout() {
 }
 {{/if}}
 
-// Navigation items — built from declared routes
-const navItems = [
+// Navigation items — filtered by user role when roles are declared
+const allNavItems = [
 {{#each navRoutes}}
-  { label: '{{label}}', route: '{{path}}'{{#if icon}}, icon: '{{icon}}'{{/if}} },
+  { label: '{{label}}', route: '{{path}}'{{#if roles}}, roles: [{{#each roles}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]{{/if}} },
 {{/each}}
 ]
+
+{{#if hasAuth}}
+const navItems = computed(() => {
+  const role = user.value?.role
+  return allNavItems.filter(item => !item.roles || !item.roles.length || (role && item.roles.includes(role)))
+})
+{{else}}
+const navItems = allNavItems
+{{/if}}
 
 useHead({ titleTemplate: '%s | {{appTitle}}' })
 </script>

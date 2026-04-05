@@ -118,6 +118,7 @@ export class AutoPageGenerator extends BaseGenerator {
     | "createPath"
     | "editPath"
     | "viewPath"
+    | "hasRichTextFields"
   > {
     const fieldMap = new Map<string, FieldNode>(
       entity.fields.map((f) => [f.name, f]),
@@ -150,7 +151,7 @@ export class AutoPageGenerator extends BaseGenerator {
 
     const resolvedFields: AutoPageResolvedField[] = fieldKeys.map((key) => {
       const field = fieldMap.get(key);
-      return {
+      const base: AutoPageResolvedField = {
         key,
         label: this.humanLabel(key),
         primevueComponent: field
@@ -163,11 +164,16 @@ export class AutoPageGenerator extends BaseGenerator {
         isBoolean: field?.type === "Boolean",
         isDateTime: field?.type === "DateTime",
         isFile: field?.type === "File",
+        isRichText: field?.type === "RichText",
         isText: field?.type === "Text" || field?.type === "Json",
         isNumber: field?.type === "Int" || field?.type === "Float",
+        isManyToMany: field?.isManyToMany ?? false,
         columnType: field ? this.primevueColumnTypeFor(field) : "text",
         fieldType: field?.type ?? "String",
       };
+      if (field?.relatedEntity) base.relatedEntity = field.relatedEntity;
+      if (field?.storageBlock) base.storageBlock = field.storageBlock;
+      return base;
     });
 
     const entityNameCamel =
@@ -229,6 +235,7 @@ export class AutoPageGenerator extends BaseGenerator {
       createPath,
       editPath,
       viewPath,
+      hasRichTextFields: resolvedFields.some((f) => f.isRichText),
     };
   }
 

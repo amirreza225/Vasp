@@ -179,13 +179,16 @@ export class SemanticValidator {
   }
 
   private checkRealtimeEntities(ast: VaspAST): void {
-    const crudEntities = new Set(ast.cruds.map((c) => c.entity));
+    const entityNames = new Set(ast.entities.map((e) => e.name));
     for (const rt of ast.realtimes) {
-      if (!crudEntities.has(rt.entity)) {
+      // Realtime no longer requires a matching crud block — it can be declared for any entity.
+      // A realtime block without a crud block still creates the WebSocket channel; events are
+      // broadcast whenever the entity is mutated via actions or APIs.
+      if (!entityNames.has(rt.entity)) {
         this.diagnostics.push({
-          code: "E104_REALTIME_ENTITY_NOT_CRUD",
-          message: `realtime '${rt.name}' references entity '${rt.entity}' which has no crud block`,
-          hint: `Add a crud block for entity '${rt.entity}', or remove the realtime block`,
+          code: "E104_REALTIME_ENTITY_NOT_FOUND",
+          message: `realtime '${rt.name}' references entity '${rt.entity}' which has no entity block`,
+          hint: `Add an entity block for '${rt.entity}', or remove the realtime block`,
           loc: rt.loc,
         });
       }

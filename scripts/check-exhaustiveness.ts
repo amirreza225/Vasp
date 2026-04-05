@@ -39,6 +39,7 @@ const PRIMITIVE_FIELD_TYPES: ReadonlySet<string> = new Set([
   "Json",
   "Enum",
   "File",
+  "RichText",
 ])
 
 const VASP_NODE_TYPES: ReadonlySet<string> = new Set([

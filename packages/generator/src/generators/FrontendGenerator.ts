@@ -52,6 +52,11 @@ export class FrontendGenerator extends BaseGenerator {
       `src/vasp/useVaspNotifications.${ext}`,
       this.render(`spa/${ext}/src/vasp/useVaspNotifications.${ext}.hbs`),
     );
+    // Shared rich-text editor component (always emitted — lightweight, tree-shakeable)
+    this.write(
+      `src/components/TiptapEditor.vue`,
+      this.render(`shared/components/TiptapEditor.vue.hbs`),
+    );
 
     // Router — build page component source map
     const pagesMap = this.buildPagesMap();
@@ -193,10 +198,17 @@ export class FrontendGenerator extends BaseGenerator {
     // Build nav routes: public routes (not /login, /register) shown in the nav bar.
     const navRoutes = ast.routes
       .filter((r) => r.path !== "/login" && r.path !== "/register")
+      .filter((r) => !r.hideFromNav)
       .map((r) => ({
-        label: this.routeLabel(r.path, r.name),
+        label: r.navLabel ?? this.routeLabel(r.path, r.name),
         path: r.path,
+        roles: r.roles,
       }));
+    // Shared rich-text editor component — auto-imported by Nuxt
+    this.write(
+      `components/TiptapEditor.vue`,
+      this.render(`shared/components/TiptapEditor.vue.hbs`),
+    );
     const darkModeSelector = ast.app?.ui?.darkModeSelector ?? ".app-dark";
     const darkModeClass = darkModeSelector.replace(/^\./, "");
     const appTitle = ast.app?.title ?? ast.app?.name ?? "Vasp App";
@@ -326,10 +338,29 @@ export class FrontendGenerator extends BaseGenerator {
   }
 
   private scaffoldVuePage(name: string): string {
-    return `<template>
-  <div>
-    <h1>${name}</h1>
-    <p>Edit this page in src/pages/</p>
+    const title = name
+      .replace(/Page$/, "")
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^\w/, (c) => c.toUpperCase())
+      .trim();
+    return `<script setup>
+// ${name} — auto-scaffolded by Vasp. Customize freely.
+// This file is NOT overwritten on subsequent \`vasp generate\` runs.
+</script>
+
+<template>
+  <div class="p-6 max-w-4xl mx-auto">
+    <div class="flex items-center gap-4 mb-8">
+      <h1 class="text-3xl font-bold m-0">${title}</h1>
+    </div>
+
+    <div class="card p-8 border border-surface rounded-xl shadow-sm text-center">
+      <i class="pi pi-file-edit text-5xl text-primary mb-4 block" />
+      <p class="text-surface-500 mb-2 font-medium">This page was scaffolded by Vasp.</p>
+      <p class="text-surface-400 text-sm">
+        Edit <code class="bg-surface-100 dark:bg-surface-800 px-1.5 py-0.5 rounded font-mono text-xs">src/pages/${name}.vue</code> to build your UI.
+      </p>
+    </div>
   </div>
 </template>
 `;

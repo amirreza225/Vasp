@@ -344,6 +344,8 @@ export abstract class BaseGenerator {
       case "Text":
       case "Json":
         return "Textarea";
+      case "RichText":
+        return "TiptapEditor";
       case "File":
         return "FileUpload";
       default:
