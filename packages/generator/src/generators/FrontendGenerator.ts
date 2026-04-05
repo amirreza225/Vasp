@@ -39,7 +39,20 @@ export class FrontendGenerator extends BaseGenerator {
       `src/main.${ext}`,
       this.render(`spa/${ext}/src/main.${ext}.hbs`),
     );
-    this.write(`src/App.vue`, this.render(`spa/${ext}/src/App.vue.hbs`));
+    this.write(`src/App.vue`, this.render(`spa/${ext}/src/App.vue.hbs`, {
+      navRoutes: ast.routes
+        .filter((r) => r.path !== "/login" && r.path !== "/register")
+        .filter((r) => !r.hideFromNav)
+        .map((r) => ({
+          label: r.navLabel ?? this.routeLabel(r.path, r.name),
+          path: r.path,
+          roles: r.roles,
+        })),
+      hasAuth: !!ast.auth,
+      appTitle: ast.app?.title ?? ast.app?.name ?? "Vasp App",
+      darkModeSelector: ast.app?.ui?.darkModeSelector ?? ".app-dark",
+      darkModeClass: (ast.app?.ui?.darkModeSelector ?? ".app-dark").replace(/^\./, ""),
+    }));
     this.write(
       `src/components/VaspErrorBoundary.vue`,
       this.render(`spa/${ext}/src/components/VaspErrorBoundary.vue.hbs`),
@@ -57,12 +70,18 @@ export class FrontendGenerator extends BaseGenerator {
       `src/components/TiptapEditor.vue`,
       this.render(`shared/components/TiptapEditor.vue.hbs`),
     );
+    // 404 Not Found page (always emitted — catchall route)
+    this.write(
+      `src/pages/NotFound.vue`,
+      this.render(`spa/shared/NotFound.vue.hbs`),
+    );
 
     // Router — build page component source map
     const pagesMap = this.buildPagesMap();
+    const hasRolesOnRoutes = ast.routes.some((r) => r.roles?.length);
     this.write(
       `src/router/index.${ext}`,
-      this.render(`spa/${ext}/src/router/index.${ext}.hbs`, { pagesMap }),
+      this.render(`spa/${ext}/src/router/index.${ext}.hbs`, { pagesMap, hasRolesOnRoutes }),
     );
 
     // Vasp plugin
