@@ -97,19 +97,14 @@ async function handleLogout() {
 }
 
 // Navigation items — filtered by user role when roles are declared
+// Only top-level, non-parameterized routes are shown in the navbar.
 const allNavItems = [
   { label: 'Home', route: '/' },
   { label: 'Dashboard', route: '/dashboard' },
   { label: 'Spaces', route: '/spaces' },
-  { label: ':space Key', route: '/spaces/:spaceKey' },
-  { label: ':page Id', route: '/spaces/:spaceKey/pages/:pageId' },
-  { label: 'Edit', route: '/spaces/:spaceKey/pages/:pageId/edit' },
-  { label: 'Create', route: '/spaces/:spaceKey/pages/create' },
-  { label: 'History', route: '/spaces/:spaceKey/pages/:pageId/history' },
   { label: 'Search', route: '/search' },
   { label: 'Profile', route: '/profile' },
-  { label: 'Users', route: '/admin/users' },
-  { label: 'Labels', route: '/admin/labels' },
+  { label: 'Admin', route: '/admin' },
 ]
 
 const navItems = computed(() => {
