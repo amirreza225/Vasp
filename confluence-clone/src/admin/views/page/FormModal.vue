@@ -12,7 +12,6 @@ import { useToast } from 'primevue/usetoast'
 import { PageApi } from '../../api/page.js'
 import { SpaceApi } from '../../api/space.js'
 import { UserApi } from '../../api/user.js'
-import { PageApi } from '../../api/page.js'
 
 const props = defineProps({
   visible: Boolean,
