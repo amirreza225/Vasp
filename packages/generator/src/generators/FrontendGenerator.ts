@@ -43,6 +43,7 @@ export class FrontendGenerator extends BaseGenerator {
       navRoutes: ast.routes
         .filter((r) => r.path !== "/login" && r.path !== "/register")
         .filter((r) => !r.hideFromNav)
+        .filter((r) => !r.path.includes(":"))
         .map((r) => ({
           label: r.navLabel ?? this.routeLabel(r.path, r.name),
           path: r.path,
@@ -214,10 +215,13 @@ export class FrontendGenerator extends BaseGenerator {
     }
 
     // Default layout with navigation bar and dark mode toggle.
-    // Build nav routes: public routes (not /login, /register) shown in the nav bar.
+    // Build nav routes: public, non-parameterized routes shown in the nav bar.
+    // Routes with path segments containing ':' are dynamic detail/edit pages and
+    // must not appear as top-level nav items.
     const navRoutes = ast.routes
       .filter((r) => r.path !== "/login" && r.path !== "/register")
       .filter((r) => !r.hideFromNav)
+      .filter((r) => !r.path.includes(":"))
       .map((r) => ({
         label: r.navLabel ?? this.routeLabel(r.path, r.name),
         path: r.path,
