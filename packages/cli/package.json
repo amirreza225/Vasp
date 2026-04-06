@@ -14,7 +14,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "rm -rf dist templates starters && bun build ./bin/vasp.ts --target=bun --outfile=dist/vasp --minify --banner='#!/usr/bin/env bun' && chmod +x dist/vasp && mkdir -p templates starters && cp -R ../../templates/. ./templates && cp -R ../../templates/starters/. ./starters",
+    "build": "rm -rf dist templates starters && bun build ./bin/vasp.ts --target=bun --outfile=dist/vasp --minify-syntax --minify-whitespace --banner='#!/usr/bin/env bun' && chmod +x dist/vasp && mkdir -p templates starters && cp -R ../../templates/. ./templates && cp -R ../../templates/starters/. ./starters",
     "test": "vitest run"
   },
   "dependencies": {
