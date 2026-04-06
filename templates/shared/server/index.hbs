@@ -127,6 +127,7 @@ export const app = new Elysia()
   .use(csrfProtection())
 {{/if}}
   .get('/api/health', () => ({ status: 'ok', version: '{{vaspVersion}}' }))
+  .get('/', ({ redirect }) => redirect('/api/docs', 302))
 {{#if hasObservabilityPrometheus}}
   .get('/api/metrics', async ({ set }) => {
     const body = await getPrometheusMetrics()
