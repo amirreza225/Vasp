@@ -32,11 +32,11 @@ export function useAuth() {
     }
   }
 
-  async function register(username, password, email) {
+  async function register(username, password, email, extras = {}) {
     try {
       user.value = await $fetch(`${API}/auth/register`, {
         method: 'POST',
-        body: { username, password, email },
+        body: { username, password, email, ...extras },
         credentials: 'include',
       })
       return user.value

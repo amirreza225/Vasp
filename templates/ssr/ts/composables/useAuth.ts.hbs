@@ -49,11 +49,11 @@ export function useAuth() {
     return user.value!
   }
 
-  async function register(username: string, password: string, email?: string): Promise<AuthUser> {
+  async function register(username: string, password: string, email?: string, extras?: Record<string, unknown>): Promise<AuthUser> {
     const csrfToken = getCsrfToken()
     user.value = await $fetch<AuthUser>(`${baseURL}/auth/register`, {
       method: 'POST',
-      body: { username, password, email },
+      body: { username, password, email, ...extras },
       headers: { ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}) },
       credentials: 'include',
     })

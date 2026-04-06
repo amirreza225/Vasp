@@ -40,11 +40,11 @@ export function useAuth() {
     }
   }
 
-  async function register(username: string, password: string, email?: string): Promise<AuthUser> {
+  async function register(username: string, password: string, email?: string, extras?: Record<string, unknown>): Promise<AuthUser> {
     try {
       user.value = await $fetch<AuthUser>(`${API}/auth/register`, {
         method: 'POST',
-        body: { username, password, email },
+        body: { username, password, email, ...extras },
         credentials: 'include',
       })
       return user.value!

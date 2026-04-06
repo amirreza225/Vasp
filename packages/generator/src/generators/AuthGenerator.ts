@@ -32,8 +32,19 @@ export class AuthGenerator extends BaseGenerator {
 
     const userFkFields = (userEntity?.fields ?? [])
       .filter((f) => f.isRelation && !f.isArray)
-      .map((f) => ({ fieldName: `${toCamelCase(f.name)}Id` }));
+      .map((f) => ({
+        fieldName: `${toCamelCase(f.name)}Id`,
+        // A FK field is required at insert when it has no DB default and is NOT NULL.
+        isRequired: !f.nullable && !f.defaultValue,
+      }));
     const hasUserFkFields = userFkFields.length > 0;
+
+    // Detect whether the email field on the user entity is NOT NULL (required at insert).
+    // When true, email must be provided during registration; the insert must not fall back to null.
+    const emailField = userEntity?.fields.find((f) => f.name === "email");
+    const emailRequired = emailField
+      ? !emailField.nullable && !emailField.defaultValue
+      : false;
 
     // Collect fields marked @hidden on the user entity (excluding the password field).
     // These will be stripped from register/login/me API responses so sensitive data
@@ -55,10 +66,12 @@ export class AuthGenerator extends BaseGenerator {
       permissionEntries,
       userFkFields,
       hasUserFkFields,
+      hasRequiredFkFields: userFkFields.some((f) => f.isRequired),
       hiddenFields,
       hasHiddenFields,
       passwordFieldName,
       userTableName,
+      emailRequired,
     };
 
     // Server: auth plugin (JWT + cookie — separate file to avoid circular imports)
