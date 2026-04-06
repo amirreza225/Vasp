@@ -39,10 +39,10 @@ const AppTheme = definePreset({{ui.themeImportName}}, {
     scanDirs: [],
   },
   // Proxy /api/* → Elysia backend in development (avoids CORS + cross-origin cookie issues)
-  // Target must NOT repeat the /api/ prefix: Nitro appends the full original request path
-  // to the target base, so 'http://host/api' + '/api/foo' = '/api/api/foo' (double prefix bug).
+  // Nitro expands the '**' wildcard in both the pattern and target, so '/api/**' with
+  // target 'http://host/api/**' correctly maps /api/foo → http://host/api/foo.
   routeRules: {
-    '/api/**': { proxy: 'http://localhost:{{backendPort}}' },
+    '/api/**': { proxy: 'http://localhost:{{backendPort}}/api/**' },
   },
   runtimeConfig: {
     backendUrl: process.env.BACKEND_URL || 'http://localhost:{{backendPort}}',

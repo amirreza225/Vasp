@@ -56,10 +56,10 @@ export default defineNuxtConfig({
     scanDirs: [],
   },
   // Proxy /api/* → Elysia backend in development (avoids CORS + cross-origin cookie issues)
-  // Target must NOT repeat the /api/ prefix: Nitro appends the full original request path
-  // to the target base, so 'http://host/api' + '/api/foo' = '/api/api/foo' (double prefix bug).
+  // Nitro appends the wildcard portion to the target, so '/api/**' with target 'http://host/api/**'
+  // correctly preserves the full /api/... path.
   routeRules: {
-    '/api/**': { proxy: 'http://localhost:3001' },
+    '/api/**': { proxy: 'http://localhost:3001/api/**' },
   },
   runtimeConfig: {
     backendUrl: process.env.BACKEND_URL || 'http://localhost:3001',
