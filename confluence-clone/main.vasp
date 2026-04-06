@@ -72,7 +72,7 @@ entity User {
   displayName: String   @nullable @validate(maxLength: 100)
   bio:         Text     @nullable
   avatar:      File     @storage(AvatarStorage) @nullable
-  isActive:    Boolean
+  isActive:    Boolean  @default(true)
   createdAt:   DateTime @default(now)
   updatedAt:   DateTime @updatedAt
   pages:       Page[]
@@ -86,7 +86,7 @@ entity Space {
   key:         String   @unique @validate(minLength: 2, maxLength: 10)
   description: Text     @nullable
   iconUrl:     String   @nullable
-  isPublic:    Boolean
+  isPublic:    Boolean  @default(false)
   createdAt:   DateTime @default(now)
   updatedAt:   DateTime @updatedAt
   owner:       User     @onDelete(restrict)
@@ -103,11 +103,11 @@ entity Page {
   title:           String   @validate(minLength: 1, maxLength: 255)
   body:            RichText @nullable
   status:          Enum(draft, published, archived) @default(draft)
-  version:         Int
+  version:         Int      @default(1)
   excerpt:         Text     @nullable
   slug:            String   @nullable @validate(maxLength: 255)
-  isFeatured:      Boolean
-  viewCount:       Int
+  isFeatured:      Boolean  @default(false)
+  viewCount:       Int      @default(0)
   createdAt:       DateTime @default(now)
   updatedAt:       DateTime @updatedAt
   space:           Space    @onDelete(cascade)
@@ -144,7 +144,7 @@ entity PageVersion {
 entity Comment {
   id:        Int      @id
   content:   Text     @validate(minLength: 1, maxLength: 5000)
-  isEdited:  Boolean
+  isEdited:  Boolean  @default(false)
   editedAt:  DateTime @nullable
   createdAt: DateTime @default(now)
   updatedAt: DateTime @updatedAt

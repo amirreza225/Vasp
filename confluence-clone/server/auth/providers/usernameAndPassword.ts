@@ -40,7 +40,7 @@ export const usernameAndPasswordRoutes = new Elysia()
       const passwordHash = await hashPassword(body.password)
       const [user] = await db
         .insert(users)
-        .values({ username: body.username, email: body.email, passwordHash: passwordHash, displayName: body.displayName ?? null, bio: body.bio ?? null, isActive: body.isActive })
+        .values({ username: body.username, email: body.email, passwordHash: passwordHash, displayName: body.displayName ?? null, bio: body.bio ?? null })
         .returning()
       if (!user) {
         throw new VaspError('REGISTER_FAILED', 'Failed to create user', 500)
@@ -57,7 +57,6 @@ export const usernameAndPasswordRoutes = new Elysia()
         email: t.String({ format: 'email' }),
         displayName: t.Optional(t.String()),
         bio: t.Optional(t.String()),
-        isActive: t.Boolean(),
       }),
     },
   )
