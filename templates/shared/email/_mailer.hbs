@@ -20,7 +20,7 @@ const FROM_ADDRESS = '{{from}}'
  *
  * The email provider client is created lazily inside this function so that the
  * module can be safely imported at server startup even when the provider API
- * key env var is not yet set.  The error surfaces at the point of sending
+ * key env var is not yet set. The error surfaces at the point of sending
  * (e.g. inside an action handler), where it is caught and reported correctly,
  * rather than crashing the entire server process on boot.
  *
