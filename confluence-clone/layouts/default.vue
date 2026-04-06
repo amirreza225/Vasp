@@ -1,0 +1,138 @@
+<template>
+  <div class="vasp-app" :class="isDark ? 'app-dark' : ''">
+    <!-- Navigation Bar -->
+    <Menubar :model="navItems" class="vasp-navbar border-0 border-b border-surface rounded-none px-4 sticky top-0 z-50 bg-surface-0 dark:bg-surface-900">
+      <template #start>
+        <NuxtLink to="/" class="flex items-center gap-2 text-primary font-bold text-lg no-underline">
+          <i class="pi pi-bolt" />
+          <span>Confluence Clone</span>
+        </NuxtLink>
+      </template>
+      <template #item="{ item, props }">
+        <NuxtLink v-if="item.route" :to="item.route" v-bind="props.action" class="flex items-center gap-2 no-underline text-surface-700 dark:text-surface-200 hover:text-primary transition-colors">
+          <i v-if="item.icon" :class="item.icon" />
+          <span>{{ item.label }}</span>
+        </NuxtLink>
+        <a v-else v-bind="props.action" class="flex items-center gap-2 no-underline text-surface-700 dark:text-surface-200 hover:text-primary transition-colors cursor-pointer">
+          <i v-if="item.icon" :class="item.icon" />
+          <span>{{ item.label }}</span>
+        </a>
+      </template>
+      <template #end>
+        <div class="flex items-center gap-2">
+          <!-- Dark mode toggle -->
+          <Button
+            :icon="isDark ? 'pi pi-sun' : 'pi pi-moon'"
+            text
+            rounded
+            :aria-label="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+            @click="toggleDark"
+          />
+          <template v-if="user">
+            <span class="text-sm text-surface-600 dark:text-surface-300 hidden sm:inline">
+              {{ user.username }}
+            </span>
+            <Button
+              icon="pi pi-sign-out"
+              label="Logout"
+              text
+              size="small"
+              @click="handleLogout"
+            />
+          </template>
+          <template v-else>
+            <NuxtLink to="/login">
+              <Button label="Sign In" size="small" outlined />
+            </NuxtLink>
+          </template>
+        </div>
+      </template>
+    </Menubar>
+
+    <!-- Page content -->
+    <main class="vasp-main">
+      <slot />
+    </main>
+  </div>
+</template>
+
+<script setup lang="ts">
+import Menubar from 'primevue/menubar'
+import Button from 'primevue/button'
+import { useToast } from 'primevue/usetoast'
+
+const { user, checkAuth, logout } = useAuth()
+const toast = useToast()
+
+// Restore auth state on every page load (SSR + client-side navigation)
+await callOnce(checkAuth)
+
+// Dark mode — persisted to localStorage, synced with PrimeVue's darkModeSelector
+const isDark = ref(false)
+
+onMounted(() => {
+  isDark.value = localStorage.getItem('vasp-dark-mode') === 'true'
+  syncDarkClass()
+})
+
+function toggleDark() {
+  isDark.value = !isDark.value
+  localStorage.setItem('vasp-dark-mode', String(isDark.value))
+  syncDarkClass()
+}
+
+function syncDarkClass() {
+  const el = document.documentElement
+  if (isDark.value) {
+    el.classList.add('app-dark')
+  } else {
+    el.classList.remove('app-dark')
+  }
+}
+
+async function handleLogout() {
+  await logout()
+  toast.add({ severity: 'info', summary: 'Logged out', life: 2000 })
+  await navigateTo('/login')
+}
+
+// Navigation items — filtered by user role when roles are declared
+const allNavItems = [
+  { label: 'Home', route: '/' },
+  { label: 'Dashboard', route: '/dashboard' },
+  { label: 'Spaces', route: '/spaces' },
+  { label: ':space Key', route: '/spaces/:spaceKey' },
+  { label: ':page Id', route: '/spaces/:spaceKey/pages/:pageId' },
+  { label: 'Edit', route: '/spaces/:spaceKey/pages/:pageId/edit' },
+  { label: 'Create', route: '/spaces/:spaceKey/pages/create' },
+  { label: 'History', route: '/spaces/:spaceKey/pages/:pageId/history' },
+  { label: 'Search', route: '/search' },
+  { label: 'Profile', route: '/profile' },
+  { label: 'Users', route: '/admin/users' },
+  { label: 'Labels', route: '/admin/labels' },
+]
+
+const navItems = computed(() => {
+  const role = user.value?.role
+  return allNavItems.filter(item => !item.roles || !item.roles.length || (role && item.roles.includes(role)))
+})
+
+useHead({ titleTemplate: '%s | Confluence Clone' })
+</script>
+
+<style scoped>
+.vasp-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.vasp-main {
+  flex: 1;
+  padding: 1.5rem;
+}
+@media (max-width: 768px) {
+  .vasp-main {
+    padding: 1rem;
+  }
+}
+</style>
