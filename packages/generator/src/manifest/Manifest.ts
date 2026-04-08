@@ -69,6 +69,13 @@ const MANIFEST_FILE = "manifest.json";
 
 export class Manifest {
   private data: ManifestData;
+  /**
+   * Stable generator key set by generate() before each generator runs.
+   * When set, it takes precedence over the `generator` argument passed to
+   * record() so that minified class names (from bun --minify-identifiers)
+   * never end up in the manifest.  Always matches the GENERATOR_DEPS key.
+   */
+  private _currentGenerator: string | null = null;
 
   constructor(version: string) {
     this.data = {
@@ -78,11 +85,23 @@ export class Manifest {
     };
   }
 
+  /**
+   * Set the stable generator name before a generator runs.
+   * This name is stored in each manifest entry produced during that run,
+   * ensuring it matches the GENERATOR_DEPS key even when the binary is
+   * built with identifier minification (which would mangle class names).
+   */
+  setCurrentGenerator(name: string): void {
+    this._currentGenerator = name;
+  }
+
   /** Record a generated file with its content hash and source generator. */
   record(relativePath: string, content: string, generator: string): void {
     this.data.files[relativePath] = {
       hash: computeHash(content),
-      generator,
+      // Prefer the stable key set by setCurrentGenerator() over the class-name
+      // argument, which can be mangled by identifier minification at build time.
+      generator: this._currentGenerator ?? generator,
     };
   }
 

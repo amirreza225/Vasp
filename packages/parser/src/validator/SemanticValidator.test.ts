@@ -105,19 +105,30 @@ describe("SemanticValidator", () => {
     ).not.toThrow();
   });
 
-  it("fails when realtime entity has no crud", () => {
+  it("fails when realtime entity has no entity block", () => {
     expect(() =>
       validate(`
       ${APP}
       realtime TodoChannel { entity: Todo events: [created] }
     `),
-    ).toThrow("E104_REALTIME_ENTITY_NOT_CRUD");
+    ).toThrow("E104_REALTIME_ENTITY_NOT_FOUND");
   });
 
-  it("passes when realtime entity has crud", () => {
+  it("passes when realtime entity has an entity block (no crud required)", () => {
     expect(() =>
       validate(`
       ${APP}
+      entity Todo { id: Int @id title: String }
+      realtime TodoChannel { entity: Todo events: [created] }
+    `),
+    ).not.toThrow();
+  });
+
+  it("passes when realtime entity has both an entity block and a crud block", () => {
+    expect(() =>
+      validate(`
+      ${APP}
+      entity Todo { id: Int @id title: String }
       crud Todo { entity: Todo operations: [list] }
       realtime TodoChannel { entity: Todo events: [created] }
     `),

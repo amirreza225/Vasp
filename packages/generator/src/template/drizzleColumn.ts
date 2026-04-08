@@ -17,6 +17,7 @@ export function drizzleColumn(
   const typeMap: Record<string, string> = {
     String: "text",
     Text: "text",
+    RichText: "text",
     Int: "integer",
     Boolean: "boolean",
     DateTime: "timestamp",

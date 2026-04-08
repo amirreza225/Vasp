@@ -8,10 +8,14 @@ import Textarea from 'primevue/textarea'
 import ToggleSwitch from 'primevue/toggleswitch'
 import DatePicker from 'primevue/datepicker'
 import Select from 'primevue/select'
+import MultiSelect from 'primevue/multiselect'
 import FileUpload from 'primevue/fileupload'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
+{{#if hasRichTextFields}}
+import TiptapEditor from '../components/TiptapEditor.vue'
+{{/if}}
 
 const route = useRoute()
 const router = useRouter()
@@ -22,33 +26,85 @@ const loading = ref(false)
 
 const initialValues = ref({
   {{#each resolvedFields}}
-  {{key}}: {{#if isBoolean}}false{{else if isDateTime}}null{{else if isNumber}}null{{else}}''{{/if}},
+  {{key}}: {{#if isBoolean}}false{{else if isDateTime}}null{{else if isNumber}}null{{else if isManyToMany}}[]{{else}}null{{/if}},
   {{/each}}
 })
+
+{{#each resolvedFields}}
+{{#if isRichText}}
+// Rich-text field: managed outside @primevue/forms because Tiptap uses a non-standard v-model
+const richText_{{key}} = ref(null)
+{{/if}}
+{{#if isManyToMany}}
+// ManyToMany options for {{key}}
+const {{key}}Options = ref([])
+onMounted(async () => {
+  const res = await fetch('/api/crud/{{kebabCase relatedEntity}}?limit=200', { credentials: 'include' })
+  const json = await res.json()
+  const payload = json?.ok === true ? json.data : json
+  {{key}}Options.value = payload?.items ?? []
+})
+{{/if}}
+{{/each}}
 
 onMounted(async () => {
   if (isEdit) {
     loading.value = true
     try {
-      const res = await fetch('/api/{{kebabCase entityNamePascal}}/' + route.params.id)
-      initialValues.value = await res.json()
+      const res = await fetch('/api/crud/{{kebabCase entityNamePascal}}/' + route.params.id, { credentials: 'include' })
+      const json = await res.json()
+      const data = json?.ok === true ? json.data : json
+      initialValues.value = data
+      {{#each resolvedFields}}
+      {{#if isRichText}}
+      richText_{{key}}.value = data?.{{key}} ?? null
+      {{/if}}
+      {{/each}}
     } finally {
       loading.value = false
     }
   }
 })
 
+{{#each resolvedFields}}
+{{#if isFile}}
+async function upload_{{key}}(event) {
+  const file = event.files?.[0]
+  if (!file) return
+  const formData = new FormData()
+  formData.append('file', file)
+  const res = await fetch('/api/storage/{{kebabCase storageBlock}}', { method: 'POST', credentials: 'include', body: formData })
+  const json = await res.json()
+  const url = json?.ok === true ? json.data?.url : null
+  if (url) initialValues.value = { ...initialValues.value, {{key}}: url }
+  else toast.add({ severity: 'error', summary: 'Upload failed', detail: json?.error?.message ?? 'Unknown error', life: 4000 })
+}
+{{/if}}
+{{/each}}
+
 async function onSubmit({ valid, values }) {
   if (!valid) return
+  const payload = { ...values }
+  {{#each resolvedFields}}
+  {{#if isRichText}}
+  payload.{{key}} = richText_{{key}}.value
+  {{/if}}
+  {{/each}}
   const url = isEdit
-    ? '/api/{{kebabCase entityNamePascal}}/' + route.params.id
-    : '/api/{{kebabCase entityNamePascal}}'
+    ? '/api/crud/{{kebabCase entityNamePascal}}/' + route.params.id
+    : '/api/crud/{{kebabCase entityNamePascal}}'
   const method = isEdit ? 'PUT' : 'POST'
-  await fetch(url, {
+  const res = await fetch(url, {
     method,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(values),
+    credentials: 'include',
+    body: JSON.stringify(payload),
   })
+  if (!res.ok) {
+    const err = await res.json()
+    toast.add({ severity: 'error', summary: 'Save failed', detail: err?.error?.message ?? 'Unknown error', life: 4000 })
+    return
+  }
   toast.add({ severity: 'success', summary: isEdit ? 'Updated!' : 'Created!', life: 3000 })
   router.push('{{successRoute}}')
 }
@@ -59,10 +115,7 @@ async function onSubmit({ valid, values }) {
     <div class="{{#if isTwoColumn}}max-w-5xl{{else}}max-w-2xl{{/if}} mx-auto">
       <div class="flex items-center gap-4 mb-6">
         <Button icon="pi pi-arrow-left" severity="secondary" rounded outlined @click="router.back()" />
-        <h1 class="text-2xl font-semibold m-0">
-          <template v-if="isEdit">Edit {{pageTitle}}</template>
-          <template v-else>{{pageTitle}}</template>
-        </h1>
+        <h1 class="text-2xl font-semibold m-0">{{pageTitle}}</h1>
       </div>
 
       <div class="card p-6 border border-surface rounded-xl shadow-sm">
@@ -89,8 +142,32 @@ async function onSubmit({ valid, values }) {
               :options="[{{#each enumOptions}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]"
               fluid
             />
+            {{else if isManyToMany}}
+            <MultiSelect
+              name="{{key}}"
+              inputId="field-{{key}}"
+              :options="{{key}}Options"
+              optionLabel="name"
+              optionValue="id"
+              :placeholder="'Select {{label}}'"
+              fluid
+              display="chip"
+            />
             {{else if isFile}}
-            <FileUpload name="{{key}}" mode="basic" chooseLabel="Upload file" />
+            <div class="flex flex-col gap-2">
+              <FileUpload
+                name="{{key}}"
+                mode="basic"
+                :auto="true"
+                chooseLabel="Upload file"
+                @select="upload_{{key}}"
+              />
+              <span v-if="initialValues.{{key}}" class="text-xs text-surface-500 truncate">
+                Current: \{{ initialValues.{{key}} }}
+              </span>
+            </div>
+            {{else if isRichText}}
+            <TiptapEditor v-model="richText_{{key}}" />
             {{else if isText}}
             <Textarea name="{{key}}" id="field-{{key}}" rows="4" fluid autoResize />
             {{else if isNumber}}

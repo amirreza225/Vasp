@@ -49,6 +49,7 @@ export const SUPPORTED_FIELD_TYPES = [
   "Json",
   "Enum",
   "File",
+  "RichText",
 ] as const;
 
 export const SUPPORTED_STORAGE_PROVIDERS = [

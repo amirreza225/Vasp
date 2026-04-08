@@ -1,0 +1,128 @@
+// Beautiful Full-Featured Todo App — Created while exploring the Vasp framework
+// This is the vasp file we attempted to use to create a full-featured todo app.
+// See ISSUES.md for all problems encountered during creation.
+
+app BeautifulTodo {
+  title: "Beautiful Todo"
+  db: Drizzle
+  ssr: true
+  typescript: true
+  ui: {
+    theme: Lara
+    primaryColor: blue
+    darkModeSelector: ".app-dark"
+    ripple: true
+  }
+}
+
+auth User {
+  userEntity: User
+  methods: [ usernameAndPassword ]
+}
+
+entity User {
+  id: Int @id
+  username: String @unique @validate(minLength: 3, maxLength: 30)
+  email: String @unique @validate(email)
+  todos: Todo[]
+}
+
+entity Category {
+  id: Int @id
+  name: String @unique @validate(minLength: 1, maxLength: 50)
+  color: String @nullable
+  icon: String @nullable
+  userId: Int @nullable
+  todos: Todo[]
+  createdAt: DateTime @default(now)
+}
+
+entity Todo {
+  id: Int @id
+  title: String @validate(minLength: 1, maxLength: 200)
+  description: Text @nullable
+  priority: Enum(low, medium, high)
+  status: Enum(todo, in_progress, done)
+  dueDate: DateTime @nullable
+  userId: Int @nullable
+  // ISSUE: Having both `categoryId: Int` AND `category: Category` generates duplicate
+  // columns in the schema. You must choose one or the other. Remove categoryId here.
+  // categoryId: Int @nullable   ← causes duplicate column in drizzle/schema.ts
+  category: Category @nullable @onDelete(cascade)
+  author: User @nullable @onDelete(cascade)
+  createdAt: DateTime @default(now)
+  updatedAt: DateTime @updatedAt
+  @@index([userId, status])
+}
+
+// ISSUE: `protected: false` is needed to make this route public even with an auth block
+route HomeRoute {
+  path: "/"
+  to: HomePage
+  protected: false
+}
+
+route TodosRoute {
+  path: "/todos"
+  to: TodosPage
+}
+
+route DashboardRoute {
+  path: "/dashboard"
+  to: DashboardPage
+}
+
+page HomePage {
+  component: import Home from "@src/pages/Home.vue"
+}
+
+page TodosPage {
+  component: import Todos from "@src/pages/Todos.vue"
+}
+
+page DashboardPage {
+  component: import Dashboard from "@src/pages/Dashboard.vue"
+}
+
+crud Todo {
+  entity: Todo
+  operations: [list, create, update, delete]
+  list: {
+    paginate: true
+    sortable: [createdAt, title, priority, dueDate]
+    filterable: [status, priority]
+    search: [title, description]
+  }
+}
+
+crud Category {
+  entity: Category
+  operations: [list, create, update, delete]
+}
+
+realtime TodoChannel {
+  entity: Todo
+  events: [created, updated, deleted]
+}
+
+// ISSUE: admin block does NOT take a name — `admin TodoAdmin { }` throws a parse error
+admin {
+  entities: [Todo, User, Category]
+}
+
+// ISSUE: autoPage uses /api/<entity> but CRUD routes are at /api/crud/<entity>
+// ISSUE: list page's "New" button routes to /todo-list/create which doesn't exist
+autoPage TodoListPage {
+  entity: Todo
+  path: "/todo-list"
+  type: list
+  title: "My Todos"
+  columns: [id, title, priority, status, dueDate, createdAt]
+  sortable: [title, priority, dueDate, createdAt]
+  filterable: [status, priority]
+  searchable: [title]
+  rowActions: [view, edit, delete]
+  topActions: [create]
+  paginate: true
+  pageSize: 20
+}

@@ -2,7 +2,7 @@ import { Elysia, t } from 'elysia'
 import { db } from '../../db/client.{{ext}}'
 import { safeParse } from 'valibot'
 import { eq, sql, asc, desc, and, ilike, or } from 'drizzle-orm'
-import { {{plural (camelCase entity)}} } from '../../../drizzle/schema.{{ext}}'
+import { {{plural (camelCase entity)}}{{#if isVersioned}}, {{camelCase entity}}Versions{{/if}} } from '../../../drizzle/schema.{{ext}}'
 import { Create{{pascalCase entity}}Schema, Update{{pascalCase entity}}Schema } from '../../../shared/validation.{{ext}}'
 import { VaspError } from '../../middleware/errorHandler.{{ext}}'
 {{#if needsAuth}}
@@ -45,19 +45,54 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
 {{/if}}
 
 {{#if hasRelations}}
+    const table = {{plural (camelCase entity)}}
+
+{{#if hasSortable}}
+    // Allowlisted sort fields
+    const SORTABLE_FIELDS = [{{#each sortableFields}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]
+    const sortBy = SORTABLE_FIELDS.includes(query.sortBy ?? '') ? (query.sortBy as string) : 'id'
+    const dirFn = query.dir === 'desc' ? desc : asc
+{{/if}}
+
+    // Build WHERE conditions
+    const relConditions = []
+{{#if applyTenantFilter}}
+    relConditions.push(eq(table.{{tenantField}}, _tenantId))
+{{/if}}
+{{#if hasOwnership}}
+    relConditions.push(eq(table.{{ownershipField}}, _ownerId))
+{{/if}}
+{{#if hasFilterable}}
+    const REL_FILTERABLE_FIELDS = [{{#each filterableFields}}'{{this}}'{{#unless @last}}, {{/unless}}{{/each}}]
+    for (const field of REL_FILTERABLE_FIELDS) {
+      const value = (query as Record<string, string | undefined>)[`filter.${field}`]
+      if (value !== undefined && table[field]) {
+        relConditions.push(eq(table[field], value))
+      }
+    }
+{{/if}}
+{{#if hasSearch}}
+    if (query.search) {
+      const pattern = `%${query.search}%`
+      relConditions.push(or({{#each searchFields}}ilike(table.{{this}}, pattern){{#unless @last}}, {{/unless}}{{/each}})!)
+    }
+{{/if}}
+    const relWhere = relConditions.length > 0 ? and(...relConditions) : undefined
+
     const items = await db.query.{{plural (camelCase entity)}}.findMany({
       with: {
 {{#each withRelations}}
         {{camelCase name}}: true,
 {{/each}}
       },
-{{#if hasAnyRecordFilter}}
-      where: (t, { eq, and }) => {{#if applyTenantFilter}}{{#if hasOwnership}}and(eq(t.{{tenantField}}, _tenantId), eq(t.{{ownershipField}}, _ownerId)){{else}}eq(t.{{tenantField}}, _tenantId){{/if}}{{else}}eq(t.{{ownershipField}}, _ownerId){{/if}},
+      ...(relWhere ? { where: relWhere } : {}),
+{{#if hasSortable}}
+      orderBy: [dirFn(table[sortBy] ?? table.id)],
 {{/if}}
       limit,
       offset,
     })
-    const [countResult] = await db.select({ count: sql`count(*)::int` }).from({{plural (camelCase entity)}}){{#if hasAnyRecordFilter}}.where({{#if applyTenantFilter}}{{#if hasOwnership}}and(eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId), eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId)){{else}}eq({{plural (camelCase entity)}}.{{tenantField}}, _tenantId){{/if}}{{else}}eq({{plural (camelCase entity)}}.{{ownershipField}}, _ownerId){{/if}}){{/if}}
+    const [countResult] = await db.select({ count: sql`count(*)::int` }).from({{plural (camelCase entity)}}){{#if hasAnyRecordFilter}}.where(relWhere){{/if}}
 {{#if paginate}}
     return { items, total: countResult?.count ?? 0, page, limit, offset }
 {{else}}
@@ -318,5 +353,41 @@ export const {{camelCase entity}}CrudRoutes = new Elysia({ prefix: '/api/crud/{{
       }
     },
   }{{/if}})
+{{/if}}
+{{#if isVersioned}}
+  // ── Version history endpoints (@@versioned) ────────────────────────────────
+  // GET /api/crud/<entity>/:id/versions — list all recorded versions
+  .get('/:id/versions', async ({ params: { id } }) => {
+    const numId = Number(id)
+    if (!Number.isFinite(numId)) throw new VaspError('INVALID_INPUT', 'Invalid id', 400)
+    const versions = await db
+      .select()
+      .from({{camelCase entity}}Versions)
+      .where(eq({{camelCase entity}}Versions.entityId, numId))
+      .orderBy(desc({{camelCase entity}}Versions.version))
+    return { ok: true, data: versions }
+  })
+  // POST /api/crud/<entity>/:id/restore/:version — restore a specific version
+  .post('/:id/restore/:version', async ({ params: { id, version }{{#if needsAuth}}, user{{/if}} }) => {
+    const numId = Number(id)
+    const numVersion = Number(version)
+    if (!Number.isFinite(numId) || !Number.isFinite(numVersion)) {
+      throw new VaspError('INVALID_INPUT', 'Invalid id or version', 400)
+    }
+    const [versionRow] = await db
+      .select()
+      .from({{camelCase entity}}Versions)
+      .where(and(eq({{camelCase entity}}Versions.entityId, numId), eq({{camelCase entity}}Versions.version, numVersion)))
+    if (!versionRow) throw new VaspError('NOT_FOUND', 'Version not found', 404)
+    // Only restore fields from the snapshot — strip system columns (id, entityId, version, changedBy, createdAt, updatedAt)
+    const { id: _id, createdAt: _ca, updatedAt: _ua, ...safeSnapshot } = versionRow.data as Record<string, unknown>
+    const [restored] = await db
+      .update({{plural (camelCase entity)}})
+      .set({ ...safeSnapshot, updatedAt: new Date() })
+      .where(eq({{plural (camelCase entity)}}.id, numId))
+      .returning()
+    if (!restored) throw new VaspError('NOT_FOUND', '{{pascalCase entity}} not found', 404)
+    return { ok: true, data: restored }
+  })
 {{/if}}
 

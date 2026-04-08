@@ -1379,6 +1379,7 @@ describe("generate()", () => {
       app A { title: "T" db: Drizzle ssr: false typescript: false }
       route R { path: "/" to: P }
       page P { component: import P from "@src/pages/P.vue" }
+      entity Todo { id: Int @id title: String }
       crud Todo { entity: Todo operations: [list] }
       realtime TodoChannel { entity: Todo events: [created, updated] }
     `;
@@ -1425,6 +1426,7 @@ describe("generate()", () => {
       app A { title: "T" db: Drizzle ssr: false typescript: true }
       route R { path: "/" to: P }
       page P { component: import P from "@src/pages/P.vue" }
+      entity Todo { id: Int @id title: String }
       crud Todo { entity: Todo operations: [list, create] }
       realtime TodoChannel { entity: Todo events: [created, updated] }
     `;

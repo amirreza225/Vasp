@@ -6,6 +6,54 @@ import Tag from 'primevue/tag'
 import Skeleton from 'primevue/skeleton'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
+{{#if hasRichTextFields}}
+// Minimal ProseMirror-JSON → safe HTML serializer (no external deps)
+// Text content is HTML-escaped to prevent XSS. Only structural tags are generated.
+function _escHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+function richTextToHtml(doc) {
+  if (!doc) return ''
+  if (typeof doc === 'string') return _escHtml(doc)
+  function node(n) {
+    if (!n) return ''
+    const marks = (n.marks ?? []).reduce((s, m) => {
+      if (m.type === 'bold') s = '<strong>' + s
+      if (m.type === 'italic') s = '<em>' + s
+      if (m.type === 'strike') s = '<s>' + s
+      if (m.type === 'code') s = '<code>' + s
+      return s
+    }, null)
+    const close = (n.marks ?? []).slice().reverse().reduce((s, m) => {
+      if (m.type === 'bold') s += '</strong>'
+      if (m.type === 'italic') s += '</em>'
+      if (m.type === 'strike') s += '</s>'
+      if (m.type === 'code') s += '</code>'
+      return s
+    }, '')
+    const inner = (n.content ?? []).map(node).join('')
+    const level = Math.max(1, Math.min(6, Number(n.attrs?.level) || 1))
+    switch (n.type) {
+      case 'text': return marks !== null ? marks + _escHtml(n.text ?? '') + close : _escHtml(n.text ?? '')
+      case 'paragraph': return '<p>' + inner + '</p>'
+      case 'heading': return '<h' + level + '>' + inner + '</h' + level + '>'
+      case 'bulletList': return '<ul>' + inner + '</ul>'
+      case 'orderedList': return '<ol>' + inner + '</ol>'
+      case 'listItem': return '<li>' + inner + '</li>'
+      case 'blockquote': return '<blockquote>' + inner + '</blockquote>'
+      case 'codeBlock': return '<pre><code>' + inner + '</code></pre>'
+      case 'horizontalRule': return '<hr>'
+      case 'hardBreak': return '<br>'
+      default: return inner
+    }
+  }
+  return (doc.content ?? []).map(node).join('')
+}
+{{/if}}
 
 const route = useRoute()
 const router = useRouter()
@@ -16,8 +64,9 @@ const record = ref(null)
 const loading = ref(true)
 
 onMounted(async () => {
-  const res = await fetch('/api/{{kebabCase entityNamePascal}}/' + route.params.id)
-  record.value = await res.json()
+  const res = await fetch('/api/crud/{{kebabCase entityNamePascal}}/' + route.params.id, { credentials: 'include' })
+  const json = await res.json()
+  record.value = json?.ok === true ? json.data : json
   loading.value = false
 })
 
@@ -29,7 +78,7 @@ function confirmDelete() {
     rejectProps: { label: 'Cancel', severity: 'secondary', outlined: true },
     acceptProps: { label: 'Delete', severity: 'danger' },
     accept: async () => {
-      await fetch('/api/{{kebabCase entityNamePascal}}/' + route.params.id, { method: 'DELETE' })
+      await fetch('/api/crud/{{kebabCase entityNamePascal}}/' + route.params.id, { method: 'DELETE', credentials: 'include' })
       toast.add({ severity: 'success', summary: 'Deleted', life: 3000 })
       router.back()
     }
@@ -73,7 +122,10 @@ function confirmDelete() {
           <div class="py-4 grid grid-cols-3 gap-4 items-start">
             <span class="font-medium text-surface-500 text-sm">{{label}}</span>
             <span class="col-span-2 text-sm">
-              {{#if (eq columnType "boolean")}}
+              {{#if isRichText}}
+              <div v-if="record.{{key}}" class="vasp-richtext-display prose prose-sm max-w-none" v-html="record.{{key}}?.__html ?? richTextToHtml(record.{{key}})" />
+              <span v-else>—</span>
+              {{else if (eq columnType "boolean")}}
               <i :class="record.{{key}} ? 'pi pi-check text-green-500' : 'pi pi-times text-red-400'" />
               {{else if (eq columnType "date")}}
               <time v-if="record.{{key}}" :datetime="record.{{key}}">\{{ new Date(record.{{key}}).toLocaleString() }}</time>

@@ -47,6 +47,12 @@ const AppTheme = definePreset({{ui.themeImportName}}, {
     ignore: ['**'],
     scanDirs: [],
   },
+  // Proxy /api/* → Elysia backend in development (avoids CORS + cross-origin cookie issues)
+  // Nitro expands the '**' wildcard in both the pattern and target, so '/api/**' with
+  // target 'http://host/api/**' correctly maps /api/foo → http://host/api/foo.
+  routeRules: {
+    '/api/**': { proxy: 'http://localhost:{{backendPort}}/api/**' },
+  },
   runtimeConfig: {
     backendUrl: process.env.BACKEND_URL || 'http://localhost:{{backendPort}}',
     public: {

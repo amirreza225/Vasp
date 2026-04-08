@@ -259,6 +259,10 @@ export function generate(
       logger.verbose(`↷ Skipped ${name} (block types unchanged)`);
       return;
     }
+    // Pin the stable generator key on the manifest so that every file written
+    // during this generator's run is tagged with the GENERATOR_DEPS key rather
+    // than the (potentially minified) class name from this.constructor.name.
+    manifest.setCurrentGenerator(name);
     try {
       run();
     } catch (err) {
@@ -347,6 +351,7 @@ export function generate(
         if (!plugin.generators?.length) continue;
         for (const gen of plugin.generators) {
           const generatorLabel = `plugin:${plugin.name}/${gen.name}`;
+          manifest.setCurrentGenerator(generatorLabel);
           try {
             gen.run(pluginCtx, (relativePath, content) => {
               // Guard against path-traversal: the resolved path must stay inside

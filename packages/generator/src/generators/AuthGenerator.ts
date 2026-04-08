@@ -1,6 +1,49 @@
 import { DEFAULT_BACKEND_PORT } from "@vasp-framework/core";
+import type { FieldNode } from "@vasp-framework/core";
 import { BaseGenerator } from "./BaseGenerator.js";
 import { toCamelCase, toPlural } from "../template/TemplateEngine.js";
+
+// Built-in fields hardcoded into the schema template's auth user table block.
+// Extra scalar fields must NOT duplicate these.
+const AUTH_BUILTIN_FIELDS = new Set([
+  "id",
+  "username",
+  "email",
+  "password",
+  "passwordHash",
+  "googleId",
+  "githubId",
+  "createdAt",
+  "updatedAt",
+]);
+
+/**
+ * Map a Vasp primitive field type to its Elysia/TypeBox validator string.
+ * Used to generate accurate body schema for extra user entity fields at register time.
+ */
+function typeToElysiaValidator(f: FieldNode): string {
+  if (f.type === "Enum" && f.enumValues?.length) {
+    const literals = f.enumValues.map((v) => `t.Literal('${v}')`).join(", ");
+    return `t.Union([${literals}])`;
+  }
+  switch (f.type) {
+    case "String":
+    case "Text":
+      return "t.String()";
+    case "Int":
+      return "t.Integer()";
+    case "Boolean":
+      return "t.Boolean()";
+    case "Float":
+      return "t.Number()";
+    case "DateTime":
+      return 't.String({ format: "date-time" })';
+    case "Json":
+      return "t.Any()";
+    default:
+      return "t.Any()";
+  }
+}
 
 export class AuthGenerator extends BaseGenerator {
   run(): void {
@@ -32,8 +75,19 @@ export class AuthGenerator extends BaseGenerator {
 
     const userFkFields = (userEntity?.fields ?? [])
       .filter((f) => f.isRelation && !f.isArray)
-      .map((f) => ({ fieldName: `${toCamelCase(f.name)}Id` }));
+      .map((f) => ({
+        fieldName: `${toCamelCase(f.name)}Id`,
+        // A FK field is required at insert when it has no DB default and is NOT NULL.
+        isRequired: !f.nullable && !f.defaultValue,
+      }));
     const hasUserFkFields = userFkFields.length > 0;
+
+    // Detect whether the email field on the user entity is NOT NULL (required at insert).
+    // When true, email must be provided during registration; the insert must not fall back to null.
+    const emailField = userEntity?.fields.find((f) => f.name === "email");
+    const emailRequired = emailField
+      ? !emailField.nullable && !emailField.defaultValue
+      : false;
 
     // Collect fields marked @hidden on the user entity (excluding the password field).
     // These will be stripped from register/login/me API responses so sensitive data
@@ -42,6 +96,33 @@ export class AuthGenerator extends BaseGenerator {
       .filter((f) => f.isHidden && f.name !== passwordFieldName)
       .map((f) => ({ name: f.name }));
     const hasHiddenFields = hiddenFields.length > 0;
+
+    // Collect extra scalar fields on the user entity that need to be supplied at
+    // register time. These are non-built-in, non-relation, non-File scalar fields
+    // that do NOT have a DB-level default (fields with @default are handled by the DB
+    // automatically and don't need to appear in the INSERT or the request body).
+    //
+    // Two categories are emitted to the template:
+    //   isRequired=true  → NOT NULL, no default → caller MUST supply the value
+    //   isRequired=false → nullable, no default  → caller MAY supply the value (null fallback)
+    const authUserExtraScalarFields = (userEntity?.fields ?? [])
+      .filter(
+        (f) =>
+          !AUTH_BUILTIN_FIELDS.has(f.name) &&
+          !f.isRelation &&
+          f.type !== "File" &&
+          f.type !== "RichText" &&
+          !f.isHidden &&
+          !f.defaultValue, // DB default fields don't need to be in the INSERT/body
+      )
+      .map((f) => ({
+        fieldName: f.name,
+        type: f.type,
+        elysiaType: typeToElysiaValidator(f),
+        isRequired: !f.nullable,
+        nullable: f.nullable,
+      }));
+    const hasAuthUserExtraScalarFields = authUserExtraScalarFields.length > 0;
 
     // Derive the Drizzle table const name from the user entity name.
     // Matches the convention used in DrizzleSchemaGenerator: toPlural(camelCase(name)).
@@ -55,10 +136,14 @@ export class AuthGenerator extends BaseGenerator {
       permissionEntries,
       userFkFields,
       hasUserFkFields,
+      hasRequiredFkFields: userFkFields.some((f) => f.isRequired),
       hiddenFields,
       hasHiddenFields,
       passwordFieldName,
       userTableName,
+      emailRequired,
+      authUserExtraScalarFields,
+      hasAuthUserExtraScalarFields,
     };
 
     // Server: auth plugin (JWT + cookie — separate file to avoid circular imports)

@@ -1,0 +1,26 @@
+{
+  "extends": "./.nuxt/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "jsx": "preserve",
+    "paths": {
+      "@src/*": ["./src/*"],
+      "@shared/*": ["./shared/*"],
+      "@vasp-framework/client": ["./src/vasp/client/index.ts"]
+    }
+  },
+  "include": [".nuxt/**/*", "src/**/*.ts", "src/**/*.vue", "shared/**/*.ts", "drizzle/**/*.ts"],
+  "exclude": ["node_modules", "dist", ".vasp-gen"]
+}

@@ -8,10 +8,12 @@ export const Create{{pascalCase name}}Schema = v.object({
   {{name}}Id: {{valibotSchema "Int" nullable nullable}},
 {{/unless}}
 {{else}}
+{{#unless isExplicitFkDuplicate}}
 {{#unless (includes modifiers "id")}}
 {{#unless isUpdatedAt}}
 {{#unless (includes modifiers "default_now")}}
   {{name}}: {{{valibotSchema type nullable nullable enumValues validation config.validate}}},
+{{/unless}}
 {{/unless}}
 {{/unless}}
 {{/unless}}

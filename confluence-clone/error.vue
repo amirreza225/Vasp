@@ -1,0 +1,26 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+
+const props = defineProps<{
+  error: {
+    statusCode?: number
+    statusMessage?: string
+    message?: string
+  }
+}>()
+
+const messageText = computed(() => {
+  return props.error.statusMessage ?? props.error.message ?? 'Unexpected server error'
+})
+</script>
+
+<template>
+  <div style="padding:24px; max-width:720px; margin:0 auto;">
+    <h1 v-if="props.error.statusCode === 404">Page not found</h1>
+    <h1 v-else-if="props.error.statusCode === 401">Authentication required</h1>
+    <h1 v-else>Something went wrong</h1>
+
+    <p></p>
+    <NuxtLink to="/">Go back home</NuxtLink>
+  </div>
+</template>
