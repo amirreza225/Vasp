@@ -1,8 +1,20 @@
+function getCsrfToken() {
+  const match = document.cookie.match(/(?:^|;\s*)vasp-csrf=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 async function apiFetch(url, options) {
+  const method = (options?.method ?? 'GET').toUpperCase()
+  const isMutating = !['GET', 'HEAD', 'OPTIONS'].includes(method)
+  const csrfToken = isMutating ? getCsrfToken() : null
   const res = await fetch('/api/admin' + url, {
     credentials: 'include',
     ...options,
-    headers: { 'Content-Type': 'application/json', ...(options?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+      ...(options?.headers ?? {}),
+    },
   })
   const json = await res.json()
   if (!res.ok) {

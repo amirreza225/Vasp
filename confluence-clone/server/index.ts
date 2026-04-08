@@ -83,12 +83,26 @@ if (!process.env.S3_REGION?.trim()) process.env.S3_REGION = 'us-east-1'
     process.exit(1)
   }
 }
+// ── Scalar API Reference bundle — self-hosted proxy so the docs UI works
+// even in environments where the jsdelivr.net CDN is blocked in the browser.
+// The server can always reach the CDN; the bundle is cached in memory after
+// the first request so subsequent loads are instant.
+let _scalarBundle: string | null = null
+async function getScalarBundle(): Promise<string> {
+  if (_scalarBundle) return _scalarBundle
+  const CDN_URL = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest/dist/browser/standalone.min.js'
+  const res = await fetch(CDN_URL)
+  _scalarBundle = await res.text()
+  return _scalarBundle
+}
+
 export const app = new Elysia()
   .use(swagger({
     path: '/api/docs',
     documentation: {
       info: { title: 'ConfluenceClone API', version: '1.0.0' },
     },
+    scalarCDN: '/api/scalar.js',
   }))
   .use(logger())
   .use(errorHandler())
@@ -101,6 +115,15 @@ export const app = new Elysia()
   .use(rateLimit())
   .use(csrfProtection())
   .get('/api/health', () => ({ status: 'ok', version: '1.3.0' }))
+  .get('/api/scalar.js', async ({ set }) => {
+    set.headers['content-type'] = 'application/javascript; charset=utf-8'
+    set.headers['cache-control'] = 'public, max-age=86400'
+    try {
+      return await getScalarBundle()
+    } catch {
+      return '// Scalar API Reference bundle could not be loaded'
+    }
+  })
   .get('/', ({ redirect }) => redirect('/api/docs', 302))
   .use(vaspDiagnosticRoutes)
   .use(authRoutes)
