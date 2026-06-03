@@ -68,7 +68,7 @@
     "package": "bunx @vscode/vsce@3.7.1 package --no-dependencies"
   },
   "dependencies": {
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^10.0.0"
   },
   "devDependencies": {
     "@types/vscode": "^1.110.0",
